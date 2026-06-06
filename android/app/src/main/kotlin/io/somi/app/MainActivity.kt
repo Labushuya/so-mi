@@ -92,11 +92,13 @@ class MainActivity : ComponentActivity() {
                     // real chat lifecycle UI.
                     val viewModel: ChatViewModel = hiltViewModel()
                     val state by viewModel.state.collectAsStateWithLifecycle()
+                    val boot by viewModel.boot.collectAsStateWithLifecycle()
 
                     ChatShellScreen(
                         versionName = BuildConfig.VERSION_NAME,
                         versionCode = BuildConfig.VERSION_CODE,
                         chatState = state,
+                        boot = boot,
                     )
                 }
             }
@@ -114,6 +116,7 @@ private fun ChatShellScreen(
     versionName: String,
     versionCode: Int,
     chatState: ChatState,
+    boot: ChatViewModel.BootSnapshot?,
 ) {
     val songbird = LocalSongbirdColors.current
     val welcomeText = stringResource(R.string.welcome_message)
@@ -130,6 +133,7 @@ private fun ChatShellScreen(
             versionName = versionName,
             versionCode = versionCode,
             chatState = chatState,
+            boot = boot,
         )
 
         // chat-history — flex:1, scrollable. One assistant message for now.
@@ -167,6 +171,7 @@ private fun ChatTopBar(
     versionName: String,
     versionCode: Int,
     chatState: ChatState,
+    boot: ChatViewModel.BootSnapshot?,
 ) {
     val songbird = LocalSongbirdColors.current
     Column(
@@ -200,7 +205,7 @@ private fun ChatTopBar(
         Spacer(Modifier.height(2.dp))
         // Version subtitle — subtle, but visible enough for Phase-1 acceptance.
         Text(
-            text = "v$versionName · build $versionCode · ${chatStateLabel(chatState)}",
+            text = buildDiagnosticLine(versionName, versionCode, chatState, boot),
             color = songbird.glass.copy(alpha = 0.7f),
             style = MaterialTheme.typography.labelSmall,
         )
@@ -462,8 +467,45 @@ private fun SendButton() {
 }
 
 // ---------------------------------------------------------------------------
-// Phase-2.1 helpers
+// Phase-2.1 / 2.2 helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Phase-2 diagnostic banner string.
+ *
+ * Format: `v<version> · build <code> · <state>[ · <ramGB>GB · <tier><light>]`
+ *
+ * The leading three components are the Phase-1 acceptance signal (proves
+ * release-please + versionCode injection work). The trailing two appear
+ * once HardwareDetector finishes its background probe — they're the
+ * Phase-2.2 acceptance signal (proves the snapshot ran and SPEC §7's
+ * recommendModelTier returned a sane verdict for this hardware).
+ */
+private fun buildDiagnosticLine(
+    versionName: String,
+    versionCode: Int,
+    chatState: ChatState,
+    boot: io.somi.ui.chat.ChatViewModel.BootSnapshot?,
+): String = buildString {
+    append("v").append(versionName)
+    append(" · build ").append(versionCode)
+    append(" · ").append(chatStateLabel(chatState))
+    if (boot != null) {
+        append(" · ")
+        append("%.0f".format(boot.deviceInfo.totalRamGB))
+        append("GB")
+        append(" · ")
+        append(boot.recommendation.auto.name.lowercase())
+        append(lightGlyph(boot.recommendation.lights[boot.recommendation.auto]))
+    }
+}
+
+private fun lightGlyph(light: io.somi.data.Light?): String = when (light) {
+    io.somi.data.Light.GREEN -> "🟢"
+    io.somi.data.Light.YELLOW -> "🟡"
+    io.somi.data.Light.RED -> "🔴"
+    null -> ""
+}
 
 /**
  * One-word lower-case label for the current chat lifecycle state. Shown
@@ -492,6 +534,7 @@ private fun ChatShellPreview() {
             versionName = "0.1.0",
             versionCode = 10001,
             chatState = ChatState.LoadingModel,
+            boot = null,
         )
     }
 }
