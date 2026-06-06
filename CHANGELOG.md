@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/Labushuya/so-mi/compare/v0.6.0...v0.7.0) (2026-06-06)
+
+
+### Features
+
+* **phase-2.4:** model download manager (WorkManager + OkHttp + resumable + sha256) ([71ead78](https://github.com/Labushuya/so-mi/commit/71ead78c29d61549c1a2a92d6afe21ef823a57f0))
+
 ## [0.6.0](https://github.com/Labushuya/so-mi/compare/v0.5.0...v0.6.0) (2026-06-06)
 
 
