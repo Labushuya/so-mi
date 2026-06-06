@@ -7,12 +7,12 @@ import org.junit.Test
  * Pure-JVM tests for [recommendModelTier]. The function is intentionally
  * Android-free, so we don't need Robolectric or instrumented tests.
  *
- * Three canonical fixtures:
- *  - Magic V2 (the SPEC's reference device): 16 GB RAM, lots of storage,
- *    Adreno 740 → all four tiers GREEN, auto = LARGE.
- *  - 6 GB midrange phone: tight on RAM but plenty of storage → MEDIUM
- *    GREEN, LARGE downgrades.
- *  - 3 GB low-end phone: only TINY safe; SMALL/MEDIUM/LARGE block out.
+ * Fixtures are calibrated against the hybrid budget formula:
+ *
+ *   budget = max(totalRamGB * 0.45, availRamGB * 0.5 + 1.5)
+ *
+ * See the kdoc on [recommendModelTier] for the SPEC §7 deviation rationale
+ * and the per-fixture math.
  */
 class RecommendModelTierTest {
 
@@ -33,27 +33,44 @@ class RecommendModelTierTest {
     )
 
     @Test
-    fun `Magic V2 16GB picks LARGE with all tiers green`() {
-        // Magic V2: 16 GB total, ~10 GB available after OS + active apps,
-        // plenty of free storage. budget = 10 * 0.25 + 1.5 = 4.0 GB.
-        // LARGE.ramMin = 6.5 — but LARGE is also tight at 4.0 * 1.15 = 4.6,
-        // so 6.5 > 4.6 → tight check fails → RED?
-        // Wait: SPEC's number says 16 GB picks LARGE green. Let's bump
-        // availRam closer to a fresh-launch reading on Magic V2.
-        val d = device(totalRamGB = 16.0, availRamGB = 14.0, freeStorageGB = 200.0)
-        // budget = 14.0 * 0.25 + 1.5 = 5.0 — still doesn't reach 6.5.
-        // The SPEC's pseudocode assumes availRamGB tracks bigger. Magic V2
-        // really does report ~14 GB free at fresh boot. 14*0.25+1.5=5.0,
-        // 5.0*1.15=5.75 — still < 6.5. So LARGE is RED on this fixture.
-        // → SPEC §7's expectation is more aggressive than its formula. We
-        // follow the formula (SPEC verbatim), not the prose. Test the
-        // observable contract.
+    fun `Magic V2 16GB total 6GB available picks LARGE green`() {
+        // Reference device. Magic V2 reports ~15–16 GB total and ~6 GB
+        // available shortly after launch with normal background apps.
+        // budget = max(16*0.45, 6*0.5+1.5) = max(7.2, 4.5) = 7.2
+        // tight  = 7.2 * 1.15 = 8.28
+        //   TINY   (1.5 ≤ 7.2) GREEN
+        //   SMALL  (2.5 ≤ 7.2) GREEN
+        //   MEDIUM (3.5 ≤ 7.2) GREEN
+        //   LARGE  (6.5 ≤ 7.2) GREEN
+        val d = device(totalRamGB = 16.0, availRamGB = 6.0, freeStorageGB = 200.0)
         val rec = recommendModelTier(d)
-        // What's actually green at budget=5.0:
-        //   TINY (1.5 ≤ 5.0)   GREEN
-        //   SMALL (2.5 ≤ 5.0)  GREEN
-        //   MEDIUM (3.5 ≤ 5.0) GREEN
-        //   LARGE (6.5 > 5.75) RED
+        assertEquals(Light.GREEN, rec.lights[Tier.TINY])
+        assertEquals(Light.GREEN, rec.lights[Tier.SMALL])
+        assertEquals(Light.GREEN, rec.lights[Tier.MEDIUM])
+        assertEquals(Light.GREEN, rec.lights[Tier.LARGE])
+        assertEquals(Tier.LARGE, rec.auto)
+    }
+
+    @Test
+    fun `24GB flagship with 20GB available picks LARGE green`() {
+        // budget = max(24*0.45, 20*0.5+1.5) = max(10.8, 11.5) = 11.5
+        // tight  = 13.225 — LARGE 6.5 well under both
+        val d = device(totalRamGB = 24.0, availRamGB = 20.0, freeStorageGB = 200.0)
+        val rec = recommendModelTier(d)
+        assertEquals(Light.GREEN, rec.lights[Tier.LARGE])
+        assertEquals(Tier.LARGE, rec.auto)
+    }
+
+    @Test
+    fun `6GB midrange phone with 4GB available picks MEDIUM green`() {
+        // budget = max(6*0.45, 4*0.5+1.5) = max(2.7, 3.5) = 3.5
+        // tight  = 3.5 * 1.15 = 4.025
+        //   TINY   (1.5 ≤ 3.5)  GREEN
+        //   SMALL  (2.5 ≤ 3.5)  GREEN
+        //   MEDIUM (3.5 ≤ 3.5)  GREEN (boundary: ramOk holds)
+        //   LARGE  (6.5 > 4.025) RED
+        val d = device(totalRamGB = 6.0, availRamGB = 4.0, freeStorageGB = 50.0)
+        val rec = recommendModelTier(d)
         assertEquals(Light.GREEN, rec.lights[Tier.TINY])
         assertEquals(Light.GREEN, rec.lights[Tier.SMALL])
         assertEquals(Light.GREEN, rec.lights[Tier.MEDIUM])
@@ -62,30 +79,17 @@ class RecommendModelTierTest {
     }
 
     @Test
-    fun `Magic V2 right after install with availRam 15GB picks LARGE`() {
-        // To make LARGE green we'd need budget*1.15 >= 6.5
-        // → budget >= 5.65 → availRam >= (5.65 - 1.5) / 0.25 = 16.6 GB
-        // That's only achievable on a 24+ GB-RAM device or by tweaking
-        // the formula. Document the gap: with the SPEC's formula on a
-        // realistic Magic V2 reading, MEDIUM is the auto-pick. The user
-        // can manually upgrade to LARGE via the picker (which marks LARGE
-        // RED-but-allowed).
-        val d = device(totalRamGB = 24.0, availRamGB = 20.0, freeStorageGB = 200.0)
-        // budget = 20 * 0.25 + 1.5 = 6.5; 6.5 * 1.15 = 7.475 — LARGE green
-        val rec = recommendModelTier(d)
-        assertEquals(Light.GREEN, rec.lights[Tier.LARGE])
-        assertEquals(Tier.LARGE, rec.auto)
-    }
-
-    @Test
-    fun `6GB midrange phone picks MEDIUM`() {
-        // 6 GB phone: ~4 GB available after OS. budget = 4*0.25+1.5 = 2.5.
-        //   TINY (1.5 ≤ 2.5)   GREEN
-        //   SMALL (2.5 ≤ 2.5)  GREEN (boundary)
-        //   MEDIUM (3.5 ≤ 2.875) RED  — wait, 2.5*1.15=2.875, MEDIUM 3.5 > 2.875 RED
-        //   LARGE   RED
-        // So actual: TINY/SMALL green, MEDIUM/LARGE RED. auto = SMALL.
-        val d = device(totalRamGB = 6.0, availRamGB = 4.0, freeStorageGB = 50.0)
+    fun `3GB low-end phone with 2GB available picks SMALL green`() {
+        // budget = max(3*0.45, 2*0.5+1.5) = max(1.35, 2.5) = 2.5
+        // tight  = 2.875
+        //   TINY   (1.5 ≤ 2.5)   GREEN
+        //   SMALL  (2.5 ≤ 2.5)   GREEN (boundary)
+        //   MEDIUM (3.5 > 2.875) RED
+        //   LARGE  (6.5 > 2.875) RED
+        // SMALL on a 3 GB phone is acceptable: TINY is far too cramped for
+        // a real conversation, and SMALL (Qwen2.5 1.5B) fits comfortably in
+        // 2.5 GB with a quantized KV cache.
+        val d = device(totalRamGB = 3.0, availRamGB = 2.0, freeStorageGB = 8.0)
         val rec = recommendModelTier(d)
         assertEquals(Light.GREEN, rec.lights[Tier.TINY])
         assertEquals(Light.GREEN, rec.lights[Tier.SMALL])
@@ -95,15 +99,14 @@ class RecommendModelTierTest {
     }
 
     @Test
-    fun `3GB low-end phone picks TINY only`() {
-        // 3 GB total, ~2 GB available. budget = 2 * 0.25 + 1.5 = 2.0.
-        //   TINY (1.5 ≤ 2.0)   GREEN
-        //   SMALL (2.5 > 2.0; 2.5 > 2.3 tight) RED
-        //   MEDIUM RED
-        //   LARGE  RED
-        val d = device(totalRamGB = 3.0, availRamGB = 2.0, freeStorageGB = 8.0)
+    fun `pathological 1GB device with no storage falls back to TINY red`() {
+        // 1 GB total, 0.5 GB available, 0.4 GB free storage. Even TINY's
+        // storage redline (storageMin*1.5 = 1.5 GB) trips → all RED.
+        // Recommender returns TINY as the explicit fallback so the UI has
+        // something to render; user is forced into the manual override.
+        val d = device(totalRamGB = 1.0, availRamGB = 0.5, freeStorageGB = 0.4)
         val rec = recommendModelTier(d)
-        assertEquals(Light.GREEN, rec.lights[Tier.TINY])
+        assertEquals(Light.RED, rec.lights[Tier.TINY])
         assertEquals(Light.RED, rec.lights[Tier.SMALL])
         assertEquals(Light.RED, rec.lights[Tier.MEDIUM])
         assertEquals(Light.RED, rec.lights[Tier.LARGE])
@@ -111,53 +114,31 @@ class RecommendModelTierTest {
     }
 
     @Test
-    fun `nothing fits falls back to TINY`() {
-        // Pathological: 1 GB device with 0.5 GB free storage. Even TINY
-        // won't truly fit. Recommender returns TINY as the explicit
-        // fallback so the UI has something to render (with all RED lights);
-        // user is forced into the manual override.
-        val d = device(totalRamGB = 1.0, availRamGB = 0.5, freeStorageGB = 0.4)
-        val rec = recommendModelTier(d)
-        assertEquals(Light.RED, rec.lights[Tier.TINY])
-        assertEquals(Light.RED, rec.lights[Tier.SMALL])
-        assertEquals(Tier.TINY, rec.auto)
-    }
-
-    @Test
-    fun `tight RAM but ample storage downgrades to YELLOW not RED`() {
-        // Storage huge, RAM borderline: tier sits in the YELLOW band where
-        // ramOk fails but ramTight (1.15× budget) still holds.
-        // budget=2.5 → 1.15×=2.875. SMALL.ramMin=2.5 ≤ 2.5 ramOk; let's
-        // hit the next boundary: pick budget=2.4 so MEDIUM (3.5) is YELLOW.
-        // budget = availRam*0.25+1.5 = 2.4 → availRam = 3.6
-        val d = device(totalRamGB = 6.0, availRamGB = 3.6, freeStorageGB = 100.0)
-        // budget=2.4, tight=2.76. MEDIUM.ramMin=3.5 — both ramOk and
-        // ramTight fail → RED. So even YELLOW needs careful tuning. Try
-        // a smaller delta:
-        val d2 = device(totalRamGB = 6.0, availRamGB = 6.0, freeStorageGB = 100.0)
-        // budget=3.0, tight=3.45. MEDIUM.ramMin=3.5 — ramOk fails, tight
-        // also fails by 0.05. Still RED.
-        // Demonstrating: YELLOW band is narrow; the formula is biased
-        // toward strict GREEN/RED. That's fine — the SPEC accepts this.
-        // Just assert the contract holds (no surprise YELLOW slipping
-        // through):
-        val rec = recommendModelTier(d2)
-        for ((tier, light) in rec.lights) {
-            // Every result must be one of the three lights — sanity.
-            assert(light == Light.GREEN || light == Light.YELLOW || light == Light.RED) {
-                "tier=$tier light=$light is invalid"
-            }
+    fun `auto pick is always the largest GREEN tier across the fixture matrix`() {
+        // Walk a range of plausible devices and assert the invariant: if
+        // any tier is GREEN, `auto` equals the highest such tier; otherwise
+        // `auto` is TINY.
+        val matrix = listOf(
+            device(totalRamGB = 16.0, availRamGB = 6.0, freeStorageGB = 200.0),
+            device(totalRamGB = 24.0, availRamGB = 20.0, freeStorageGB = 200.0),
+            device(totalRamGB = 12.0, availRamGB = 8.0, freeStorageGB = 100.0),
+            device(totalRamGB = 8.0, availRamGB = 5.0, freeStorageGB = 64.0),
+            device(totalRamGB = 6.0, availRamGB = 4.0, freeStorageGB = 50.0),
+            device(totalRamGB = 4.0, availRamGB = 2.5, freeStorageGB = 16.0),
+            device(totalRamGB = 3.0, availRamGB = 2.0, freeStorageGB = 8.0),
+            device(totalRamGB = 1.0, availRamGB = 0.5, freeStorageGB = 0.4),
+        )
+        for (d in matrix) {
+            val rec = recommendModelTier(d)
+            val largestGreen = Tier.values()
+                .filter { rec.lights[it] == Light.GREEN }
+                .maxByOrNull { it.ordinal }
+            val expected = largestGreen ?: Tier.TINY
+            assertEquals(
+                "auto-pick mismatch for device=$d lights=${rec.lights}",
+                expected,
+                rec.auto,
+            )
         }
-    }
-
-    @Test
-    fun `auto pick is always the largest GREEN tier when any are green`() {
-        // Same as the 6 GB case but with extra storage — recommender must
-        // NOT skip a green tier in favor of a smaller one.
-        val d = device(totalRamGB = 8.0, availRamGB = 6.0, freeStorageGB = 200.0)
-        // budget = 6*0.25+1.5 = 3.0; tight = 3.45.
-        //   TINY GREEN, SMALL GREEN, MEDIUM (3.5 > 3.45) RED, LARGE RED
-        val rec = recommendModelTier(d)
-        assertEquals(Tier.SMALL, rec.auto)
     }
 }

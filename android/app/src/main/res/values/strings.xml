@@ -5,16 +5,38 @@
     <string name="assistant_name">So-Mi</string>
     <string name="user_name">Du</string>
 
-    <!-- Welcome message — soul.md voice: German default, terse, codeswitch, no corpo-smile. -->
-    <string name="welcome_message">Bin da. Noch ohne Kopf — das Modell ist offline, kommt in Phase 2.\nBis dahin: das hier ist die Hülle. Schau\'s an, sag mir, was wackelt. <i>Chingu</i>, lass uns das ordentlich aufziehen.</string>
+    <!-- Phase 2.5: First-launch flow -->
+    <string name="first_launch_title">Erstes Setup</string>
+    <string name="first_launch_subtitle">So-Mi braucht ein Modell. Wähl eins aus.</string>
+    <string name="section_recommended">Empfohlen</string>
+    <string name="section_others">Andere Optionen</string>
+    <string name="device_label">Gerät: %1$s · %2$s · %3$s</string>
+    <string name="capability_vulkan">Vulkan 1.1</string>
+    <string name="capability_opencl">OpenCL</string>
+    <string name="model_size_format">%1$s · ~%2$s</string>
+    <string name="model_size_gb">%.1f GB</string>
+    <string name="license_apache">Apache-2.0</string>
+    <string name="license_qwen_research">Qwen Research</string>
+    <string name="license_warning_research">Forschungslizenz — kein kommerzieller Einsatz.</string>
+    <string name="action_download">Modell laden (%1$s)</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_retry">Nochmal</string>
+    <string name="action_change_model">Anderes Modell</string>
+    <string name="wifi_only_label">Nur über WLAN laden</string>
+    <string name="download_progress_format">%1$s / %2$s · Teil %3$d von %4$d</string>
 
-    <!-- Composer -->
-    <string name="input_placeholder_disabled">Eingabe offline — Modell folgt in Phase 2</string>
-    <string name="input_placeholder_active">Nachricht an So-Mi…</string>
+    <!-- Phase 2.5: Loading screen -->
+    <string name="loading_title">Modell wird vorgewärmt…</string>
+    <string name="loading_subtitle">5–15 Sekunden, je nach Stimmung.</string>
+
+    <!-- Phase 2.6: Composer -->
+    <string name="composer_placeholder">Sag was…</string>
+    <string name="composer_send">Senden</string>
+    <string name="composer_stop">Stop</string>
 
     <!-- Top bar -->
     <string name="top_bar_session_title">Erste Session</string>
-    <string name="top_bar_msg_count">1 msg</string>
+    <string name="top_bar_msg_count">%1$d msg</string>
 
     <!-- Mode toggle pill — Agent/Chat. Beide Phase-1 inert. -->
     <string name="mode_agent">Agent</string>
@@ -23,4 +45,14 @@
     <!-- Accessibility -->
     <string name="send_btn_cd">Senden</string>
     <string name="avatar_cd">So-Mi Avatar</string>
+    <string name="cancel_btn_cd">Abbrechen</string>
+
+    <!-- Tier display names -->
+    <string name="tier_tiny">TINY</string>
+    <string name="tier_small">SMALL</string>
+    <string name="tier_medium">MEDIUM</string>
+    <string name="tier_large">LARGE</string>
+
+    <!-- Empty chat state -->
+    <string name="empty_chat_hint">Schreib was, ich hör zu.</string>
 </resources>
