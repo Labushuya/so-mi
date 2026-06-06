@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/Labushuya/so-mi/compare/v0.5.0...v0.6.0) (2026-06-06)
+
+
+### Features
+
+* **phase-2.3:** vendor llama.cpp + native libai-chat.so ([2fe5274](https://github.com/Labushuya/so-mi/commit/2fe527488028851b9a7555274af60c362fab6e4f))
+
 ## [0.5.0](https://github.com/Labushuya/so-mi/compare/v0.4.0...v0.5.0) (2026-06-06)
 
 
