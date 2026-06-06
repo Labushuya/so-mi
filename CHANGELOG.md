@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Labushuya/so-mi/compare/v0.4.0...v0.5.0) (2026-06-06)
+
+
+### Features
+
+* **phase-2.2:** hardware detection + recommendModelTier per SPEC §7 ([6f266d0](https://github.com/Labushuya/so-mi/commit/6f266d085f1bf0fda1dca87d293c10869ceb0da3))
+
 ## [0.4.0](https://github.com/Labushuya/so-mi/compare/v0.3.1...v0.4.0) (2026-06-06)
 
 
