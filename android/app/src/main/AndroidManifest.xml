@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Phase 1 declares zero permissions. Internet, install-packages,
-         calendar, alarm, biometric, etc. join in their respective phases. -->
+    <!-- Phase 2.4 download stack permissions.
+         INTERNET is required by OkHttp; FOREGROUND_SERVICE_DATA_SYNC is
+         the typed permission for HTTP downloads as foreground services
+         on Android 14+ (target SDK 35). POST_NOTIFICATIONS is the
+         runtime permission gating the download-progress notification. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".SoMiApp"
@@ -11,6 +20,27 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:supportsRtl="true"
         android:theme="@style/Theme.SoMi">
+
+        <!-- Phase 2.4: WorkManager's auto-init via androidx.startup must be
+             disabled so Hilt's HiltWorkerFactory is used instead. SoMiApp
+             implements Configuration.Provider to plug in the factory. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+        <!-- Phase 2.4: WorkManager's bundled foreground service must declare
+             the dataSync type to satisfy targetSdk 35's typed-foreground rule. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <activity
             android:name=".MainActivity"

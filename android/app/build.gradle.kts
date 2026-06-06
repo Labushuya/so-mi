@@ -126,6 +126,14 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // Phase 2.4: WorkManager + HiltWorkerFactory must be visible from
+    // the Application class, so the dependency lives at app-level too.
+    // (core-data declares it for the actual @HiltWorker; app needs the
+    // factory injected into SoMiApp.)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
