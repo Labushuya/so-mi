@@ -1,9 +1,9 @@
-// core-data — device + storage facts.
+// core-data — device + storage + model-download facts.
 //
-// Phase 2.1 (this commit): empty Hilt-wired skeleton with a stub
-//   HardwareDetector. Real hardware probing (RAM, storage, GPU,
-//   Vulkan/OpenCL availability) lands in Phase 2.2 along with the
-//   `recommendModelTier()` function from SPEC §7.
+// Phase 2.2 (RAM/storage/GPU detection + recommendModelTier).
+// Phase 2.4 (this commit): adds the model-download stack —
+//   ModelStorage, ModelManager, ModelDownloadWorker, ResumableDownloader,
+//   AtomicInstall, DownloadNotifications.
 //
 // Module rule (SPEC §3): core-* may import core-common only.
 plugins {
@@ -38,8 +38,22 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.core)
 
+    // Phase 2.4: model download stack.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.okhttp)
+
+    // Phase 2.4: WorkManager → Flow conversion lives in lifecycle-livedata-ktx.
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+
+    // Phase 2.4: Hilt @HiltWorker / @AssistedInject support for the
+    // ModelDownloadWorker. KSP processor generates the @AssistedInject
+    // factory bindings.
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
