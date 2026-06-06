@@ -6,7 +6,13 @@ on:
   workflow_dispatch:
 
 permissions:
+  # release-please needs to read repo contents, write the release tag, and
+  # open/update a pull request. The default GITHUB_TOKEN permissions in this
+  # repo are 'read' only — these explicit grants override that for this
+  # workflow. Without pull-requests: write, release-please dies with
+  # "Resource not accessible by integration".
   contents: write
+  pull-requests: write
 
 jobs:
   release-please:
