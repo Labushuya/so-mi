@@ -19,6 +19,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -92,12 +94,18 @@ android {
 }
 
 dependencies {
-    // Phase 1 wires only core-common; Phase 2 adds core-llm/core-rag/etc.
+    // Phase 2.1: pull in the new modules. core-llm exposes LlamaContext
+    // (NoOp impl for now), core-data exposes HardwareDetector (stub),
+    // core-ui exposes ChatViewModel.
     implementation(project(":core-common"))
+    implementation(project(":core-llm"))
+    implementation(project(":core-data"))
+    implementation(project(":core-ui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
@@ -109,6 +117,11 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Hilt — application-level wiring + ViewModel injection bridge.
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
