@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/Labushuya/so-mi/compare/v0.7.0...v0.8.0) (2026-06-06)
+
+
+### Features
+
+* **phase-2.5-2.7:** end-to-end chat — first-launch flow + soul.md prefix + live-typing chat ([39d2942](https://github.com/Labushuya/so-mi/commit/39d294200cf90076e20248c12cdd2ce38bb1e9ef))
+
 ## [0.7.0](https://github.com/Labushuya/so-mi/compare/v0.6.0...v0.7.0) (2026-06-06)
 
 
