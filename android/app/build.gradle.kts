@@ -1,0 +1,108 @@
+// app — Phase 1 acceptance build.
+//
+// Ships a single Compose screen that displays the live versionName/versionCode
+// — that's the smoke signal proving the release-please → versionCode injection
+// → signed APK → Releases attach pipeline works end-to-end. Once green, Phase 2
+// adds the LLM / RAG modules behind it.
+//
+// Hard rules (SPEC §11 + §10):
+//   - Single applicationId across debug + release. NO applicationIdSuffix.
+//   - Debug AND release sign with the same CI keystore so the in-app updater
+//     (Phase 5) can install over the previously-installed build without
+//     INSTALL_FAILED_UPDATE_INCOMPATIBLE.
+//   - versionCode/versionName are -P inputs from CI; sane local-dev defaults.
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+}
+
+android {
+    namespace = "io.somi.app"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "io.somi.app"
+        minSdk = 29
+        targetSdk = 35
+
+        // CI passes -PversionCode=$((10000 + GITHUB_RUN_NUMBER)) and
+        // -PversionName=<release-please version>. Locally these fall back so
+        // `./gradlew :app:assembleRelease` just works.
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = project.findProperty("versionName") as String? ?: "0.0.0-dev"
+    }
+
+    signingConfigs {
+        create("release") {
+            // SPEC §5 verbatim. Public keystore, public password — see
+            // scripts/init-keystore.sh for the rationale (sideload-only,
+            // signature stability matters more than secrecy).
+            storeFile = rootProject.file("../keystore/ci.keystore")
+            storePassword = "ci-password-public"
+            keyAlias = "ci"
+            keyPassword = "ci-password-public"
+        }
+    }
+
+    buildTypes {
+        debug {
+            // No applicationIdSuffix — preserve the update path.
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+        }
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true   // enables BuildConfig.VERSION_NAME / VERSION_CODE
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+dependencies {
+    // Phase 1 wires only core-common; Phase 2 adds core-llm/core-rag/etc.
+    implementation(project(":core-common"))
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}

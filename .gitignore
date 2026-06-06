@@ -1,0 +1,44 @@
+# Build outputs
+android/.gradle/
+android/build/
+android/**/build/
+android/local.properties
+android/captures/
+android/.cxx/
+android/app/release/
+android/.idea/
+android/*.iml
+android/**/*.iml
+
+# Gradle wrapper jar — INTENTIONALLY NOT IGNORED.
+# Once `gradle wrapper` has been run once (locally or in CI), commit the
+# resulting android/gradle/wrapper/gradle-wrapper.jar so future clean
+# checkouts don't depend on the bootstrap step. The CI workflow regenerates
+# it on-demand if absent.
+# (no entry needed — listed here only as documentation)
+
+# Kotlin / KSP / Hilt incremental
+android/**/.kotlin/
+android/**/kotlin/
+android/**/generated/
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+.DS_Store
+
+# install-dev.sh download dir
+.dist/
+
+# Local model cache (CI uses GHA cache; nothing committed)
+.cache/
+
+# release-please scratch
+.release-please.json
+
+# Logs
+*.log
+hs_err_pid*
+
+# OS
+Thumbs.db

@@ -1,0 +1,22 @@
+# knowledge/zim/manifest.yaml
+#
+# Defines which KIWIX ZIM files this device should keep available.
+# Phase 3 (RAG) reads this; Phase 1 ships only the schema.
+#
+# Each entry:
+#   - name: short id used in tool calls (e.g. zim:wikipedia_de)
+#   - url:  download URL (resolved at runtime, not at build time)
+#   - sha256: integrity check
+#   - corpus: vector-DB corpus name in ObjectBox
+#   - sidecar_url: pre-built .vecdb sidecar (see SPEC §8 — on-device
+#                  indexing would take hours, so we ship sidecars).
+#   - sidecar_sha256
+
+zims: []
+# Example, once the Phase 3 indexer is ready:
+#   - name: wikipedia_de_mini
+#     url: https://download.kiwix.org/zim/wikipedia/wikipedia_de_all_nopic_2024-09.zim
+#     sha256: TBD
+#     corpus: zim-wikipedia-de
+#     sidecar_url: https://example.com/wikipedia_de_mini.vecdb
+#     sidecar_sha256: TBD
