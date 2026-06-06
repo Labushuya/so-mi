@@ -6,9 +6,17 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
+// Target JVM bytecode 17 (matches AGP's compileOptions on the Android modules)
+// without pinning the build to a specific JDK toolchain — the build runs with
+// whatever JDK is on PATH (CI: Temurin 21, locally: Microsoft OpenJDK 21).
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
