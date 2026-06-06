@@ -4,32 +4,25 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import io.somi.llm.LlamaContext
-import io.somi.llm.NoOpLlamaContext
 import io.somi.llm.SoulPromptLoader
 import io.somi.llm.StubSoulPromptLoader
 import javax.inject.Singleton
 
 /**
- * Hilt module exposing the LLM-side singletons.
+ * Hilt module exposing the soul.md loader.
  *
- * Scope: SingletonComponent. The native llama.cpp context (Phase 2.3+)
- * is multi-GB-mmap and must live exactly once per process; binding it
- * any narrower is a memory bug. The Phase-2.1 NoOp implementation
- * doesn't need the singleton scope semantically, but matching the real
- * scope prevents a binding-scope churn when 2.3 swaps in the JNI impl.
+ * Phase 2.3: the `LlamaContext` binding moved out of this module — it's
+ * now provided by `:core-llm-llama:LlamaCppModule` (real native impl).
+ * The `NoOpLlamaContext` class stays in this module so unit tests can
+ * substitute it via `@TestInstallIn`.
  *
- * Swap pattern for 2.3: change the `bindLlamaContext` impl arg from
- * `NoOpLlamaContext` to `LlamaCppContext` and move this module to
- * `:core-llm-llama`. No call-site changes.
+ * Hilt fails the build on duplicate bindings; if you ever revert the
+ * Phase-2.3 swap, re-add the NoOp `@Binds` line below AND drop the
+ * `:core-llm-llama` dependency from `:app`.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class LlamaModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindLlamaContext(impl: NoOpLlamaContext): LlamaContext
 
     @Binds
     @Singleton

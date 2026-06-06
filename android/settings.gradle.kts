@@ -30,9 +30,14 @@ rootProject.name = "so-mi"
 
 // SPEC §3 module map — `app` depends on every `core-*`; each `core-*` may
 // only import `core-common`. That rule is enforced by review, not Gradle.
+//
+// Phase 2.3 exception: :core-llm-llama imports :core-llm because it
+// implements the LlamaContext interface defined there. Documented in
+// memory/phase2-architecture-decisions.md.
 include(":app")
 include(":core-common")
 include(":core-llm")
+include(":core-llm-llama")
 include(":core-rag")
 include(":core-tools")
 include(":core-data")
