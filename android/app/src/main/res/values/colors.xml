@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Songbird brand palette — see brands/songbird/Songbird_Brand_Style_Guide.pdf.
+         These hex values are the canonical Edition 01 tokens; do not nudge them. -->
+
+    <!-- Primary axis: red spectrum + Obsidian ground -->
+    <color name="songbird_obsidian">#FF0A0203</color>
+    <color name="songbird_oxblood">#FF2A0102</color>
+    <color name="songbird_blood">#FF670003</color>
+    <color name="songbird_crimson">#FFA60008</color>
+    <color name="songbird_signal">#FFE00817</color>
+    <color name="songbird_ember">#FFFF2D3F</color>
+    <color name="songbird_hot_pink">#FFF35C93</color>
+    <color name="songbird_pearl_glow">#FFFCDEF5</color>
+
+    <!-- Secondary / neutrals -->
+    <color name="songbird_rust">#FF7A2A1F</color>
+    <color name="songbird_plum">#FF3D0A1E</color>
+    <color name="songbird_ash">#FF3C2A2D</color>
+    <color name="songbird_smoke">#FF5A4448</color>
+    <color name="songbird_glass">#FFA8888C</color>
+    <color name="songbird_rose_dust">#FFC9929A</color>
+    <color name="songbird_bone">#FFF4ECEC</color>
+    <color name="songbird_graphite">#FF1A1416</color>
+</resources>

@@ -17,9 +17,11 @@ android/**/*.iml
 # it on-demand if absent.
 # (no entry needed — listed here only as documentation)
 
-# Kotlin / KSP / Hilt incremental
+# Kotlin / KSP / Hilt incremental — these target the build/ subtree only.
+# DO NOT add `android/**/kotlin/` — that pattern would also swallow source
+# trees like `android/app/src/main/kotlin/`.
 android/**/.kotlin/
-android/**/kotlin/
+android/**/build/kotlin/
 android/**/generated/
 
 # IntelliJ / Android Studio

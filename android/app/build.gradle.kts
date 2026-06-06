@@ -1,9 +1,10 @@
 // app — Phase 1 acceptance build.
 //
-// Ships a single Compose screen that displays the live versionName/versionCode
-// — that's the smoke signal proving the release-please → versionCode injection
-// → signed APK → Releases attach pipeline works end-to-end. Once green, Phase 2
-// adds the LLM / RAG modules behind it.
+// Ships a single Compose chat-shell screen (Songbird-reskinned port of the
+// Odysseus chat surface) that displays the live versionName/versionCode in
+// the top bar — the smoke signal proving the release-please → versionCode
+// injection → signed APK → Releases attach pipeline works end-to-end. Once
+// green, Phase 2 wires the LLM / RAG modules behind it.
 //
 // Hard rules (SPEC §11 + §10):
 //   - Single applicationId across debug + release. NO applicationIdSuffix.
@@ -11,6 +12,9 @@
 //     (Phase 5) can install over the previously-installed build without
 //     INSTALL_FAILED_UPDATE_INCOMPATIBLE.
 //   - versionCode/versionName are -P inputs from CI; sane local-dev defaults.
+//   - isMinifyEnabled = false on release for Phase 1: the empty proguard-
+//     rules.pro combined with R8 was stripping Compose runtime classes and
+//     crashing the app on launch. Re-enable once we author proper keep rules.
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -53,7 +57,12 @@ android {
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
+            // Phase 1: minification DISABLED. The empty proguard-rules.pro on
+            // top of the optimize baseline was stripping Compose runtime
+            // classes — that's what crashed v0.2.0 on launch. Re-enable in
+            // Phase 2 once we author hand-validated keep rules for Compose +
+            // kotlinx-serialization + Hilt.
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

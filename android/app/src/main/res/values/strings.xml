@@ -1,4 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App identity -->
     <string name="app_name">So-Mi</string>
+    <string name="assistant_name">So-Mi</string>
+    <string name="user_name">Du</string>
+
+    <!-- Welcome message — soul.md voice: German default, terse, codeswitch, no corpo-smile. -->
+    <string name="welcome_message">Bin da. Noch ohne Kopf — das Modell ist offline, kommt in Phase 2.\nBis dahin: das hier ist die Hülle. Schau\'s an, sag mir, was wackelt. <i>Chingu</i>, lass uns das ordentlich aufziehen.</string>
+
+    <!-- Composer -->
+    <string name="input_placeholder_disabled">Eingabe offline — Modell folgt in Phase 2</string>
+    <string name="input_placeholder_active">Nachricht an So-Mi…</string>
+
+    <!-- Top bar -->
+    <string name="top_bar_session_title">Erste Session</string>
+    <string name="top_bar_msg_count">1 msg</string>
+
+    <!-- Mode toggle pill — Agent/Chat. Beide Phase-1 inert. -->
+    <string name="mode_agent">Agent</string>
+    <string name="mode_chat">Chat</string>
+
+    <!-- Accessibility -->
+    <string name="send_btn_cd">Senden</string>
+    <string name="avatar_cd">So-Mi Avatar</string>
 </resources>
