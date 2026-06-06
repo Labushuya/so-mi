@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dagger.hilt.android.AndroidEntryPoint
+import io.somi.common.chat.ChatState
+import io.somi.ui.chat.ChatViewModel
 
 /**
  * Phase-1 acceptance screen — Songbird-reskinned port of the Odysseus chat
@@ -67,6 +73,7 @@ import androidx.compose.ui.unit.dp
  *     and the avatar carries So-Mi's visual identity in the absence of a
  *     working model.
  */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,9 +83,20 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
+                    // Phase 2.1: hilt-injected ChatViewModel exposes a
+                    // StateFlow<ChatState>. The chat shell renders the
+                    // state's class-name as a tiny diagnostic line in
+                    // the top bar — that's the smoke signal proving the
+                    // SingletonComponent → ViewModel → Compose graph is
+                    // wired correctly. Phase 2.6 turns this into the
+                    // real chat lifecycle UI.
+                    val viewModel: ChatViewModel = hiltViewModel()
+                    val state by viewModel.state.collectAsStateWithLifecycle()
+
                     ChatShellScreen(
                         versionName = BuildConfig.VERSION_NAME,
                         versionCode = BuildConfig.VERSION_CODE,
+                        chatState = state,
                     )
                 }
             }
@@ -92,7 +110,11 @@ class MainActivity : ComponentActivity() {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ChatShellScreen(versionName: String, versionCode: Int) {
+private fun ChatShellScreen(
+    versionName: String,
+    versionCode: Int,
+    chatState: ChatState,
+) {
     val songbird = LocalSongbirdColors.current
     val welcomeText = stringResource(R.string.welcome_message)
 
@@ -107,6 +129,7 @@ private fun ChatShellScreen(versionName: String, versionCode: Int) {
             msgCount = stringResource(R.string.top_bar_msg_count),
             versionName = versionName,
             versionCode = versionCode,
+            chatState = chatState,
         )
 
         // chat-history — flex:1, scrollable. One assistant message for now.
@@ -143,6 +166,7 @@ private fun ChatTopBar(
     msgCount: String,
     versionName: String,
     versionCode: Int,
+    chatState: ChatState,
 ) {
     val songbird = LocalSongbirdColors.current
     Column(
@@ -176,7 +200,7 @@ private fun ChatTopBar(
         Spacer(Modifier.height(2.dp))
         // Version subtitle — subtle, but visible enough for Phase-1 acceptance.
         Text(
-            text = "v$versionName · build $versionCode",
+            text = "v$versionName · build $versionCode · ${chatStateLabel(chatState)}",
             color = songbird.glass.copy(alpha = 0.7f),
             style = MaterialTheme.typography.labelSmall,
         )
@@ -438,6 +462,25 @@ private fun SendButton() {
 }
 
 // ---------------------------------------------------------------------------
+// Phase-2.1 helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * One-word lower-case label for the current chat lifecycle state. Shown
+ * in the top-bar subtitle as the Phase-2.1 smoke signal — proves the
+ * Hilt graph is wired (ChatViewModel actually injects + emits state).
+ * Phase 2.6 retires this in favor of richer per-state UI surfaces.
+ */
+private fun chatStateLabel(state: ChatState): String = when (state) {
+    ChatState.Idle -> "idle"
+    ChatState.LoadingModel -> "loading"
+    ChatState.NoModelInstalled -> "no-model"
+    is ChatState.DownloadingModel -> "downloading"
+    is ChatState.Generating -> "generating"
+    is ChatState.Error -> "error"
+}
+
+// ---------------------------------------------------------------------------
 // Previews
 // ---------------------------------------------------------------------------
 
@@ -445,6 +488,10 @@ private fun SendButton() {
 @Composable
 private fun ChatShellPreview() {
     SoMiTheme {
-        ChatShellScreen(versionName = "0.1.0", versionCode = 10001)
+        ChatShellScreen(
+            versionName = "0.1.0",
+            versionCode = 10001,
+            chatState = ChatState.LoadingModel,
+        )
     }
 }

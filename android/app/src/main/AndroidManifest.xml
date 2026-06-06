@@ -5,6 +5,7 @@
          calendar, alarm, biometric, etc. join in their respective phases. -->
 
     <application
+        android:name=".SoMiApp"
         android:label="@string/app_name"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
