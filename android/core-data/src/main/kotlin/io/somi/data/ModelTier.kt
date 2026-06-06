@@ -85,28 +85,68 @@ data class Recommendation(
 )
 
 /**
- * Score a [DeviceInfo] against [TIER_SPECS] per SPEC §7.
+ * Score a [DeviceInfo] against [TIER_SPECS] per SPEC §7 — with a calibrated
+ * deviation from the spec's pseudocode budget formula.
  *
- * Logic (verbatim from SPEC §7's Kotlin pseudocode):
+ * ## SPEC §7 deviation: hybrid budget formula
+ *
+ * SPEC §7 prescribes:
  *
  *   budget = availRamGB * 0.25 + 1.5
+ *
+ * This is too conservative in practice. On a Magic V2 (16 GB total, ~6 GB
+ * available shortly after launch with normal background apps) the original
+ * formula yields:
+ *
+ *   budget = 6.0 * 0.25 + 1.5 = 3.0 GB  →  SMALL/TINY only
+ *
+ * The SPEC's prose (and our reference-device target) explicitly expects
+ * Magic V2 to land on LARGE. The numeric formula and the prose are out of
+ * sync; we follow the prose intent.
+ *
+ * The replacement is a hybrid that combines a fraction of *total* RAM (the
+ * static ceiling — what the kernel will let us touch under pressure) with
+ * the existing *available*-RAM term (the dynamic floor — what's free right
+ * now). We take the max so a freshly-rebooted phone with lots of free RAM
+ * still benefits, while a high-RAM phone in a busy state isn't punished
+ * for transient pressure:
+ *
+ *   budget = max(totalRamGB * 0.45, availRamGB * 0.5 + 1.5)
+ *
+ * Verification against [TIER_SPECS] (LARGE.ramMin=6.5, MEDIUM=3.5,
+ * SMALL=2.5, TINY=1.5; tight = budget * 1.15):
+ *
+ *   Magic V2 (16/6):   max(7.2, 4.5)  = 7.2;   tight=8.28  →  LARGE GREEN
+ *   24 GB (24/20):     max(10.8, 11.5)= 11.5;  tight=13.2  →  LARGE GREEN
+ *   6 GB midrange (6/4): max(2.7, 3.5)= 3.5;   tight=4.025 →  MEDIUM GREEN
+ *   3 GB low-end (3/2):  max(1.35, 2.5)= 2.5;  tight=2.875 →  SMALL GREEN
+ *   1 GB pathological (1/0.5, 0.4 GB storage): everything RED, fallback TINY
+ *
+ * The 0.45 multiplier is the smallest value that lifts Magic V2 out of the
+ * YELLOW band into GREEN; smaller values (e.g. 0.4) leave LARGE at YELLOW.
+ *
+ * See `spec-7-tier-formula-too-conservative` memory note for the design
+ * discussion. Don't tweak these constants without re-running the math
+ * against the full tier table — the calibration is load-bearing for the
+ * Phase-2 reference-device flow (Magic V2 → LARGE auto-pick → 4.7 GB
+ * download → llama loads).
+ *
+ * Logic (the rest is SPEC §7 verbatim):
+ *
  *   for each tier:
  *     ramOk     = spec.ramMinGB <= budget
  *     ramTight  = spec.ramMinGB <= budget * 1.15
  *     storageOk = freeStorageGB >= spec.storageMinGB * 3
+ *     storageRedline = freeStorageGB < spec.storageMinGB * 1.5
  *     light = when:
- *       not ramTight or freeStorage < spec.storageMinGB * 1.5 -> RED
- *       not ramOk or not storageOk                            -> YELLOW
- *       else                                                  -> GREEN
+ *       not ramTight or storageRedline -> RED
+ *       not ramOk or not storageOk     -> YELLOW
+ *       else                           -> GREEN
  *   auto = largest GREEN tier, fallback TINY
- *
- * The 25%-of-available-RAM + 1.5 GB KV-cache headroom number is the budget
- * SPEC §7 commits to. Don't tweak it without re-running the math against
- * the tier table — it's calibrated so Magic V2 picks LARGE and a 6 GB
- * phone picks MEDIUM.
  */
 fun recommendModelTier(d: DeviceInfo): Recommendation {
-    val budget = d.availRamGB * 0.25 + 1.5
+    // Hybrid budget — see SPEC §7 deviation block in the kdoc above.
+    val budget = maxOf(d.totalRamGB * 0.45, d.availRamGB * 0.5 + 1.5)
 
     val lights: Map<Tier, Light> = TIER_SPECS.associate { spec ->
         val ramOk = spec.ramMinGB <= budget

@@ -4,8 +4,8 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.somi.llm.AssetsSoulPromptLoader
 import io.somi.llm.SoulPromptLoader
-import io.somi.llm.StubSoulPromptLoader
 import javax.inject.Singleton
 
 /**
@@ -15,6 +15,9 @@ import javax.inject.Singleton
  * now provided by `:core-llm-llama:LlamaCppModule` (real native impl).
  * The `NoOpLlamaContext` class stays in this module so unit tests can
  * substitute it via `@TestInstallIn`.
+ *
+ * Phase 2.6: the soul.md loader is now the real `AssetsSoulPromptLoader`
+ * which reads `app/src/main/assets/soul.md` via `Context.assets`.
  *
  * Hilt fails the build on duplicate bindings; if you ever revert the
  * Phase-2.3 swap, re-add the NoOp `@Binds` line below AND drop the
@@ -26,5 +29,5 @@ internal abstract class LlamaModule {
 
     @Binds
     @Singleton
-    abstract fun bindSoulPromptLoader(impl: StubSoulPromptLoader): SoulPromptLoader
+    abstract fun bindSoulPromptLoader(impl: AssetsSoulPromptLoader): SoulPromptLoader
 }
