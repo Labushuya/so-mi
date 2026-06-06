@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Labushuya/so-mi/compare/v0.3.1...v0.4.0) (2026-06-06)
+
+
+### Features
+
+* **phase-2.1:** hilt skeleton + ChatViewModel + module wiring ([d190177](https://github.com/Labushuya/so-mi/commit/d190177cfd1d8c325f48ac3e1940559304005ebd))
+
 ## [0.3.1](https://github.com/Labushuya/so-mi/compare/v0.3.0...v0.3.1) (2026-06-06)
 
 
