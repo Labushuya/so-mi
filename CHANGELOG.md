@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/Labushuya/so-mi/compare/v0.3.0...v0.3.1) (2026-06-06)
+
+
+### Bug Fixes
+
+* **ci:** mark gradlew + scripts/*.sh executable in git index ([360c742](https://github.com/Labushuya/so-mi/commit/360c7421d38036be9aedc30c4529b821ec331b8d))
+
 ## [0.3.0](https://github.com/Labushuya/so-mi/compare/v0.2.0...v0.3.0) (2026-06-06)
 
 
