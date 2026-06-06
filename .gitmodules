@@ -1,0 +1,3 @@
+[submodule "android/core-llm-llama/upstream"]
+	path = android/core-llm-llama/upstream
+	url = https://github.com/ggml-org/llama.cpp.git

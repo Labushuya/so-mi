@@ -2,6 +2,7 @@
 android/.gradle/
 android/build/
 android/**/build/
+android/**/.cxx/
 android/local.properties
 android/captures/
 android/.cxx/

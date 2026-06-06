@@ -29,7 +29,7 @@ android {
 
     defaultConfig {
         applicationId = "io.somi.app"
-        minSdk = 29
+        minSdk = 30
         targetSdk = 35
 
         // CI passes -PversionCode=$((10000 + GITHUB_RUN_NUMBER)) and
@@ -97,8 +97,11 @@ dependencies {
     // Phase 2.1: pull in the new modules. core-llm exposes LlamaContext
     // (NoOp impl for now), core-data exposes HardwareDetector (stub),
     // core-ui exposes ChatViewModel.
+    // Phase 2.3: core-llm-llama swaps the LlamaContext binding from
+    // NoOp to the native llama.cpp implementation via Hilt.
     implementation(project(":core-common"))
     implementation(project(":core-llm"))
+    implementation(project(":core-llm-llama"))
     implementation(project(":core-data"))
     implementation(project(":core-ui"))
 
