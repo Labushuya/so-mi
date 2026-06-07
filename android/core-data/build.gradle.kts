@@ -1,9 +1,10 @@
-// core-data — device + storage + model-download facts.
+// core-data — device + storage + model-download + chat-persistence.
 //
-// Phase 2.2 (RAM/storage/GPU detection + recommendModelTier).
-// Phase 2.4 (this commit): adds the model-download stack —
-//   ModelStorage, ModelManager, ModelDownloadWorker, ResumableDownloader,
-//   AtomicInstall, DownloadNotifications.
+// Phase 2.2: RAM/storage/GPU detection + recommendModelTier.
+// Phase 2.4: model-download stack — ModelStorage, ModelManager,
+//   ModelDownloadWorker, ResumableDownloader, AtomicInstall, DownloadNotifications.
+// Phase 3a (this commit): Room-backed chat persistence — SoMiDatabase,
+//   MessageEntity, MessageDao, ChatRepository, DatabaseModule.
 //
 // Module rule (SPEC §3): core-* may import core-common only.
 plugins {
@@ -32,6 +33,13 @@ android {
     }
 }
 
+// Phase 3a: Room schema export so future migrations can diff against
+// the committed schema JSON. KSP creates the directory on first build.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+}
+
 dependencies {
     implementation(project(":core-common"))
 
@@ -41,19 +49,21 @@ dependencies {
     // Phase 2.4: model download stack.
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.okhttp)
-
-    // Phase 2.4: WorkManager → Flow conversion lives in lifecycle-livedata-ktx.
     implementation(libs.androidx.lifecycle.livedata.ktx)
 
-    // Phase 2.4: Hilt @HiltWorker / @AssistedInject support for the
-    // ModelDownloadWorker. KSP processor generates the @AssistedInject
-    // factory bindings.
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
+    // Phase 3a: Room. room-ktx pulls in suspend + Flow query support;
+    // room-compiler runs through KSP (room ≥ 2.6 supports KSP natively).
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.room.testing)
 }
