@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.3](https://github.com/Labushuya/so-mi/compare/v0.11.2...v0.11.3) (2026-06-07)
+
+
+### Bug Fixes
+
+* build — logging.h-Include-Pfad nach lokaler ai_chat.cpp-Kopie ergänzt ([4137980](https://github.com/Labushuya/so-mi/commit/413798007f14663b845fed132231b0ee62d63b96))
+
 ## [0.11.2](https://github.com/Labushuya/so-mi/compare/v0.11.1...v0.11.2) (2026-06-07)
 
 
