@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/Labushuya/so-mi/compare/v0.10.1...v0.11.0) (2026-06-07)
+
+
+### Features
+
+* speicher-screen — alle modell-kopien sichtbar, duplikate löschbar ([b1f8152](https://github.com/Labushuya/so-mi/commit/b1f8152773bbb79378dc2da26d1bbe0c80652166))
+
+
+### Bug Fixes
+
+* app sucht modell in allen historischen pfaden statt erneuten 4-gb-download zu fordern ([3a0b627](https://github.com/Labushuya/so-mi/commit/3a0b6277d8ed1527c88749c6da176d3ad2e8cfb9))
+
 ## [0.10.2] (2026-06-07)
 
 
