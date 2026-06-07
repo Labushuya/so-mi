@@ -2,15 +2,24 @@
 <!--
   Adaptive launcher icon (Android 8+). The system composites foreground
   over background and clips into whatever shape the launcher picks
-  (circle, square, squircle, teardrop). The monochrome layer is the
-  Material You "themed icon" surface — Android 13+ uses it when the
-  user enables themed icons.
+  (circle, square, squircle, teardrop).
 
-  Source assets: C:/Code/claude/brands/songbird/so-mi/ — Songbird
-  brand octagon-frame with the Crimson signal eye.
+  We DO NOT include a <monochrome> layer here. The brand monochrome
+  asset is just the octagon outline (the eye/center is intentionally
+  blank in the brand spec) — when MagicOS / Pixel Themed-Icons mode is
+  active, the system tints just the outline against a system-controlled
+  background which on light-themed wallpapers reads as "white background
+  with a faint outline". That looked broken to the user.
+
+  Without <monochrome>, the launcher cannot opt into Themed Icons for
+  this app and falls back to the foreground+background composite — which
+  is the brand-correct rendering (Crimson eye over Obsidian octagon).
+  Themed-Icons can come back in Phase 3 with a hand-tuned monochrome
+  asset that reads correctly against any system surface.
+
+  Source assets: C:/Code/claude/brands/songbird/so-mi/.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>

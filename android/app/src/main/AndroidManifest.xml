@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Phase 2.10: dedicated FGS subtype that pins the process while a
+         model is loaded. specialUse is the right type for AI inference
+         per Android 14's typed-FGS rules; non-Play distribution means
+         we don't need to attest the use-case via Play Console. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -55,6 +60,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Phase 2.10: pins the process while a model is loaded so MagicOS
+             cannot kill it after the user backgrounds the app. -->
+        <service
+            android:name=".LlamaSessionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="aiInference" />
+        </service>
 
     </application>
 
