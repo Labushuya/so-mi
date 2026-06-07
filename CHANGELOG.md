@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/Labushuya/so-mi/compare/v0.9.0...v0.9.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* persona/branding/lifecycle bundle (icon bg, condensed soul, FGS pin) ([2b3bd44](https://github.com/Labushuya/so-mi/commit/2b3bd447fd89989fe256a3d66f2984854ebfdb2d))
+
 ## [0.9.0](https://github.com/Labushuya/so-mi/compare/v0.8.1...v0.9.0) (2026-06-07)
 
 
