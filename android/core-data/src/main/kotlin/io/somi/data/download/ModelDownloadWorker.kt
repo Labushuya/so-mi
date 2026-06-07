@@ -178,7 +178,7 @@ internal class ModelDownloadWorker @AssistedInject constructor(
         val pct = if (total > 0L) ((downloaded * 100) / total).toInt() else 0
 
         val notif = NotificationCompat.Builder(applicationContext, DownloadNotifications.CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(io.somi.data.R.drawable.ic_notification)
             .setContentTitle("So-Mi: Modell wird geladen")
             .setContentText(text)
             .setOnlyAlertOnce(true)
