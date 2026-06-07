@@ -40,11 +40,111 @@ class ModelStorage @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
 
-    /** Root directory for all model artifacts. Created on first access. */
+    /**
+     * Root directory for all model artifacts.
+     *
+     * Storage strategy v2 (2026-06-07): models are kept on shared external
+     * storage at `/sdcard/Documents/SoMi-Models/` so they survive both
+     * app-data clears and full app uninstalls. The path is a public
+     * Documents subdir which the OS treats as user data — Android does
+     * not delete it when the app is uninstalled.
+     *
+     * Falls back to `getExternalFilesDir(null)/models/` if the public
+     * dir is not writable for whatever reason (rare; typically only on
+     * heavily locked-down enterprise profiles). The fallback path IS
+     * wiped on uninstall, but at least the app still works.
+     *
+     * Migration: on first launch with this code, [migrateFromAppPrivate]
+     * scans the legacy app-private dir and moves any GGUFs into the
+     * public dir.
+     */
     val modelsDir: File by lazy {
-        val external = context.getExternalFilesDir(null)
-        val base = external ?: context.filesDir
-        File(base, MODELS_SUBDIR).apply { mkdirs() }
+        val publicDir = publicSharedModelsDir()
+        val target = if (publicDir.canBeUsed()) {
+            publicDir
+        } else {
+            val external = context.getExternalFilesDir(null)
+            File(external ?: context.filesDir, MODELS_SUBDIR)
+        }
+        target.mkdirs()
+        Log.i(TAG, "modelsDir resolved to: ${target.absolutePath}")
+
+        // One-shot migration from the app-private location used in v0.7.x.
+        runCatching { migrateFromAppPrivate(target) }
+            .onFailure { Log.w(TAG, "migrateFromAppPrivate skipped", it) }
+
+        target
+    }
+
+    /**
+     * `/sdcard/Documents/SoMi-Models/` — public, survives uninstall.
+     *
+     * Android 11+ permits any app to read/write inside its own
+     * subdirectory of `Documents/` without permissions, as long as the
+     * subdirectory is created via the app itself (Scoped Storage's
+     * "media-store-managed-but-app-private-namespace" rule).
+     */
+    private fun publicSharedModelsDir(): File {
+        val docs = android.os.Environment.getExternalStoragePublicDirectory(
+            android.os.Environment.DIRECTORY_DOCUMENTS,
+        )
+        return File(docs, "SoMi-Models")
+    }
+
+    private fun File.canBeUsed(): Boolean {
+        return try {
+            if (!exists()) parentFile?.mkdirs()
+            if (!exists()) mkdirs()
+            if (!exists()) return false
+            // Probe with a tiny throwaway write — some OEMs report writable
+            // but actually deny on access.
+            val probe = File(this, ".somi_probe")
+            probe.writeText("ok")
+            probe.delete()
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "publicSharedModelsDir unusable at $absolutePath: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Move any GGUFs from `getExternalFilesDir(null)/models/` (v0.7.x
+     * location) into the new public location. Idempotent: safe to call
+     * on every boot. Atomic rename when on the same volume; falls back
+     * to copy + verify + delete otherwise.
+     */
+    private fun migrateFromAppPrivate(newRoot: File) {
+        val legacy = File(context.getExternalFilesDir(null) ?: return, MODELS_SUBDIR)
+        if (!legacy.exists() || legacy.absolutePath == newRoot.absolutePath) return
+
+        val migrated = mutableListOf<String>()
+        legacy.listFiles()?.forEach { srcDir ->
+            if (!srcDir.isDirectory) return@forEach
+            val dstDir = File(newRoot, srcDir.name)
+            if (dstDir.exists() && dstDir.listFiles()?.isNotEmpty() == true) {
+                Log.i(TAG, "skip migrate ${srcDir.name}: already in new root")
+                return@forEach
+            }
+            try {
+                if (srcDir.renameTo(dstDir)) {
+                    migrated += srcDir.name
+                } else {
+                    // Cross-volume — copy each file then delete src.
+                    dstDir.mkdirs()
+                    srcDir.listFiles()?.forEach { f ->
+                        f.copyTo(File(dstDir, f.name), overwrite = true)
+                    }
+                    srcDir.deleteRecursively()
+                    migrated += srcDir.name
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "migrate ${srcDir.name} failed", e)
+            }
+        }
+        if (migrated.isNotEmpty()) {
+            Log.i(TAG, "migrated to public root: $migrated")
+        }
     }
 
     /** Per-model directory; multi-shard files cohabit here. */

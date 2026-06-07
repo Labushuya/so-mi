@@ -314,31 +314,49 @@ class ChatViewModel @Inject constructor(
             s
         }
 
-        withContext(llamaDispatcher) {
-            llama.load(mainFile)
-            llama.setSystemPrompt(soul)
+        // Wall-clock timing so future hangs are diagnosable. logcat:
+        //   ChatViewModel: native load …
+        //   ChatViewModel: native load done in 8123 ms
+        //   ChatViewModel: native setSystemPrompt(N chars) …
+        //   ChatViewModel: native setSystemPrompt done in NNNN ms
+        Log.i(TAG, "loadModelAndWarm start id=${manifest.id} file=${mainFile.name} size=${mainFile.length()}")
+        try {
+            kotlinx.coroutines.withTimeout(LOAD_TIMEOUT_MS) {
+                withContext(llamaDispatcher) {
+                    val t0 = System.nanoTime()
+                    llama.load(mainFile)
+                    val t1 = System.nanoTime()
+                    Log.i(TAG, "native load done in ${(t1 - t0) / 1_000_000} ms")
 
-            // Hidden warm-pass: stream up to ~5 tokens, throw them away.
-            // This forces the chat-template prefix through the model
-            // once so the user's first real turn doesn't eat the
-            // attention-prefill latency on top of an already-slow
-            // first-token-time.
-            try {
-                var n = 0
-                llama.generate("Hallo", maxTokens = 5)
-                    .cancellable()
-                    .collect { _ ->
-                        if (++n >= 5) throw WarmDoneSignal
-                    }
-            } catch (_: WarmDoneSignal) {
-                // expected — we just wanted to prime the KV cache.
-            } catch (t: Throwable) {
-                // A failed warm-pass isn't fatal; log and move on. The
-                // first real turn just pays the full cold cost.
-                Log.w(TAG, "warm-pass failed (non-fatal)", t)
+                    // Truncate the system prompt to a hard cap. soul.md
+                    // is ~4 KB / ~1500 tokens — full prefill on a 7B
+                    // CPU-only build is 2-15 minutes, which is what
+                    // caused the "stuck on LoadingScreen forever" bug.
+                    // The full soul.md still ships in assets; longer-
+                    // term Phase-3 will inject the unused parts via RAG.
+                    val systemText = soul.take(MAX_SYSTEM_PROMPT_CHARS)
+                    Log.i(TAG, "native setSystemPrompt(${systemText.length} chars) …")
+                    llama.setSystemPrompt(systemText)
+                    val t2 = System.nanoTime()
+                    Log.i(TAG, "native setSystemPrompt done in ${(t2 - t1) / 1_000_000} ms")
+                }
             }
+        } catch (te: kotlinx.coroutines.TimeoutCancellationException) {
+            Log.e(TAG, "loadModelAndWarm timed out after $LOAD_TIMEOUT_MS ms", te)
+            _state.value = ChatState.Error(
+                "Modell-Laden hängt. Force-Stop App + nochmal — wenn's wieder hängt: kleineres Modell.",
+                te,
+            )
+            return
         }
 
+        // No warm-pass. The first real user turn pays cold-prompt
+        // latency, which users already expect from a local LLM. The
+        // earlier WarmDoneSignal scheme interacted badly with the
+        // upstream sendUserPrompt's `while (!_cancelGeneration)` loop
+        // (no public cancel hook) — could pin the dispatcher for a
+        // full 1024-token cold decode if something else hung first.
+        Log.i(TAG, "loadModelAndWarm done — entering Idle")
         _state.value = ChatState.Idle
     }
 
@@ -467,20 +485,18 @@ class ChatViewModel @Inject constructor(
         val recommendation: Recommendation,
     )
 
-    /**
-     * Sentinel thrown to short-circuit the warm-pass collection after
-     * we've seen enough tokens. Using a singleton object instead of
-     * `cancel()` because we want to bail out of the Flow's collector
-     * without propagating cancellation up to the warm coroutine itself.
-     */
-    private object WarmDoneSignal : RuntimeException() {
-        private fun readResolve(): Any = WarmDoneSignal
-        override fun fillInStackTrace(): Throwable = this
-    }
-
     private companion object {
         const val TAG = "ChatViewModel"
         const val MAX_TOKENS = 1024
         const val POLL_INSTALLED_INTERVAL_MS = 2_000L
+        // Hard cap on the system prompt during boot. Above this, prefill
+        // takes minutes and the LoadingScreen looks frozen. soul.md is
+        // ~4 KB; we truncate to ~600 chars (≈200 Qwen2.5 tokens, ~10 s
+        // prefill on Cortex-X3 7B Q4_K_M).
+        const val MAX_SYSTEM_PROMPT_CHARS = 600
+        // Hard ceiling on the load+setSystemPrompt path. 3 minutes is
+        // generous on Magic V2; if we cross it, something is genuinely
+        // stuck and the user gets an actionable Error state.
+        const val LOAD_TIMEOUT_MS = 180_000L
     }
 }
