@@ -81,6 +81,12 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${LLAMA_SRC}/include
     ${LLAMA_SRC}/ggml/include
     ${LLAMA_SRC}/ggml/src
+    # Sister header next to the upstream ai_chat.cpp (logging.h). When
+    # the source was referenced directly from upstream, the compiler
+    # picked logging.h up implicitly because it sits in the same
+    # directory. Our local override at CMAKE_CURRENT_LIST_DIR/ai_chat.cpp
+    # severs that implicit path, so we restate it explicitly.
+    ${LLAMA_SRC}/examples/llama.android/lib/src/main/cpp
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
