@@ -155,13 +155,70 @@ class ModelStorage @Inject constructor(
         }
     }
 
-    /** True iff every part of this manifest has been verified + renamed. */
+    /** True iff every part of this manifest can be found in any known historical location. */
     fun isInstalled(manifest: ModelManifest): Boolean =
-        manifest.parts.all { finalFile(manifest.id, it.filename).exists() }
+        findInstalledRoot(manifest) != null
 
-    /** Path to feed `LlamaContext.load(...)`; null if not installed. */
-    fun mainFileFor(manifest: ModelManifest): File? =
-        if (isInstalled(manifest)) finalFile(manifest.id, manifest.parts[0].filename) else null
+    /**
+     * Path to feed `LlamaContext.load(...)`; null if not installed.
+     *
+     * Searches every historical storage location so users coming from
+     * v0.7.x / v0.9.x / v0.10.x don't lose their 4.4 GB downloads when
+     * we change the canonical path under their feet. The first root
+     * that has all parts wins — no migration, no copy, llama.cpp opens
+     * the file where it actually is.
+     */
+    fun mainFileFor(manifest: ModelManifest): File? {
+        val root = findInstalledRoot(manifest) ?: return null
+        return File(root, manifest.parts[0].filename)
+    }
+
+    /**
+     * Walk every known historical storage layout and return the first
+     * directory containing all parts of [manifest]. Order matters: the
+     * canonical (current) location wins if both have valid copies, so
+     * a future cleanup can prune the legacy locations safely.
+     *
+     * Logged at INFO so future "where is my model?" debugging is one
+     * logcat away.
+     */
+    private fun findInstalledRoot(manifest: ModelManifest): File? {
+        val candidates = candidateRoots(manifest.id)
+        for (root in candidates) {
+            val allPresent = manifest.parts.all { File(root, it.filename).exists() }
+            if (allPresent) {
+                Log.i(TAG, "model ${manifest.id} found at: ${root.absolutePath}")
+                return root
+            }
+        }
+        Log.i(TAG, "model ${manifest.id} NOT FOUND in any of:")
+        candidates.forEach { Log.i(TAG, "  - ${it.absolutePath}") }
+        return null
+    }
+
+    /**
+     * Every storage path we have ever used for [modelId], canonical first.
+     * Order:
+     *   1. modelsDir/<id>/   — current canonical (externalFilesDir/models/<id>/)
+     *   2. /sdcard/Documents/SoMi-Models/<id>/  — v0.10.0 misadventure
+     *   3. context.filesDir/models/<id>/  — fallback when externalFilesDir was null
+     *
+     * Adding a path here is the migration. Removing one needs a
+     * deprecation cycle so users on old paths still find their model.
+     */
+    private fun candidateRoots(modelId: String): List<File> = buildList {
+        add(File(modelsDir, modelId))
+
+        val docsDir = File(
+            android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_DOCUMENTS,
+            ),
+            "SoMi-Models",
+        )
+        add(File(docsDir, modelId))
+
+        add(File(context.filesDir, "$MODELS_SUBDIR/$modelId"))
+    }
 
     /**
      * Wipe a model's directory entirely, including .part sidecars.
