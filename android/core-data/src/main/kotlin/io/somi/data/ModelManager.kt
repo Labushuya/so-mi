@@ -92,7 +92,9 @@ class ModelManager @Inject constructor(
      * picker UI never flickers through "Downloading" on cold launch.
      */
     fun observe(manifest: ModelManifest): Flow<ModelStatus> {
-        if (storage.isInstalled(manifest)) {
+        // Disk-truth first — including the single-shot rescueSideload
+        // attempt for files that landed at the wrong path.
+        if (storage.rescueSideload(manifest)) {
             val main = storage.mainFileFor(manifest)!!
             return flowOf(ModelStatus.Installed(main))
         }
@@ -101,12 +103,11 @@ class ModelManager @Inject constructor(
     }
 
     private fun List<WorkInfo>.toStatus(manifest: ModelManifest): ModelStatus {
-        // Disk-truth wins. If the GGUF is already on-disk and verified
-        // (atomic-promoted by the Worker), surface Installed regardless
-        // of what WorkManager thinks — covers the brief race where the
-        // worker has finalised the file but WM hasn't propagated SUCCEEDED
-        // to its observers yet.
-        if (storage.isInstalled(manifest)) {
+        // Disk-truth wins. If the GGUF is on-disk (or can be rescued from
+        // a non-canonical path), surface Installed regardless of what
+        // WorkManager thinks — covers the brief race where the worker has
+        // finalised the file but WM hasn't propagated SUCCEEDED yet.
+        if (storage.rescueSideload(manifest)) {
             return ModelStatus.Installed(storage.mainFileFor(manifest)!!)
         }
 
@@ -137,10 +138,9 @@ class ModelManager @Inject constructor(
                 ModelStatus.Downloading(done, total, current, totalParts)
             }
             WorkInfo.State.SUCCEEDED -> {
-                // SUCCEEDED but isInstalled is false (above branch already
-                // handled the happy case). Either the worker reported
-                // success but the file is gone (race with delete?) or the
-                // promote failed silently. Surface as a recoverable error.
+                // SUCCEEDED but rescueSideload still couldn't find the
+                // model — the promote really failed or someone deleted
+                // the file in between. Surface as recoverable error.
                 ModelStatus.Failed(
                     ModelStatus.Reason.UNKNOWN,
                     "Worker meldet success, aber Datei fehlt. Versuch nochmal.",

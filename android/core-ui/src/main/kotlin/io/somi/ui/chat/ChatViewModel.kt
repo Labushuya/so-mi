@@ -31,7 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,23 +41,39 @@ import javax.inject.Inject
 /**
  * Phase-2.6 ChatViewModel — orchestrates the full lifecycle from boot
  * (hardware probe + model recommendation) through download → load →
- * warm → generate.
+ * generate.
  *
- * Threading invariants (load-bearing, see [LlamaContext] kdoc):
+ * **State design.** Older versions used a single sealed [ChatState] flow
+ * where [ChatState.Error] was an exclusive variant. That collapsed two
+ * orthogonal concerns — "where in the lifecycle are we" and "is there a
+ * transient error to surface" — into one mode-switch. Result: a recoverable
+ * generation failure put the entire UI into "error mode" and (because
+ * Composer was gated on `state is ChatState.Idle`) silently disabled the
+ * input field. The user could see the message but not type a new one.
+ *
+ * The fix is structural. This ViewModel keeps three private state flows:
+ *  - [_lifecycle]: NoModel | Downloading | Loading | Ready
+ *  - [_generation]: Idle | Streaming(promptId, partial)
+ *  - [_errorBanner]: TransientError? — overlay, never blocks input
+ *
+ * The public [state] is a derived [combine]: when there is an error we
+ * wrap the lifecycle in [ChatState.WithBanner] so the UI can render the
+ * banner above whatever screen is showing. Routing and composer-enabled
+ * read from the *inner* state — which is why a generation failure can
+ * never lock the composer again.
+ *
+ * **Threading invariants** (load-bearing, see [LlamaContext] kdoc):
  *  - Every native llama call runs on [llamaDispatcher], a single-thread
  *    dispatcher carved out of [Dispatchers.IO]. llama.cpp's `llama_decode`
- *    is blocking and not thread-safe; sharing a context across coroutines
- *    silently corrupts the KV cache.
+ *    is blocking and not thread-safe.
  *  - The hardware probe runs on [Dispatchers.Default] (the GLES roundtrip
  *    is 10–50 ms — fine for the main thread but sloppy).
- *  - State emissions go through [_state]/[_messages]/[_boot]/[_selectedModel];
- *    UI should only collect via the public `asStateFlow` views.
  *
  * Generation cancellation: a single [generationJob] is held so
- * [cancelGeneration] can cancel just the in-flight stream without
- * tearing down the model itself. On cooperative cancellation we still
- * commit the partial text as the final ASSISTANT message — that's the
- * "stop typing" UX, not a "throw away the answer" UX.
+ * [cancelGeneration] can cancel just the in-flight stream without tearing
+ * down the model itself. On cooperative cancellation we still commit the
+ * partial text as the final ASSISTANT message — that's the "stop typing"
+ * UX, not a "throw away the answer" UX.
  */
 @HiltViewModel
 class ChatViewModel @Inject constructor(
@@ -71,10 +87,60 @@ class ChatViewModel @Inject constructor(
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
 
+    // --- Orthogonal state axes (private) --------------------------------
+
+    private enum class Lifecycle { NoModel, Downloading, Loading, Ready }
+
+    private data class DownloadProgress(val bytesDownloaded: Long, val bytesTotal: Long)
+
+    private data class GenerationStream(val promptId: Long, val partial: String)
+
+    private data class TransientError(
+        val message: String,
+        val retryable: Boolean = true,
+        val cause: Throwable? = null,
+    )
+
+    private val _lifecycle = MutableStateFlow(Lifecycle.Loading)
+    private val _download = MutableStateFlow<DownloadProgress?>(null)
+    private val _generation = MutableStateFlow<GenerationStream?>(null)
+    private val _errorBanner = MutableStateFlow<TransientError?>(null)
+
     // --- Public state ----------------------------------------------------
 
-    private val _state = MutableStateFlow<ChatState>(ChatState.LoadingModel)
-    val state: StateFlow<ChatState> = _state.asStateFlow()
+    /**
+     * Derived UI state. The inner lifecycle drives routing and composer-
+     * enabled; an error banner (if present) is wrapped via
+     * [ChatState.WithBanner] without blocking input.
+     */
+    val state: StateFlow<ChatState> = combine(
+        _lifecycle, _download, _generation, _errorBanner,
+    ) { lc, dl, gen, err ->
+        val inner: ChatState = when (lc) {
+            Lifecycle.NoModel -> ChatState.NoModelInstalled
+            Lifecycle.Downloading -> ChatState.DownloadingModel(
+                bytesDownloaded = dl?.bytesDownloaded ?: 0L,
+                bytesTotal = dl?.bytesTotal ?: -1L,
+            )
+            Lifecycle.Loading -> ChatState.LoadingModel
+            Lifecycle.Ready -> if (gen != null) {
+                ChatState.Generating(promptId = gen.promptId, partialResponse = gen.partial)
+            } else {
+                ChatState.Idle
+            }
+        }
+        if (err != null) ChatState.WithBanner(
+            inner = inner,
+            message = err.message,
+            retryable = err.retryable,
+            cause = err.cause,
+        )
+        else inner
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = ChatState.LoadingModel,
+    )
 
     /**
      * Persisted history, replayed by Room on every collect. Eagerly
@@ -94,6 +160,14 @@ class ChatViewModel @Inject constructor(
     private val _selectedModel = MutableStateFlow<ModelManifest?>(null)
     val selectedModel: StateFlow<ModelManifest?> = _selectedModel.asStateFlow()
 
+    /**
+     * Reactive on-disk model inventory for the Settings screen. Auto-
+     * refreshed on init and after every [deleteModelInstance]. Settings
+     * collects via collectAsStateWithLifecycle — no refresh-key hack.
+     */
+    private val _instances = MutableStateFlow<List<ModelStorage.ModelInstance>>(emptyList())
+    val instances: StateFlow<List<ModelStorage.ModelInstance>> = _instances.asStateFlow()
+
     // --- Internal --------------------------------------------------------
 
     /**
@@ -105,18 +179,11 @@ class ChatViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val llamaDispatcher = Dispatchers.IO.limitedParallelism(1)
 
-    /**
-     * Lazy-cached soul.md text. Loaded once via [soulPromptLoader] at
-     * boot and reused on every model warm.
-     */
+    /** Lazy-cached soul.md text. Loaded once at boot. */
     @Volatile
     private var cachedSoul: String? = null
 
-    /**
-     * Currently running generation, if any. Cancelling this only kills
-     * the streaming Flow — the model itself stays loaded and the
-     * llamaDispatcher worker is free to take the next [submit].
-     */
+    /** Currently running generation, if any. */
     private var generationJob: Job? = null
 
     /** Ongoing download-observer job; cancelled on retry/cancel. */
@@ -124,38 +191,31 @@ class ChatViewModel @Inject constructor(
 
     init {
         // Hardware probe + soul.md cache + recovery from disk happen in
-        // parallel where they can. The whole thing is bounded by the
-        // probe's GLES roundtrip (~10–50 ms) and the assets read.
+        // parallel where they can. Bounded by the probe's GLES roundtrip
+        // (~10–50 ms) and the assets read.
         viewModelScope.launch(Dispatchers.Default) {
             val info = hardwareDetector.snapshot()
             val rec = recommendModelTier(info)
             _boot.value = BootSnapshot(deviceInfo = info, recommendation = rec)
 
-            // Auto-select the recommendation's auto tier. ModelCatalog.forTier
-            // currently returns non-null for every tier in TIER_SPECS, but we
-            // null-coalesce defensively — a future tier addition shouldn't
-            // crash the app on first launch.
             val auto = ModelCatalog.forTier(rec.auto)
-            if (auto != null) {
-                _selectedModel.value = auto
-            }
+            if (auto != null) _selectedModel.value = auto
 
-            // Pre-cache soul.md so the first load doesn't pay the assets
-            // read cost on top of the mmap.
             cachedSoul = runCatching { soulPromptLoader.load() }
                 .onFailure { Log.w(TAG, "soul.md load failed", it) }
                 .getOrNull()
 
-            // Resolve initial state from disk. If the user already has the
-            // selected model installed (e.g. process recreate, app reopen),
-            // jump straight to LoadingModel and warm. Otherwise show the
-            // picker via NoModelInstalled.
+            refreshInstances()
+
+            // Resolve initial state from disk. Use rescueSideload here so
+            // a manually-dropped GGUF in modelsDir/ gets adopted into the
+            // canonical /<id>/ subdir on first launch.
             val selected = _selectedModel.value
-            if (selected != null && modelStorage.isInstalled(selected)) {
-                _state.value = ChatState.LoadingModel
-                launchLoadModelAndWarm(selected)
+            if (selected != null && modelStorage.rescueSideload(selected)) {
+                _lifecycle.value = Lifecycle.Loading
+                launchLoadModel(selected)
             } else {
-                _state.value = ChatState.NoModelInstalled
+                _lifecycle.value = Lifecycle.NoModel
             }
         }
     }
@@ -164,37 +224,39 @@ class ChatViewModel @Inject constructor(
 
     /**
      * User overrode the auto-selected tier from the picker. If the new
-     * model is already installed we transition straight into
-     * LoadingModel; otherwise we sit in NoModelInstalled until the user
-     * taps download.
+     * model is already installed we transition straight into Loading;
+     * otherwise we sit in NoModel until the user taps download.
      */
     fun selectModel(manifest: ModelManifest) {
         _selectedModel.value = manifest
         downloadObserveJob?.cancel()
         downloadObserveJob = null
+        _errorBanner.value = null
 
-        if (modelStorage.isInstalled(manifest)) {
-            _state.value = ChatState.LoadingModel
-            launchLoadModelAndWarm(manifest)
+        if (modelStorage.rescueSideload(manifest)) {
+            _lifecycle.value = Lifecycle.Loading
+            launchLoadModel(manifest)
         } else {
-            _state.value = ChatState.NoModelInstalled
+            _lifecycle.value = Lifecycle.NoModel
         }
     }
 
     /**
      * Kick off a download for the currently-selected model and start
-     * mirroring [ModelManager.observe] into [_state]. On Installed we
-     * automatically chain into the load + warm path — the user does not
-     * need to tap a second button.
+     * mirroring [ModelManager.observe] into [_lifecycle]/[_download].
+     * On Installed we automatically chain into the load path — the user
+     * does not need to tap a second button.
      */
     fun startDownload(wifiOnly: Boolean) {
         val manifest = _selectedModel.value ?: run {
-            _state.value = ChatState.Error(
-                "Kein Modell ausgewählt. Wähl eins aus der Liste.",
-            )
+            surfaceError("Kein Modell ausgewählt. Wähl eins aus der Liste.", retryable = false)
             return
         }
         Log.i(TAG, "startDownload(${manifest.id}, wifiOnly=$wifiOnly)")
+        _errorBanner.value = null
+        _lifecycle.value = Lifecycle.Downloading
+        _download.value = DownloadProgress(0L, manifest.totalSizeBytes)
+
         modelManager.startDownload(manifest, wifiOnly = wifiOnly)
         downloadObserveJob?.cancel()
         downloadObserveJob = viewModelScope.launch {
@@ -205,30 +267,6 @@ class ChatViewModel @Inject constructor(
                 }
                 .collectLatest { /* terminal sink */ }
         }
-
-        // Polling fallback. If the WorkManager Flow emits SUCCEEDED but
-        // our isInstalled-on-disk check then races (fs-cache lag, OEM
-        // background-policy killing the worker just after promote, etc.),
-        // a periodic disk-truth probe rescues us. Cheap: one File.exists()
-        // per manifest part every 2 s, no native calls.
-        viewModelScope.launch {
-            while (isActiveDownload(manifest)) {
-                kotlinx.coroutines.delay(POLL_INSTALLED_INTERVAL_MS)
-                if (modelStorage.isInstalled(manifest) && _state.value is ChatState.DownloadingModel) {
-                    Log.i(TAG, "polling rescue: model installed on disk; switching to LoadingModel")
-                    downloadObserveJob?.cancel()
-                    downloadObserveJob = null
-                    _state.value = ChatState.LoadingModel
-                    launchLoadModelAndWarm(manifest)
-                    return@launch
-                }
-            }
-        }
-    }
-
-    private fun isActiveDownload(manifest: ModelManifest): Boolean {
-        val s = _state.value
-        return s is ChatState.DownloadingModel && _selectedModel.value?.id == manifest.id
     }
 
     /** Cancel an in-flight download; the .part file stays for resume. */
@@ -237,26 +275,32 @@ class ChatViewModel @Inject constructor(
         modelManager.cancel(manifest)
         downloadObserveJob?.cancel()
         downloadObserveJob = null
-        _state.value = ChatState.NoModelInstalled
+        _download.value = null
+        _lifecycle.value = Lifecycle.NoModel
     }
 
     /**
-     * Submit a user turn. Only legal when the lifecycle is in [ChatState.Idle];
-     * any other state is silently ignored (the UI is responsible for
-     * disabling the composer otherwise — but defending here keeps a
-     * stale tap from corrupting state).
+     * Submit a user turn. Only legal when the lifecycle is Ready and no
+     * generation is already running. A WithBanner overlay does NOT block
+     * submission — the banner is just decoration.
      */
     fun submit(userText: String) {
-        if (_state.value !is ChatState.Idle) {
-            Log.w(TAG, "submit() ignored — state=${_state.value}")
+        if (_lifecycle.value != Lifecycle.Ready) {
+            Log.w(TAG, "submit() ignored — lifecycle=${_lifecycle.value}")
+            return
+        }
+        if (_generation.value != null) {
+            Log.w(TAG, "submit() ignored — generation already running")
             return
         }
         val text = userText.trim()
         if (text.isEmpty()) return
 
+        // Tapping send dismisses any leftover banner.
+        _errorBanner.value = null
+
         // Phase 3a: persist USER row first; the Room-assigned id becomes
-        // the streaming-bubble promptId, tying the LazyColumn key to the
-        // persisted row.
+        // the streaming-bubble promptId.
         generationJob = viewModelScope.launch {
             val promptId = chatRepository.appendUser(text)
             runGeneration(promptId, text)
@@ -265,80 +309,106 @@ class ChatViewModel @Inject constructor(
 
     /**
      * Stop the current generation. Commits whatever partial text we have
-     * as the final ASSISTANT message — "stop typing", not "discard".
-     * The model + KV cache stay live; the next [submit] reuses them.
+     * as the final ASSISTANT message. Model + KV cache stay live.
      */
     fun cancelGeneration() {
         generationJob?.cancel()
     }
 
+    /** Dismiss the error banner without taking any other action. */
+    fun dismissError() {
+        _errorBanner.value = null
+    }
+
     /**
-     * Recover from [ChatState.Error]. Tries the cheapest action that
-     * could plausibly fix the problem: re-resolve the on-disk picture
-     * for the currently-selected model and either warm or fall back to
-     * the picker.
+     * Recover from an error or stuck state. Tries the cheapest action
+     * that could plausibly fix the problem: re-resolve the on-disk
+     * picture for the currently-selected model and either load or fall
+     * back to the picker.
      */
     fun retry() {
+        _errorBanner.value = null
         val manifest = _selectedModel.value
-        if (manifest != null && modelStorage.isInstalled(manifest)) {
-            _state.value = ChatState.LoadingModel
-            launchLoadModelAndWarm(manifest)
+        if (manifest != null && modelStorage.rescueSideload(manifest)) {
+            _lifecycle.value = Lifecycle.Loading
+            launchLoadModel(manifest)
         } else {
-            _state.value = ChatState.NoModelInstalled
+            _lifecycle.value = Lifecycle.NoModel
         }
     }
 
-    /** Settings: list every on-disk model copy across all historical paths. */
-    fun listAllModelInstances(): List<ModelStorage.ModelInstance> =
-        modelStorage.findAllInstances(ModelCatalog.ALL)
-
-    /** Settings: delete a specific instance directory. */
+    /**
+     * Settings: delete a specific instance directory. If the deleted
+     * instance is the currently-active model, also unloads the engine
+     * and transitions to NoModel so the picker returns immediately —
+     * no process restart needed.
+     */
     fun deleteModelInstance(instance: ModelStorage.ModelInstance) {
-        modelStorage.deleteInstance(instance)
+        viewModelScope.launch {
+            val ok = modelStorage.deleteInstance(instance)
+            if (!ok) {
+                surfaceError(
+                    "Löschen fehlgeschlagen — wahrscheinlich blockiert das System die Datei. Force-Stop und nochmal.",
+                    retryable = false,
+                )
+            }
+            // Refresh the list either way: a partial wipe should still
+            // reflect the new on-disk truth.
+            refreshInstances()
+
+            val active = _selectedModel.value
+            if (active?.id == instance.manifestId && _lifecycle.value == Lifecycle.Ready) {
+                Log.i(TAG, "deleted active model — unloading engine and returning to picker")
+                runCatching {
+                    withContext(llamaDispatcher) { llama.close() }
+                }.onFailure { Log.w(TAG, "llama.close() during delete failed", it) }
+                generationJob?.cancel()
+                _generation.value = null
+                _lifecycle.value = Lifecycle.NoModel
+            }
+        }
+    }
+
+    /** Force-refresh the on-disk model inventory. */
+    fun refreshInstances() {
+        _instances.value = modelStorage.findAllInstances(ModelCatalog.ALL)
     }
 
     // --- Internal: model lifecycle --------------------------------------
 
-    private fun launchLoadModelAndWarm(manifest: ModelManifest) {
+    private fun launchLoadModel(manifest: ModelManifest) {
         viewModelScope.launch {
             try {
-                loadModelAndWarm(manifest)
+                loadModel(manifest)
             } catch (ce: CancellationException) {
                 throw ce
             } catch (t: Throwable) {
-                Log.e(TAG, "load+warm failed", t)
-                _state.value = ChatState.Error(
+                Log.e(TAG, "load failed", t)
+                _lifecycle.value = Lifecycle.NoModel
+                surfaceError(
                     "Modell ließ sich nicht laden. Speicher voll? Probier nochmal.",
-                    t,
+                    cause = t,
                 )
             }
         }
     }
 
     /**
-     * Load the GGUF, install soul.md as the system prompt, and run a
-     * tiny hidden warm-pass to fill the KV cache so the first user turn
-     * doesn't pay the cold-prompt penalty.
-     *
-     * All native calls funnel through [llamaDispatcher].
+     * Load the GGUF and install soul.md as the system prompt. No warm-pass:
+     * the first user turn pays cold-prompt latency, which is expected from
+     * a local LLM. All native calls funnel through [llamaDispatcher].
      */
-    private suspend fun loadModelAndWarm(manifest: ModelManifest) {
+    private suspend fun loadModel(manifest: ModelManifest) {
         val mainFile = modelStorage.mainFileFor(manifest) ?: error(
-            "isInstalled lied: ${manifest.id}",
+            "rescueSideload lied: ${manifest.id}",
         )
         val soul = cachedSoul ?: run {
-            // Late-load fallback if the init-time cache failed.
             val s = soulPromptLoader.load()
             cachedSoul = s
             s
         }
 
-        // Wall-clock timing so future hangs are diagnosable. logcat:
-        //   ChatViewModel: native load …
-        //   ChatViewModel: native load done in 8123 ms
-        //   ChatViewModel: native setSystemPrompt(N chars) …
-        //   ChatViewModel: native setSystemPrompt done in NNNN ms
-        Log.i(TAG, "loadModelAndWarm start id=${manifest.id} file=${mainFile.name} size=${mainFile.length()}")
+        Log.i(TAG, "loadModel start id=${manifest.id} file=${mainFile.name} size=${mainFile.length()}")
         try {
             kotlinx.coroutines.withTimeout(LOAD_TIMEOUT_MS) {
                 withContext(llamaDispatcher) {
@@ -347,11 +417,6 @@ class ChatViewModel @Inject constructor(
                     val t1 = System.nanoTime()
                     Log.i(TAG, "native load done in ${(t1 - t0) / 1_000_000} ms")
 
-                    // soul_condensed.md is hand-crafted to ~600 chars
-                    // (~200 Qwen2.5 tokens) — prefill is ~10 s on CPU
-                    // 7B Q4_K_M, no truncation needed. Keep the
-                    // safety-net cap at 1200 chars in case anyone
-                    // ever swaps the asset for a fuller text.
                     val systemText = soul.take(MAX_SYSTEM_PROMPT_CHARS)
                     Log.i(TAG, "native setSystemPrompt(${systemText.length} chars) …")
                     llama.setSystemPrompt(systemText)
@@ -360,37 +425,24 @@ class ChatViewModel @Inject constructor(
                 }
             }
         } catch (te: kotlinx.coroutines.TimeoutCancellationException) {
-            Log.e(TAG, "loadModelAndWarm timed out after $LOAD_TIMEOUT_MS ms", te)
-            _state.value = ChatState.Error(
+            Log.e(TAG, "loadModel timed out after $LOAD_TIMEOUT_MS ms", te)
+            _lifecycle.value = Lifecycle.NoModel
+            surfaceError(
                 "Modell-Laden hängt. Force-Stop App + nochmal — wenn's wieder hängt: kleineres Modell.",
-                te,
+                cause = te,
             )
             return
         }
 
-        // No warm-pass. The first real user turn pays cold-prompt
-        // latency, which users already expect from a local LLM. The
-        // earlier WarmDoneSignal scheme interacted badly with the
-        // upstream sendUserPrompt's `while (!_cancelGeneration)` loop
-        // (no public cancel hook) — could pin the dispatcher for a
-        // full 1024-token cold decode if something else hung first.
-        Log.i(TAG, "loadModelAndWarm done — entering Idle")
-        _state.value = ChatState.Idle
+        Log.i(TAG, "loadModel done — entering Ready")
+        _lifecycle.value = Lifecycle.Ready
     }
 
     // --- Internal: generation -------------------------------------------
 
-    /**
-     * Runs a single user→assistant turn. The USER row has already been
-     * persisted by [submit]; [promptId] is its Room-assigned id. This
-     * function does NOT touch the messages StateFlow directly — inserts
-     * propagate through the Room invalidation tracker via
-     * [chatRepository.observeMessages].
-     */
     private suspend fun runGeneration(promptId: Long, userText: String) {
-        // Flip into Generating with empty partial. The UI keys the
-        // streaming bubble by promptId (== persisted USER row id).
-        _state.value = ChatState.Generating(promptId = promptId, partialResponse = "")
+        // Open the streaming overlay; lifecycle stays Ready throughout.
+        _generation.value = GenerationStream(promptId = promptId, partial = "")
 
         val partial = StringBuilder()
         var completed = false
@@ -401,13 +453,9 @@ class ChatViewModel @Inject constructor(
                     .cancellable()
                     .collect { chunk ->
                         partial.append(chunk)
-                        // Re-emit Generating with the new partial. The
-                        // partial is NOT persisted in Phase 3a — only
-                        // the final accumulated text hits the DB on the
-                        // commit path below.
-                        _state.value = ChatState.Generating(
+                        _generation.value = GenerationStream(
                             promptId = promptId,
-                            partialResponse = partial.toString(),
+                            partial = partial.toString(),
                         )
                     }
             }
@@ -416,11 +464,8 @@ class ChatViewModel @Inject constructor(
             Log.i(TAG, "generation cancelled by user @ promptId=$promptId")
         } catch (t: Throwable) {
             Log.e(TAG, "generation failed @ promptId=$promptId", t)
-            _state.value = ChatState.Error(
-                "Hat nicht geklappt. Versuch's nochmal.",
-                t,
-            )
-            return
+            // Banner on top, lifecycle stays Ready, composer stays usable.
+            surfaceError("Hat nicht geklappt. Versuch's nochmal.", cause = t)
         } finally {
             generationJob = null
         }
@@ -432,7 +477,7 @@ class ChatViewModel @Inject constructor(
         if (finalText.isNotEmpty() || completed) {
             chatRepository.appendAssistant(finalText)
         }
-        _state.value = ChatState.Idle
+        _generation.value = null
     }
 
     // --- Internal: download status mirror -------------------------------
@@ -440,22 +485,19 @@ class ChatViewModel @Inject constructor(
     private fun applyDownloadStatus(manifest: ModelManifest, status: ModelStatus) {
         when (status) {
             is ModelStatus.NotInstalled -> {
-                Log.d(TAG, "  status → NotInstalled")
-                _state.value = ChatState.NoModelInstalled
+                _lifecycle.value = Lifecycle.NoModel
+                _download.value = null
             }
             is ModelStatus.Downloading -> {
-                Log.d(
-                    TAG,
-                    "  status → Downloading ${status.bytesDownloaded}/${status.bytesTotal} (part ${status.currentPart}/${status.totalParts})",
-                )
-                _state.value = ChatState.DownloadingModel(
+                _lifecycle.value = Lifecycle.Downloading
+                _download.value = DownloadProgress(
                     bytesDownloaded = status.bytesDownloaded,
                     bytesTotal = status.bytesTotal,
                 )
             }
             is ModelStatus.Verifying -> {
-                Log.d(TAG, "  status → Verifying")
-                _state.value = ChatState.DownloadingModel(
+                _lifecycle.value = Lifecycle.Downloading
+                _download.value = DownloadProgress(
                     bytesDownloaded = manifest.totalSizeBytes,
                     bytesTotal = manifest.totalSizeBytes,
                 )
@@ -464,26 +506,31 @@ class ChatViewModel @Inject constructor(
                 Log.i(TAG, "  status → Installed @ ${status.mainFile.absolutePath}")
                 downloadObserveJob?.cancel()
                 downloadObserveJob = null
-                _state.value = ChatState.LoadingModel
-                launchLoadModelAndWarm(manifest)
+                _download.value = null
+                refreshInstances()
+                _lifecycle.value = Lifecycle.Loading
+                launchLoadModel(manifest)
             }
             is ModelStatus.Failed -> {
                 Log.w(TAG, "  status → Failed reason=${status.reason} msg=${status.message}")
                 downloadObserveJob?.cancel()
                 downloadObserveJob = null
-                _state.value = ChatState.Error(status.message)
+                _download.value = null
+                _lifecycle.value = Lifecycle.NoModel
+                surfaceError(status.message)
             }
         }
+    }
+
+    private fun surfaceError(message: String, retryable: Boolean = true, cause: Throwable? = null) {
+        _errorBanner.value = TransientError(message = message, retryable = retryable, cause = cause)
     }
 
     override fun onCleared() {
         super.onCleared()
         // Phase 2.10: do NOT close the engine here. Native model + KV
         // cache live for the duration of the process — pinned by
-        // LlamaSessionService. Closing on Activity teardown caused the
-        // model to be unloaded on every configuration change (rotation,
-        // dark-mode toggle, locale switch) and then reloaded for 30+ s
-        // when the user came back. The service decides when to free.
+        // LlamaSessionService.
     }
 
     /**
@@ -498,16 +545,7 @@ class ChatViewModel @Inject constructor(
     private companion object {
         const val TAG = "ChatViewModel"
         const val MAX_TOKENS = 1024
-        const val POLL_INSTALLED_INTERVAL_MS = 2_000L
-        // Hard cap on the system prompt during boot — defense in depth.
-        // The actual asset (soul_condensed.md) is hand-crafted to ~600
-        // chars; this cap only kicks in if someone swaps the asset for
-        // a longer one without re-checking prefill latency on the
-        // boot path.
         const val MAX_SYSTEM_PROMPT_CHARS = 1200
-        // Hard ceiling on the load+setSystemPrompt path. 3 minutes is
-        // generous on Magic V2; if we cross it, something is genuinely
-        // stuck and the user gets an actionable Error state.
         const val LOAD_TIMEOUT_MS = 180_000L
     }
 }

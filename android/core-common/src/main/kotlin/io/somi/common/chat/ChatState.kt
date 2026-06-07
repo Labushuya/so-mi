@@ -8,7 +8,7 @@ package io.somi.common.chat
  * `core-common` so `core-llm`, `core-data`, `core-ui`, and `app` can all
  * reference it without forming a cross-`core-*` dependency cycle.
  *
- * The full Phase-2 lifecycle, in order:
+ * Lifecycle ladder:
  *
  *   NoModelInstalled
  *        │  user picks tier on first-launch + taps "download"
@@ -17,7 +17,7 @@ package io.somi.common.chat
  *        │  WorkManager finishes, sha-256 verified
  *        ▼
  *   LoadingModel
- *        │  llama_load_model_from_file + warm-pass complete
+ *        │  llama_load_model_from_file complete
  *        ▼
  *   Idle ◀──────────────────────────────────┐
  *        │  user submits a message          │
@@ -26,12 +26,18 @@ package io.somi.common.chat
  *        │  Flow<String> completes          │
  *        └──────────────────────────────────┘
  *
- *   Error(message)  — terminal-ish; UI must offer retry / reset.
+ * **Error is a decorator, not a mode.** Earlier versions had
+ * `Error(message)` as an exclusive variant — which meant a transient
+ * generation failure would put the whole UI into "error mode" and
+ * silently disable the composer. The fix is structural: errors are
+ * banners painted on top of whatever lifecycle state was running, via
+ * [WithBanner]. The composer reads its enabled-flag from the *inner*
+ * state of the decorator, so a generation failure no longer locks the
+ * input field — the user can dismiss the banner or just keep typing.
  *
- * Phase 2.1 only constructs LoadingModel from the smoke screen. The
- * rest of the variants come online with later sub-phases (2.2 hardware
- * detection → NoModelInstalled, 2.4 → DownloadingModel, 2.6 → Idle +
- * Generating).
+ * UI rule: when matching, always use [unwrap] / [banner] (or
+ * `if (state is WithBanner)` first) so `is Idle` continues to mean
+ * "model loaded, ready to take input" — even if a banner is overlaid.
  */
 sealed interface ChatState {
 
@@ -62,9 +68,8 @@ sealed interface ChatState {
     }
 
     /**
-     * GGUF exists on disk; llama.cpp is mmap-loading + running the
-     * post-download warm pass. UI shows a spinner with "Modell wird
-     * vorgewärmt …" so the cold-load latency (5–15 s on Magic V2 for
+     * GGUF exists on disk; llama.cpp is mmap-loading. UI shows a
+     * spinner so the cold-load latency (5–15 s on Magic V2 for
      * Qwen2.5 7B Q4_K_M) doesn't read as a freeze.
      */
     data object LoadingModel : ChatState
@@ -79,13 +84,6 @@ sealed interface ChatState {
      * A generation is in flight. The assistant bubble keyed by [promptId]
      * is being live-typed via [partialResponse]; on each Flow<String>
      * chunk the ViewModel emits a new [Generating] with the appended text.
-     *
-     * @param promptId monotonic id of the user prompt that triggered this
-     *   generation. Used by the UI to key the streaming bubble in the
-     *   LazyColumn so token chunks land in the same composable.
-     * @param partialResponse text accumulated so far. The terminal state
-     *   transitions to [Idle]; the partial text becomes the final
-     *   AssistantMessage in the conversation history.
      */
     data class Generating(
         val promptId: Long,
@@ -93,16 +91,34 @@ sealed interface ChatState {
     ) : ChatState
 
     /**
-     * Anything went wrong: model download failed, model load failed, JNI
-     * crashed, OOM, etc. The message is user-facing and must already be in
-     * soul.md voice (German, terse, no corpo-smile) — that's the
-     * ViewModel's responsibility, not the caller's.
+     * Decorator: an error banner painted on top of [inner]. The inner
+     * state continues to drive routing and composer-enabled — this is
+     * NOT a mode-switch, just a one-line banner the user can dismiss
+     * or retry.
      *
-     * @param message user-facing line
-     * @param cause the throwable, kept for logcat; not surfaced in the UI
+     * The wrapper is never wrapped recursively (a new error replaces the
+     * banner; see ChatViewModel.surfaceError). So pattern-matchers can
+     * safely assume `inner !is WithBanner`.
+     *
+     * @param inner the lifecycle state that was running when the error
+     *   occurred. Routing and composer-enabled read from here.
+     * @param message user-facing line (already in soul.md voice — terse,
+     *   German, no corpo-smile).
+     * @param retryable if true the banner shows a "Erneut versuchen" button.
+     * @param cause kept for logcat; not surfaced in UI.
      */
-    data class Error(
+    data class WithBanner(
+        val inner: ChatState,
         val message: String,
+        val retryable: Boolean = true,
         val cause: Throwable? = null,
     ) : ChatState
+
+    companion object {
+        /** Strip a banner if present, returning the underlying lifecycle. */
+        fun ChatState.unwrap(): ChatState = if (this is WithBanner) inner else this
+
+        /** The banner overlay if present, else null. */
+        fun ChatState.banner(): WithBanner? = this as? WithBanner
+    }
 }

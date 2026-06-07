@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Foreground layer for the adaptive launcher icon.
+
+  Android's adaptive-icon spec: the foreground must be a 108×108 dp
+  drawable, with the visible content confined to the inner 66×66 dp
+  ("safe zone"). Outside that is masked by the launcher's clip shape
+  (circle, squircle, …). Our brand master image already contains the
+  full composition (Crimson eye on Obsidian octagon) — we wrap it in
+  an <inset> so 25 % of each edge becomes safe-zone padding. That
+  way the eye sits centered in the safe zone and the launcher cannot
+  clip it accidentally.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_master"
+    android:inset="20%" />

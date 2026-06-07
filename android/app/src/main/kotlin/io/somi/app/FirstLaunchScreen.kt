@@ -38,6 +38,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.somi.common.chat.ChatState
+import io.somi.common.chat.ChatState.Companion.banner
+import io.somi.common.chat.ChatState.Companion.unwrap
 import io.somi.data.Light
 import io.somi.data.ModelCatalog
 import io.somi.data.ModelManifest
@@ -167,17 +169,26 @@ internal fun FirstLaunchScreen(
             }
         }
 
-        // Bottom action area — depends on state
+        // Bottom action area — depends on state. Errors are now banner
+        // overlays via ChatState.WithBanner, so we render the ErrorRow
+        // when a banner is present AND route on the unwrapped inner
+        // lifecycle for the action surface (so a banner over Downloading
+        // still shows the progress bar, not the download CTA).
         Spacer(Modifier.height(16.dp))
-        when (state) {
+        val bannerOverlay = state.banner()
+        if (bannerOverlay != null) {
+            ErrorRow(message = bannerOverlay.message, onRetry = onRetry)
+            Spacer(Modifier.height(12.dp))
+        }
+        when (val core = state.unwrap()) {
             is ChatState.DownloadingModel -> {
-                DownloadProgress(state = state, onCancel = onCancelDownload)
-            }
-            is ChatState.Error -> {
-                ErrorRow(message = state.message, onRetry = onRetry)
+                DownloadProgress(state = core, onCancel = onCancelDownload)
             }
             else -> {
-                // NoModelInstalled or Idle — show download CTA
+                // NoModelInstalled / Idle / Generating / LoadingModel —
+                // show the download CTA when a model is selected. Idle
+                // and Generating shouldn't normally route here, but the
+                // CTA is harmless if they do.
                 if (selected != null) {
                     DownloadActionRow(
                         manifest = selected,
