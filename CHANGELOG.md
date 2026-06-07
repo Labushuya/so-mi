@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/Labushuya/so-mi/compare/v0.9.1...v0.10.0) (2026-06-07)
+
+
+### Features
+
+* **phase-3a:** chat persistence in Room + icon background fix ([c5afa9d](https://github.com/Labushuya/so-mi/commit/c5afa9df1bde0c82b7e0aee537d9c63f5aabf1c5))
+
 ## [0.9.1](https://github.com/Labushuya/so-mi/compare/v0.9.0...v0.9.1) (2026-06-07)
 
 
