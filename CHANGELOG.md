@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/Labushuya/so-mi/compare/v0.8.0...v0.8.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **download:** rescue stuck-after-download via disk-truth-first + polling fallback ([0bc6b65](https://github.com/Labushuya/so-mi/commit/0bc6b65c4f4f819d5aafdee5e5a2abf9a51d4dcc))
+
 ## [0.8.0](https://github.com/Labushuya/so-mi/compare/v0.7.0...v0.8.0) (2026-06-06)
 
 
