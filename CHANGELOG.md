@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/Labushuya/so-mi/compare/v0.10.0...v0.10.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* rollback v0.10.0 storage + icon disasters ([cfecb99](https://github.com/Labushuya/so-mi/commit/cfecb9948b9a8b2ed48040e7befaee31275cb7bc))
+
 ## [0.10.0](https://github.com/Labushuya/so-mi/compare/v0.9.1...v0.10.0) (2026-06-07)
 
 
