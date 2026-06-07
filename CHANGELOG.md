@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2] (2026-06-07)
+
+
+### Bug Fixes
+
+* **App fragt nicht mehr nach erneutem 4-GB-Download wenn das Modell schon da ist.** Die App durchsucht jetzt alle historischen Storage-Pfade (v0.7.x externalFilesDir, v0.10.0 Documents, internal fallback) und nutzt das Modell wo immer es liegt — kein Migrate, kein Copy.
+
 ## [0.10.1](https://github.com/Labushuya/so-mi/compare/v0.10.0...v0.10.1) (2026-06-07)
 
 
