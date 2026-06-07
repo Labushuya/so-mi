@@ -328,12 +328,11 @@ class ChatViewModel @Inject constructor(
                     val t1 = System.nanoTime()
                     Log.i(TAG, "native load done in ${(t1 - t0) / 1_000_000} ms")
 
-                    // Truncate the system prompt to a hard cap. soul.md
-                    // is ~4 KB / ~1500 tokens — full prefill on a 7B
-                    // CPU-only build is 2-15 minutes, which is what
-                    // caused the "stuck on LoadingScreen forever" bug.
-                    // The full soul.md still ships in assets; longer-
-                    // term Phase-3 will inject the unused parts via RAG.
+                    // soul_condensed.md is hand-crafted to ~600 chars
+                    // (~200 Qwen2.5 tokens) — prefill is ~10 s on CPU
+                    // 7B Q4_K_M, no truncation needed. Keep the
+                    // safety-net cap at 1200 chars in case anyone
+                    // ever swaps the asset for a fuller text.
                     val systemText = soul.take(MAX_SYSTEM_PROMPT_CHARS)
                     Log.i(TAG, "native setSystemPrompt(${systemText.length} chars) …")
                     llama.setSystemPrompt(systemText)
@@ -468,12 +467,12 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        // Tear down the native context off the main thread; close() is
-        // idempotent and may be called from any thread per the
-        // LlamaContext contract.
-        viewModelScope.launch(llamaDispatcher) {
-            runCatching { llama.close() }
-        }
+        // Phase 2.10: do NOT close the engine here. Native model + KV
+        // cache live for the duration of the process — pinned by
+        // LlamaSessionService. Closing on Activity teardown caused the
+        // model to be unloaded on every configuration change (rotation,
+        // dark-mode toggle, locale switch) and then reloaded for 30+ s
+        // when the user came back. The service decides when to free.
     }
 
     /**
@@ -489,11 +488,12 @@ class ChatViewModel @Inject constructor(
         const val TAG = "ChatViewModel"
         const val MAX_TOKENS = 1024
         const val POLL_INSTALLED_INTERVAL_MS = 2_000L
-        // Hard cap on the system prompt during boot. Above this, prefill
-        // takes minutes and the LoadingScreen looks frozen. soul.md is
-        // ~4 KB; we truncate to ~600 chars (≈200 Qwen2.5 tokens, ~10 s
-        // prefill on Cortex-X3 7B Q4_K_M).
-        const val MAX_SYSTEM_PROMPT_CHARS = 600
+        // Hard cap on the system prompt during boot — defense in depth.
+        // The actual asset (soul_condensed.md) is hand-crafted to ~600
+        // chars; this cap only kicks in if someone swaps the asset for
+        // a longer one without re-checking prefill latency on the
+        // boot path.
+        const val MAX_SYSTEM_PROMPT_CHARS = 1200
         // Hard ceiling on the load+setSystemPrompt path. 3 minutes is
         // generous on Magic V2; if we cross it, something is genuinely
         // stuck and the user gets an actionable Error state.

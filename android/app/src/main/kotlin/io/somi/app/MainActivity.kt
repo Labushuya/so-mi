@@ -83,6 +83,14 @@ import io.somi.ui.chat.ChatViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Phase 2.10: pin the process at FOREGROUND_SERVICE oom_adj so
+        // MagicOS / iaware doesn't reap us mid-session. Idempotent —
+        // safe to call on every Activity create. Service stays alive
+        // even if MainActivity is destroyed; only an explicit user
+        // "Modell entladen" action stops it.
+        LlamaSessionService.start(this)
+
         setContent {
             SoMiTheme {
                 Surface(
