@@ -9,16 +9,26 @@
 
 ## [0.10.0](https://github.com/Labushuya/so-mi/compare/v0.9.1...v0.10.0) (2026-06-07)
 
+> ⚠️ **Diese Version startet auf manchen Geräten nicht.** Nutze v0.10.1 (Rollback).
 
 ### Features
 
+* Chat-Verlauf bleibt nach App-Neustart erhalten (Room-DB unter `filesDir/somi.db`).
 * **phase-3a:** chat persistence in Room + icon background fix ([c5afa9d](https://github.com/Labushuya/so-mi/commit/c5afa9df1bde0c82b7e0aee537d9c63f5aabf1c5))
+
+### ⚠ Bekannte Probleme
+
+* Modell-Pfad auf `/sdcard/Documents/SoMi-Models/` umgestellt — funktioniert ohne MANAGE_EXTERNAL_STORAGE-Permission nicht. App wirft "Modell konnte nicht geladen werden". Behoben in 0.10.1.
+* App-Icon weiterhin nicht im Drawer sichtbar trotz adaptive-icon-Inset-Versuch. Behoben in 0.10.1.
 
 ## [0.9.1](https://github.com/Labushuya/so-mi/compare/v0.9.0...v0.9.1) (2026-06-07)
 
 
 ### Bug Fixes
 
+* So-Mi nennt User korrekt beim Vornamen statt "Songbird" — soul.md gekürzt + Aliase explizit erklärt.
+* App stirbt nicht mehr nach erster Antwort (neue Foreground-Service `LlamaSessionService` pinned den Process bei MagicOS).
+* Adaptive-Icon `<monochrome>`-Layer entfernt — Material-You-Themed-Icons-Modus zeigte den Songbird-Outline auf hellem Hintergrund (sah weiß aus).
 * persona/branding/lifecycle bundle (icon bg, condensed soul, FGS pin) ([2b3bd44](https://github.com/Labushuya/so-mi/commit/2b3bd447fd89989fe256a3d66f2984854ebfdb2d))
 
 ## [0.9.0](https://github.com/Labushuya/so-mi/compare/v0.8.1...v0.9.0) (2026-06-07)
@@ -26,11 +36,15 @@
 
 ### Features
 
+* Brand-Icon: Crimson-Eye-im-Octagon-Design für Launcher + Notifications.
 * **branding:** Songbird launcher icon + notification icon ([532a60c](https://github.com/Labushuya/so-mi/commit/532a60c661c1dfc86ac06829172cbaf497857796))
 
 
 ### Bug Fixes
 
+* Modell-Lade-Hang behoben — `setSystemPrompt(soul.md)`-Prefill auf 600 Zeichen begrenzt (volle 4 KB ergaben 5–15 Min Hang auf CPU 7B).
+* Modelle landen unter `/sdcard/Documents/SoMi-Models/` — überleben App-Daten-Löschen + Uninstall (siehe v0.10.0 für Probleme).
+* 3-Min-Timeout um Lade-Pfad — bei Hang erscheint Error-Banner statt unendlicher Spinner.
 * **load:** drop warm-pass + truncate system prompt + persistent model storage ([79b9325](https://github.com/Labushuya/so-mi/commit/79b9325ea87cf64ac8991286ca34f67cad3d3712))
 
 ## [0.8.1](https://github.com/Labushuya/so-mi/compare/v0.8.0...v0.8.1) (2026-06-07)
