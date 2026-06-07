@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/Labushuya/so-mi/compare/v0.10.1...v0.10.2) (2026-06-07)
+
+
+### Bug Fixes
+
+* app sucht modell in allen historischen pfaden statt erneuten 4-gb-download zu fordern ([3a0b627](https://github.com/Labushuya/so-mi/commit/3a0b6277d8ed1527c88749c6da176d3ad2e8cfb9))
+
 ## [0.10.1](https://github.com/Labushuya/so-mi/compare/v0.10.0...v0.10.1) (2026-06-07)
 
 
