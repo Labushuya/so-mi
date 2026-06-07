@@ -101,11 +101,17 @@ class ModelManager @Inject constructor(
     }
 
     private fun List<WorkInfo>.toStatus(manifest: ModelManifest): ModelStatus {
+        // Disk-truth wins. If the GGUF is already on-disk and verified
+        // (atomic-promoted by the Worker), surface Installed regardless
+        // of what WorkManager thinks — covers the brief race where the
+        // worker has finalised the file but WM hasn't propagated SUCCEEDED
+        // to its observers yet.
+        if (storage.isInstalled(manifest)) {
+            return ModelStatus.Installed(storage.mainFileFor(manifest)!!)
+        }
+
         val info = firstOrNull()
-            ?: return if (storage.isInstalled(manifest))
-                ModelStatus.Installed(storage.mainFileFor(manifest)!!)
-            else
-                ModelStatus.NotInstalled
+            ?: return ModelStatus.NotInstalled
 
         return when (info.state) {
             WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
@@ -131,11 +137,13 @@ class ModelManager @Inject constructor(
                 ModelStatus.Downloading(done, total, current, totalParts)
             }
             WorkInfo.State.SUCCEEDED -> {
-                val main = storage.mainFileFor(manifest)
-                if (main != null) ModelStatus.Installed(main)
-                else ModelStatus.Failed(
+                // SUCCEEDED but isInstalled is false (above branch already
+                // handled the happy case). Either the worker reported
+                // success but the file is gone (race with delete?) or the
+                // promote failed silently. Surface as a recoverable error.
+                ModelStatus.Failed(
                     ModelStatus.Reason.UNKNOWN,
-                    "Worker meldet success, aber Datei fehlt.",
+                    "Worker meldet success, aber Datei fehlt. Versuch nochmal.",
                 )
             }
             WorkInfo.State.FAILED -> info.outputData.toFailure()
