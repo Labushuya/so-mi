@@ -112,6 +112,8 @@ private fun SoMiAppRoot() {
     val boot by viewModel.boot.collectAsStateWithLifecycle()
     val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
 
+    var showSettings by remember { mutableStateOf(false) }
+
     // Best-effort POST_NOTIFICATIONS request on Android 13+. Fire-and-forget.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val permLauncher = rememberLauncherForActivityResult(
@@ -120,6 +122,22 @@ private fun SoMiAppRoot() {
         LaunchedEffect(Unit) {
             permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    if (showSettings) {
+        // Re-list on every show — the user just deleted something.
+        val instances = remember(showSettings) { viewModel.listAllModelInstances() }
+        var refreshKey by remember { mutableStateOf(0) }
+        val currentInstances = remember(refreshKey) { viewModel.listAllModelInstances() }
+        SettingsScreen(
+            instances = currentInstances,
+            onDeleteInstance = { inst ->
+                viewModel.deleteModelInstance(inst)
+                refreshKey++
+            },
+            onClose = { showSettings = false },
+        )
+        return
     }
 
     when (state) {
@@ -133,6 +151,7 @@ private fun SoMiAppRoot() {
             onStartDownload = viewModel::startDownload,
             onCancelDownload = viewModel::cancelDownload,
             onRetry = viewModel::retry,
+            onOpenSettings = { showSettings = true },
         )
         is ChatState.LoadingModel -> LoadingScreen()
         is ChatState.Idle, is ChatState.Generating -> ChatShellScreen(
@@ -143,6 +162,7 @@ private fun SoMiAppRoot() {
             versionCode = BuildConfig.VERSION_CODE,
             onSubmit = viewModel::submit,
             onCancelGeneration = viewModel::cancelGeneration,
+            onOpenSettings = { showSettings = true },
         )
         is ChatState.Error -> {
             // Error from an Idle session — show the chat with an error
@@ -157,6 +177,7 @@ private fun SoMiAppRoot() {
                 onSubmit = viewModel::submit,
                 onCancelGeneration = viewModel::cancelGeneration,
                 onRetry = viewModel::retry,
+                onOpenSettings = { showSettings = true },
             )
         }
     }
@@ -172,6 +193,7 @@ private fun ChatShellScreen(
     onSubmit: (String) -> Unit,
     onCancelGeneration: () -> Unit,
     onRetry: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     val isGenerating = state is ChatState.Generating
@@ -190,6 +212,7 @@ private fun ChatShellScreen(
             chatState = state,
             boot = boot,
             messageCount = messages.size,
+            onOpenSettings = onOpenSettings,
         )
 
         // Optional error banner above the message list.
@@ -254,6 +277,7 @@ private fun ChatTopBar(
     chatState: ChatState,
     boot: ChatViewModel.BootSnapshot?,
     messageCount: Int,
+    onOpenSettings: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     Column(
@@ -261,34 +285,57 @@ private fun ChatTopBar(
             .fillMaxWidth()
             .background(songbird.obsidian)
             .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(
-                text = stringResource(R.string.top_bar_session_title),
-                color = songbird.bone.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                text = "·",
-                color = songbird.glass,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                text = stringResource(R.string.top_bar_msg_count, messageCount),
-                color = songbird.glass,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            // Title row centered, settings gear at the end.
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.top_bar_session_title),
+                    color = songbird.bone.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "·",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.top_bar_msg_count, messageCount),
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onOpenSettings() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "⋮",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
         Spacer(Modifier.height(2.dp))
         Text(
             text = buildDiagnosticLine(versionName, versionCode, chatState, boot),
             color = songbird.glass.copy(alpha = 0.7f),
             style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(6.dp))
         Box(

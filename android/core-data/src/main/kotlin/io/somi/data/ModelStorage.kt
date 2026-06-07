@@ -64,55 +64,7 @@ class ModelStorage @Inject constructor(
         val target = File(external ?: context.filesDir, MODELS_SUBDIR)
         target.mkdirs()
         Log.i(TAG, "modelsDir = ${target.absolutePath}")
-
-        // Best-effort: scan well-known older paths and move anything we
-        // find into the canonical location. NEVER throws — a failed
-        // migration just leaves the legacy file in place.
-        runCatching { tryMigrateLegacy(target) }
-            .onFailure { Log.w(TAG, "tryMigrateLegacy failed (non-fatal)", it) }
-
         target
-    }
-
-    /**
-     * Best-effort migration from the v0.10.0 misadventure
-     * (/sdcard/Documents/SoMi-Models/) into the canonical
-     * externalFilesDir/models/ location.
-     *
-     * If we can read the legacy path (we usually can — read-only access
-     * to public Documents/ is allowed even without MANAGE_EXTERNAL_STORAGE
-     * for files the app itself created in v0.10.0), we copy each file
-     * into the new root. If the read fails, we silently skip — the user
-     * just re-downloads.
-     *
-     * Idempotent: re-running with files already in place is a no-op.
-     */
-    private fun tryMigrateLegacy(newRoot: File) {
-        val legacy = File(
-            android.os.Environment.getExternalStoragePublicDirectory(
-                android.os.Environment.DIRECTORY_DOCUMENTS,
-            ),
-            "SoMi-Models",
-        )
-        if (!legacy.exists() || !legacy.isDirectory) return
-
-        legacy.listFiles()?.forEach { srcDir ->
-            if (!srcDir.isDirectory) return@forEach
-            val dstDir = File(newRoot, srcDir.name)
-            if (dstDir.exists() && dstDir.listFiles()?.isNotEmpty() == true) {
-                Log.i(TAG, "skip migrate ${srcDir.name}: already in newRoot")
-                return@forEach
-            }
-            try {
-                dstDir.mkdirs()
-                srcDir.listFiles()?.forEach { f ->
-                    f.copyTo(File(dstDir, f.name), overwrite = true)
-                }
-                Log.i(TAG, "migrated ${srcDir.name} from legacy Documents path")
-            } catch (e: Exception) {
-                Log.w(TAG, "migrate ${srcDir.name} skipped: ${e.message}")
-            }
-        }
     }
 
     /** Per-model directory; multi-shard files cohabit here. */
@@ -223,9 +175,86 @@ class ModelStorage @Inject constructor(
     /**
      * Wipe a model's directory entirely, including .part sidecars.
      * Called on user "remove" or after a fatal verification failure.
+     *
+     * Walks ALL historical paths so a "delete model" tap from the
+     * Settings UI cleans up wherever copies live, not just the
+     * canonical location.
      */
     fun delete(manifest: ModelManifest) {
-        directoryFor(manifest.id).deleteRecursively()
+        candidateRoots(manifest.id).forEach { root ->
+            if (root.exists()) {
+                runCatching { root.deleteRecursively() }
+                    .onFailure { Log.w(TAG, "delete ${root.absolutePath} failed", it) }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Storage-inspection API for the Settings screen.
+    // ------------------------------------------------------------------
+
+    /** A single on-disk copy of a model — one [ModelInstance] per
+     *  directory that has at least one of the manifest's parts. */
+    data class ModelInstance(
+        val manifestId: String,
+        val displayName: String,
+        val rootPath: File,
+        /** true if [rootPath] is the current canonical directory (delete
+         *  candidate is the OPPOSITE — see [findDuplicates]). */
+        val isCanonical: Boolean,
+        /** true if every manifest part is present + size matches. */
+        val isComplete: Boolean,
+        /** total bytes on disk in [rootPath] including .part sidecars. */
+        val sizeBytes: Long,
+        /** human-readable list of file names actually present. */
+        val filesPresent: List<String>,
+    )
+
+    /**
+     * Scan EVERY historical storage path for EVERY catalog manifest and
+     * return one [ModelInstance] per directory that has any matching
+     * file. The Settings screen renders this list so the user can see
+     * "OK, I have 4.4 GB at externalFilesDir AND another 4.4 GB at
+     * Documents/, let me clean up".
+     */
+    fun findAllInstances(catalog: List<ModelManifest>): List<ModelInstance> = buildList {
+        for (manifest in catalog) {
+            val roots = candidateRoots(manifest.id)
+            roots.forEachIndexed { index, root ->
+                if (!root.exists() || !root.isDirectory) return@forEachIndexed
+                val files = root.listFiles().orEmpty().filter { it.isFile }
+                if (files.isEmpty()) return@forEachIndexed
+                val expected = manifest.parts.map { it.filename }.toSet()
+                val complete = expected.all { name -> files.any { it.name == name } }
+                add(
+                    ModelInstance(
+                        manifestId = manifest.id,
+                        displayName = manifest.displayName,
+                        rootPath = root,
+                        isCanonical = (index == 0),
+                        isComplete = complete,
+                        sizeBytes = files.sumOf { it.length() },
+                        filesPresent = files.map { it.name }.sorted(),
+                    ),
+                )
+            }
+        }
+    }
+
+    /**
+     * Returns instances of [manifestId] that are duplicates — i.e. NOT
+     * the canonical-path copy. Useful for the "Duplikate löschen"
+     * action in Settings.
+     */
+    fun findDuplicates(catalog: List<ModelManifest>): List<ModelInstance> =
+        findAllInstances(catalog).filter { !it.isCanonical }
+
+    /** Delete a specific instance directory by path. Idempotent. */
+    fun deleteInstance(instance: ModelInstance) {
+        if (instance.rootPath.exists()) {
+            runCatching { instance.rootPath.deleteRecursively() }
+                .onFailure { Log.w(TAG, "deleteInstance ${instance.rootPath} failed", it) }
+        }
     }
 
     /** UUID used as a request-id when the worker prefers one over modelId. */

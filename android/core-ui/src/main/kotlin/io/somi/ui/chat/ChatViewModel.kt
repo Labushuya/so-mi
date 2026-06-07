@@ -288,6 +288,15 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /** Settings: list every on-disk model copy across all historical paths. */
+    fun listAllModelInstances(): List<ModelStorage.ModelInstance> =
+        modelStorage.findAllInstances(ModelCatalog.ALL)
+
+    /** Settings: delete a specific instance directory. */
+    fun deleteModelInstance(instance: ModelStorage.ModelInstance) {
+        modelStorage.deleteInstance(instance)
+    }
+
     // --- Internal: model lifecycle --------------------------------------
 
     private fun launchLoadModelAndWarm(manifest: ModelManifest) {

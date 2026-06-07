@@ -66,6 +66,7 @@ internal fun FirstLaunchScreen(
     onStartDownload: (wifiOnly: Boolean) -> Unit,
     onCancelDownload: () -> Unit,
     onRetry: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     var wifiOnly by remember { mutableStateOf(true) }
@@ -76,13 +77,33 @@ internal fun FirstLaunchScreen(
             .background(songbird.obsidian)
             .padding(horizontal = 16.dp, vertical = 24.dp),
     ) {
-        // Header
-        Text(
-            text = stringResource(R.string.first_launch_title),
-            color = songbird.bone,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        // Header with settings entry
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.first_launch_title),
+                color = songbird.bone,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onOpenSettings() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "⋮",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
         Spacer(Modifier.height(4.dp))
         Text(
             text = stringResource(R.string.first_launch_subtitle),
