@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/Labushuya/so-mi/compare/v0.11.1...v0.11.2) (2026-06-07)
+
+
+### Bug Fixes
+
+* stabilität-refaktorierung — freeze beim aufwärmen, mobile-daten-download, init-flicker, kvaesitso-icon ([e92c2bf](https://github.com/Labushuya/so-mi/commit/e92c2bf14550f57570efb2f9f263c50edb1add44))
+
 ## [0.11.1](https://github.com/Labushuya/so-mi/compare/v0.11.0...v0.11.1) (2026-06-07)
 
 
