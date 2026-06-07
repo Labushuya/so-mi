@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/Labushuya/so-mi/compare/v0.8.1...v0.9.0) (2026-06-07)
+
+
+### Features
+
+* **branding:** Songbird launcher icon + notification icon ([532a60c](https://github.com/Labushuya/so-mi/commit/532a60c661c1dfc86ac06829172cbaf497857796))
+
+
+### Bug Fixes
+
+* **load:** drop warm-pass + truncate system prompt + persistent model storage ([79b9325](https://github.com/Labushuya/so-mi/commit/79b9325ea87cf64ac8991286ca34f67cad3d3712))
+
 ## [0.8.1](https://github.com/Labushuya/so-mi/compare/v0.8.0...v0.8.1) (2026-06-07)
 
 
