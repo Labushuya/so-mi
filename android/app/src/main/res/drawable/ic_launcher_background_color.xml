@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Pure Obsidian (Songbird brand black) backing for the adaptive icon.
-     The foreground (an inset of the master image) sits on top — using a
-     color drawable instead of the per-density background PNG eliminates
-     any chance the background layer ends up empty / transparent. -->
-<color xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#FF0A0203" />
