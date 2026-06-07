@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive launcher icon (Android 8+). The system composites foreground
+  over background and clips into whatever shape the launcher picks
+  (circle, square, squircle, teardrop). The monochrome layer is the
+  Material You "themed icon" surface — Android 13+ uses it when the
+  user enables themed icons.
+
+  Source assets: C:/Code/claude/brands/songbird/so-mi/ — Songbird
+  brand octagon-frame with the Crimson signal eye.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>
