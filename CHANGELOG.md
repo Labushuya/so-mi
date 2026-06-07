@@ -5,6 +5,8 @@
 
 ### Bug Fixes
 
+* App startet wieder — der `/sdcard/Documents/`-Modell-Pfad aus 0.10.0 brauchte eine Permission die nicht da war. Pfad zurück auf app-private external storage; Modell-Datei bleibt nach Update erhalten, geht bei Uninstall verloren.
+* App-Icon-Setup massiv vereinfacht — alle adaptive-icon-Spezifika entfernt, jetzt nur ein PNG pro Density mit Obsidian-Hintergrund. Wenn das Icon trotzdem nicht im Drawer erscheint: App force-stoppen oder Phone neu starten (MagicOS-Launcher-Cache).
 * rollback v0.10.0 storage + icon disasters ([cfecb99](https://github.com/Labushuya/so-mi/commit/cfecb9948b9a8b2ed48040e7befaee31275cb7bc))
 
 ## [0.10.0](https://github.com/Labushuya/so-mi/compare/v0.9.1...v0.10.0) (2026-06-07)
