@@ -64,6 +64,8 @@ internal fun FirstLaunchScreen(
     state: ChatState,
     boot: ChatViewModel.BootSnapshot?,
     selected: ModelManifest?,
+    wifiOnly: Boolean,
+    onWifiOnlyChange: (Boolean) -> Unit,
     onSelect: (ModelManifest) -> Unit,
     onStartDownload: (wifiOnly: Boolean) -> Unit,
     onCancelDownload: () -> Unit,
@@ -71,7 +73,12 @@ internal fun FirstLaunchScreen(
     onOpenSettings: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    var wifiOnly by remember { mutableStateOf(true) }
+
+    // v0.11.2: confirm-dialog when the user disables WLAN-only — a
+    // 4 GB download over mobile data is the kind of slip that costs
+    // real money. The dialog only appears when the toggle was just
+    // turned off (wifiOnly false) AND a download is being requested.
+    var pendingMobileDownload by remember { mutableStateOf<ModelManifest?>(null) }
 
     Column(
         modifier = Modifier
@@ -181,6 +188,14 @@ internal fun FirstLaunchScreen(
             Spacer(Modifier.height(12.dp))
         }
         when (val core = state.unwrap()) {
+            is ChatState.Booting -> {
+                // Routed-around defensively. MainActivity.SoMiAppRoot
+                // routes Booting straight to BootingSplash before
+                // FirstLaunchScreen is composed, so this branch is
+                // reached only if a future routing change drops that
+                // guard. Render nothing rather than the wrong-state CTA.
+                Unit
+            }
             is ChatState.DownloadingModel -> {
                 DownloadProgress(state = core, onCancel = onCancelDownload)
             }
@@ -193,12 +208,35 @@ internal fun FirstLaunchScreen(
                     DownloadActionRow(
                         manifest = selected,
                         wifiOnly = wifiOnly,
-                        onWifiOnlyChange = { wifiOnly = it },
-                        onStart = { onStartDownload(wifiOnly) },
+                        onWifiOnlyChange = onWifiOnlyChange,
+                        onStart = {
+                            // If WLAN-only is OFF, force a confirm step
+                            // before triggering the actual download —
+                            // mobile data + 4 GB is too expensive for a
+                            // silent toggle.
+                            if (!wifiOnly) {
+                                pendingMobileDownload = selected
+                            } else {
+                                onStartDownload(wifiOnly)
+                            }
+                        },
                     )
                 }
             }
         }
+    }
+
+    // Confirm dialog overlay — shown when the user tries to download
+    // with WLAN-only OFF.
+    pendingMobileDownload?.let { manifest ->
+        MobileDataConfirmDialog(
+            manifest = manifest,
+            onConfirm = {
+                pendingMobileDownload = null
+                onStartDownload(false)
+            },
+            onDismiss = { pendingMobileDownload = null },
+        )
     }
 }
 
@@ -430,6 +468,77 @@ private fun lightColor(light: Light, songbird: SongbirdColors): Color = when (li
     Light.GREEN -> Color(0xFF4ADE80)   // brand green for go-state
     Light.YELLOW -> songbird.ember
     Light.RED -> songbird.signal
+}
+
+/**
+ * Mobile-data confirm dialog (v0.11.2). Triggered when the user taps
+ * the download CTA with the "Nur über WLAN laden" toggle turned OFF.
+ *
+ * Shows the manifest's total GB up-front so a user staring down 4.4 GB
+ * can back out before the bytes start flowing. Two buttons, signal-red
+ * for the destructive (in-billing-terms) confirm, glass-grey outline
+ * for cancel.
+ */
+@Composable
+private fun MobileDataConfirmDialog(
+    manifest: ModelManifest,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    val gb = "%.1f GB".format(manifest.totalSizeBytes.toDouble() / 1_073_741_824.0)
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = songbird.aiBubble,
+        titleContentColor = songbird.bone,
+        textContentColor = songbird.bone,
+        title = {
+            Text(
+                text = "Mobilfunk?",
+                color = songbird.bone,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Text(
+                text = "Du bist gerade nicht im WLAN. $gb über mobile Daten — wirklich?",
+                color = songbird.glass,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        confirmButton = {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(songbird.signal)
+                    .clickable { onConfirm() }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "Ja, $gb laden",
+                    color = songbird.bone,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        dismissButton = {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, songbird.glass, RoundedCornerShape(8.dp))
+                    .clickable { onDismiss() }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "Abbrechen",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        },
+    )
 }
 
 @Composable

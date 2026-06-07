@@ -37,10 +37,19 @@ class ModelManager @Inject constructor(
     private val wm: WorkManager get() = WorkManager.getInstance(context)
 
     /**
-     * Kick off (or resume) the download of [manifest]. If the model is
-     * already installed, this is a no-op. If a download is already in
-     * flight for this id, KEEP-policy means we don't restart it from
-     * byte 0.
+     * Kick off (or resume) the download of [manifest].
+     *
+     * Policy nuance (v0.11.2 fix):
+     *  - If the model is already installed → no-op.
+     *  - If a download is RUNNING for this id → KEEP (preserve byte-resume
+     *    progress; flipping the toggle mid-download is intentionally a no-op
+     *    because the worker has open sockets we'd kill for a transient
+     *    constraint change).
+     *  - In every other state (ENQUEUED waiting for Wi-Fi, BLOCKED, none
+     *    yet) → REPLACE so a re-tap with a flipped wifiOnly value actually
+     *    takes effect. v0.11.1 used blanket KEEP, which silently dropped
+     *    the new constraints — that's why "WLAN-only off" + "Herunterladen"
+     *    appeared to do nothing on mobile data.
      *
      * @param wifiOnly if true, the work waits for an unmetered network.
      *   The picker should default to true on metered connections + show
@@ -50,6 +59,32 @@ class ModelManager @Inject constructor(
         if (storage.isInstalled(manifest)) {
             Log.i(TAG, "${manifest.id} already installed; no-op")
             return
+        }
+
+        // Probe the existing work state synchronously. WorkManager exposes
+        // getWorkInfosForUniqueWork() as a ListenableFuture; .get() with
+        // a short timeout is safe here (the call is local and returns
+        // immediately for non-existent work).
+        val existingState = try {
+            wm.getWorkInfosForUniqueWork(uniqueName(manifest.id))
+                .get(500, TimeUnit.MILLISECONDS)
+                .firstOrNull()
+                ?.state
+        } catch (t: Throwable) {
+            Log.w(TAG, "could not query existing work state for ${manifest.id}; treating as fresh", t)
+            null
+        }
+
+        val policy = if (existingState == WorkInfo.State.RUNNING) {
+            Log.i(TAG, "${manifest.id} download already RUNNING; keeping it (resume preserved)")
+            ExistingWorkPolicy.KEEP
+        } else {
+            // ENQUEUED / BLOCKED / SUCCEEDED / FAILED / CANCELLED / null —
+            // replace so the new constraints take effect. WorkManager
+            // tears the old WorkRequest down; the .part files on disk
+            // make the next attempt resume from where the bytes are.
+            Log.i(TAG, "${manifest.id} download policy = REPLACE (existing state = $existingState)")
+            ExistingWorkPolicy.REPLACE
         }
 
         val constraints = Constraints.Builder()
@@ -69,13 +104,7 @@ class ModelManager @Inject constructor(
             .addTag("model:${manifest.id}")
             .build()
 
-        wm.enqueueUniqueWork(
-            uniqueName(manifest.id),
-            // KEEP — re-enqueueing while a download is running picks up
-            // where it left off rather than restarting from 0.
-            ExistingWorkPolicy.KEEP,
-            request,
-        )
+        wm.enqueueUniqueWork(uniqueName(manifest.id), policy, request)
     }
 
     /** Cancel an in-flight download. The .part file stays for resume. */
@@ -84,16 +113,19 @@ class ModelManager @Inject constructor(
     }
 
     /**
-     * Stream the lifecycle status of [manifest]. Emits [ModelStatus]
-     * snapshots; the latest emission reflects current truth.
+     * Stream the lifecycle status of [manifest].
      *
-     * Initial emission is computed synchronously from on-disk state
-     * (Installed if all parts present, NotInstalled otherwise) so the
-     * picker UI never flickers through "Downloading" on cold launch.
+     * v0.11.2 fix: the disk-truth check now runs through rescueSideload
+     * so a manually-dropped GGUF outside the canonical /<id>/ subdir is
+     * adopted instead of triggering a 4 GB re-download.
+     *
+     * The upstream WorkInfo flow is filtered for empty emissions —
+     * WorkManager occasionally emits an empty list during the
+     * enqueue-to-DB-write race window, and an empty list at this layer
+     * used to map to NotInstalled, which kicked the UI back from
+     * Downloading to the picker right after the user tapped download.
      */
     fun observe(manifest: ModelManifest): Flow<ModelStatus> {
-        // Disk-truth first — including the single-shot rescueSideload
-        // attempt for files that landed at the wrong path.
         if (storage.rescueSideload(manifest)) {
             val main = storage.mainFileFor(manifest)!!
             return flowOf(ModelStatus.Installed(main))
@@ -112,7 +144,28 @@ class ModelManager @Inject constructor(
         }
 
         val info = firstOrNull()
-            ?: return ModelStatus.NotInstalled
+        if (info == null) {
+            // Empty WorkInfo list. Two interpretations:
+            //  a) genuinely no work has ever been enqueued for this id
+            //     → NotInstalled is correct
+            //  b) work was just enqueued but the DB write hasn't settled
+            //     yet → emitting NotInstalled here flips the UI from
+            //     Downloading back to the picker, which is the v0.11.1
+            //     "tap Herunterladen, nothing happens" symptom
+            //
+            // We can't distinguish (a) from (b) at this layer. The fix
+            // is to treat empty as "still pending" rather than "never
+            // existed": surface Downloading with 0 bytes. ChatViewModel
+            // sets _lifecycle to Downloading optimistically right before
+            // observe() subscribes anyway, so we just preserve that
+            // optimism. The next emission (RUNNING) will refine.
+            return ModelStatus.Downloading(
+                bytesDownloaded = 0L,
+                bytesTotal = manifest.totalSizeBytes,
+                currentPart = 1,
+                totalParts = manifest.parts.size,
+            )
+        }
 
         return when (info.state) {
             WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
@@ -125,17 +178,22 @@ class ModelManager @Inject constructor(
                 )
             }
             WorkInfo.State.RUNNING -> {
-                val done = info.progress.getLong(ModelDownloadWorker.KEY_BYTES_DONE, 0L)
-                val total = info.progress.getLong(
-                    ModelDownloadWorker.KEY_BYTES_TOTAL,
-                    manifest.totalSizeBytes,
-                )
-                val current = info.progress.getInt(ModelDownloadWorker.KEY_CURRENT_PART, 1)
-                val totalParts = info.progress.getInt(
-                    ModelDownloadWorker.KEY_TOTAL_PARTS,
-                    manifest.parts.size,
-                )
-                ModelStatus.Downloading(done, total, current, totalParts)
+                val verifying = info.progress.getBoolean(ModelDownloadWorker.KEY_VERIFYING, false)
+                if (verifying) {
+                    ModelStatus.Verifying
+                } else {
+                    val done = info.progress.getLong(ModelDownloadWorker.KEY_BYTES_DONE, 0L)
+                    val total = info.progress.getLong(
+                        ModelDownloadWorker.KEY_BYTES_TOTAL,
+                        manifest.totalSizeBytes,
+                    )
+                    val current = info.progress.getInt(ModelDownloadWorker.KEY_CURRENT_PART, 1)
+                    val totalParts = info.progress.getInt(
+                        ModelDownloadWorker.KEY_TOTAL_PARTS,
+                        manifest.parts.size,
+                    )
+                    ModelStatus.Downloading(done, total, current, totalParts)
+                }
             }
             WorkInfo.State.SUCCEEDED -> {
                 // SUCCEEDED but rescueSideload still couldn't find the

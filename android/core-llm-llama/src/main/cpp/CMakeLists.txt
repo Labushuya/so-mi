@@ -60,10 +60,13 @@ set(GGML_VULKAN          OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(${LLAMA_SRC} build-llama)
 
-# JNI shim — taken verbatim from upstream.
-# Vendored via srcDirs in build.gradle.kts; we reference it here via path.
+# JNI shim — local copy of upstream ai_chat.cpp with one tunable
+# (DEFAULT_CONTEXT_SIZE 8192 → 4096) overridden for Magic V2's prefill
+# budget. See ai_chat.cpp's header comment for rationale. A `git
+# submodule update` won't touch this copy because we point at our own
+# path here, not LLAMA_SRC's.
 add_library(${CMAKE_PROJECT_NAME} SHARED
-    ${LLAMA_SRC}/examples/llama.android/lib/src/main/cpp/ai_chat.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ai_chat.cpp
 )
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE

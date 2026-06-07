@@ -33,10 +33,15 @@ import androidx.compose.ui.unit.dp
 /**
  * Phase-2.5 LoadingScreen.
  *
- * Shown while the model file is mmap'd into the native context and the
- * hidden warm-pass runs. On a Magic V2 + 7B Q4_K_M this is 5–15 seconds.
- * The avatar breathes (alpha 0.55 ↔ 1.0) so the UI looks alive while the
- * native thread is blocked.
+ * Shown while the model file is mmap'd into the native context and
+ * `setSystemPrompt(soul)` runs the soul prompt through llama_decode
+ * once. On Magic V2 + 7B Q4_K_M with the 4096 KV cache that's roughly
+ * 15–45 seconds on cold filesystem, ~10–30 s on warm. The avatar
+ * breathes (alpha 0.55 ↔ 1.0) so the UI looks alive while the native
+ * thread is blocked.
+ *
+ * The loader text comes from strings.xml in So-Mi's voice — see
+ * v0.11.2 wording decision.
  */
 @Composable
 internal fun LoadingScreen() {

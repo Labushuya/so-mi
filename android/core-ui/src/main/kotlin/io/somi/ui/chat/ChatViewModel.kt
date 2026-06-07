@@ -25,6 +25,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -89,7 +90,7 @@ class ChatViewModel @Inject constructor(
 
     // --- Orthogonal state axes (private) --------------------------------
 
-    private enum class Lifecycle { NoModel, Downloading, Loading, Ready }
+    private enum class Lifecycle { Booting, NoModel, Downloading, Loading, Ready }
 
     private data class DownloadProgress(val bytesDownloaded: Long, val bytesTotal: Long)
 
@@ -101,7 +102,7 @@ class ChatViewModel @Inject constructor(
         val cause: Throwable? = null,
     )
 
-    private val _lifecycle = MutableStateFlow(Lifecycle.Loading)
+    private val _lifecycle = MutableStateFlow(Lifecycle.Booting)
     private val _download = MutableStateFlow<DownloadProgress?>(null)
     private val _generation = MutableStateFlow<GenerationStream?>(null)
     private val _errorBanner = MutableStateFlow<TransientError?>(null)
@@ -117,6 +118,7 @@ class ChatViewModel @Inject constructor(
         _lifecycle, _download, _generation, _errorBanner,
     ) { lc, dl, gen, err ->
         val inner: ChatState = when (lc) {
+            Lifecycle.Booting -> ChatState.Booting
             Lifecycle.NoModel -> ChatState.NoModelInstalled
             Lifecycle.Downloading -> ChatState.DownloadingModel(
                 bytesDownloaded = dl?.bytesDownloaded ?: 0L,
@@ -139,7 +141,7 @@ class ChatViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = ChatState.LoadingModel,
+        initialValue = ChatState.Booting,
     )
 
     /**
@@ -168,6 +170,20 @@ class ChatViewModel @Inject constructor(
     private val _instances = MutableStateFlow<List<ModelStorage.ModelInstance>>(emptyList())
     val instances: StateFlow<List<ModelStorage.ModelInstance>> = _instances.asStateFlow()
 
+    /**
+     * In-session-persistent Wi-Fi-only download toggle. Lives here (not
+     * in FirstLaunchScreen's local Compose state) so it survives
+     * navigation away and back. Reset to TRUE on every cold start —
+     * persistence would risk a forgotten "off" costing the user
+     * mobile-data money.
+     */
+    private val _wifiOnly = MutableStateFlow(true)
+    val wifiOnly: StateFlow<Boolean> = _wifiOnly.asStateFlow()
+
+    fun setWifiOnly(value: Boolean) {
+        _wifiOnly.value = value
+    }
+
     // --- Internal --------------------------------------------------------
 
     /**
@@ -186,36 +202,62 @@ class ChatViewModel @Inject constructor(
     /** Currently running generation, if any. */
     private var generationJob: Job? = null
 
+    /**
+     * Currently running model-load job, if any. Held so [launchLoadModel]
+     * can drop a duplicate request (rotation, double-retry tap) before
+     * it can queue behind the in-flight one and trample the KV cache via
+     * a second setSystemPrompt.
+     */
+    private var loadJob: Job? = null
+
     /** Ongoing download-observer job; cancelled on retry/cancel. */
     private var downloadObserveJob: Job? = null
 
     init {
-        // Hardware probe + soul.md cache + recovery from disk happen in
-        // parallel where they can. Bounded by the probe's GLES roundtrip
-        // (~10–50 ms) and the assets read.
-        viewModelScope.launch(Dispatchers.Default) {
-            val info = hardwareDetector.snapshot()
-            val rec = recommendModelTier(info)
-            _boot.value = BootSnapshot(deviceInfo = info, recommendation = rec)
+        // Boot-time work: hardware probe, soul.md cache, on-disk scan.
+        // All three are independent and I/O-bound, so we run them as
+        // parallel async{}s. The whole block is wrapped in try/catch:
+        // an uncaught throw here used to strand the user on the
+        // LoadingScreen forever ("the spinner that never ends").
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val probeAsync = async { hardwareDetector.snapshot() }
+                val soulAsync = async {
+                    runCatching { soulPromptLoader.load() }
+                        .onFailure { Log.w(TAG, "soul.md load failed", it) }
+                        .getOrNull()
+                }
+                val instancesAsync = async { modelStorage.findAllInstances(ModelCatalog.ALL) }
 
-            val auto = ModelCatalog.forTier(rec.auto)
-            if (auto != null) _selectedModel.value = auto
+                val info = probeAsync.await()
+                val rec = recommendModelTier(info)
+                _boot.value = BootSnapshot(deviceInfo = info, recommendation = rec)
 
-            cachedSoul = runCatching { soulPromptLoader.load() }
-                .onFailure { Log.w(TAG, "soul.md load failed", it) }
-                .getOrNull()
+                val auto = ModelCatalog.forTier(rec.auto)
+                if (auto != null) _selectedModel.value = auto
 
-            refreshInstances()
+                cachedSoul = soulAsync.await()
+                _instances.value = instancesAsync.await()
 
-            // Resolve initial state from disk. Use rescueSideload here so
-            // a manually-dropped GGUF in modelsDir/ gets adopted into the
-            // canonical /<id>/ subdir on first launch.
-            val selected = _selectedModel.value
-            if (selected != null && modelStorage.rescueSideload(selected)) {
-                _lifecycle.value = Lifecycle.Loading
-                launchLoadModel(selected)
-            } else {
+                // Resolve initial state from disk. rescueSideload adopts
+                // a manually-dropped GGUF in modelsDir/ into the canonical
+                // /<id>/ subdir on first launch.
+                val selected = _selectedModel.value
+                if (selected != null && modelStorage.rescueSideload(selected)) {
+                    _lifecycle.value = Lifecycle.Loading
+                    launchLoadModel(selected)
+                } else {
+                    _lifecycle.value = Lifecycle.NoModel
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                Log.e(TAG, "boot probe failed; falling back to NoModel + banner", t)
                 _lifecycle.value = Lifecycle.NoModel
+                surfaceError(
+                    "Initialisierung hat geknirscht. Wenn's wieder hängt: Force-Stop und neu starten.",
+                    cause = t,
+                )
             }
         }
     }
@@ -377,7 +419,17 @@ class ChatViewModel @Inject constructor(
     // --- Internal: model lifecycle --------------------------------------
 
     private fun launchLoadModel(manifest: ModelManifest) {
-        viewModelScope.launch {
+        // Re-entrancy guard: if a load is already in flight (configuration
+        // change, rotation, double-tap on retry), drop the second request.
+        // The active load() owns the llamaDispatcher; firing a second one
+        // would queue behind it and then trample the KV cache once
+        // setSystemPrompt resets it twice.
+        val existing = loadJob
+        if (existing != null && existing.isActive) {
+            Log.i(TAG, "launchLoadModel: load already in flight for ${manifest.id}, ignoring re-entry")
+            return
+        }
+        loadJob = viewModelScope.launch {
             try {
                 loadModel(manifest)
             } catch (ce: CancellationException) {
@@ -389,14 +441,22 @@ class ChatViewModel @Inject constructor(
                     "Modell ließ sich nicht laden. Speicher voll? Probier nochmal.",
                     cause = t,
                 )
+            } finally {
+                loadJob = null
             }
         }
     }
 
     /**
-     * Load the GGUF and install soul.md as the system prompt. No warm-pass:
-     * the first user turn pays cold-prompt latency, which is expected from
-     * a local LLM. All native calls funnel through [llamaDispatcher].
+     * Load the GGUF and install soul.md as the system prompt.
+     *
+     * `setSystemPrompt(soul)` runs the soul tokens through llama_decode
+     * — that IS a prefill, despite the v0.11.0 kdoc claim of "no warm-
+     * pass". On Magic V2 + 7B Q4_K_M with the 4096 KV cache (set in
+     * ai_chat.cpp), this takes ~10–30 s of native CPU time. The first
+     * user turn then pays only generation latency, not warm-up.
+     *
+     * All native calls funnel through [llamaDispatcher].
      */
     private suspend fun loadModel(manifest: ModelManifest) {
         val mainFile = modelStorage.mainFileFor(manifest) ?: error(
