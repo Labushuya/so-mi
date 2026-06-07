@@ -316,6 +316,7 @@ private fun DownloadProgress(state: ChatState.DownloadingModel, onCancel: () -> 
     val songbird = LocalSongbirdColors.current
     val progress = state.progress ?: 0f
     val pct = (progress * 100).toInt()
+    val isFinalising = state.bytesTotal > 0 && state.bytesDownloaded >= state.bytesTotal
 
     Column(modifier = Modifier.fillMaxWidth()) {
         LinearProgressIndicator(
@@ -330,7 +331,11 @@ private fun DownloadProgress(state: ChatState.DownloadingModel, onCancel: () -> 
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "$pct % · ${formatBytes(state.bytesDownloaded)} / ${formatBytes(state.bytesTotal)}",
+            text = if (isFinalising) {
+                "Wird verifiziert und installiert…"
+            } else {
+                "$pct % · ${formatBytes(state.bytesDownloaded)} / ${formatBytes(state.bytesTotal)}"
+            },
             color = songbird.glass,
             style = MaterialTheme.typography.labelSmall,
         )

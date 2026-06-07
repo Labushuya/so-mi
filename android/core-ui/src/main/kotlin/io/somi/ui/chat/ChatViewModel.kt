@@ -185,13 +185,41 @@ class ChatViewModel @Inject constructor(
             )
             return
         }
+        Log.i(TAG, "startDownload(${manifest.id}, wifiOnly=$wifiOnly)")
         modelManager.startDownload(manifest, wifiOnly = wifiOnly)
         downloadObserveJob?.cancel()
         downloadObserveJob = viewModelScope.launch {
             modelManager.observe(manifest)
-                .onEach { status -> applyDownloadStatus(manifest, status) }
+                .onEach { status ->
+                    Log.d(TAG, "downloadStatus = ${status::class.simpleName}")
+                    applyDownloadStatus(manifest, status)
+                }
                 .collectLatest { /* terminal sink */ }
         }
+
+        // Polling fallback. If the WorkManager Flow emits SUCCEEDED but
+        // our isInstalled-on-disk check then races (fs-cache lag, OEM
+        // background-policy killing the worker just after promote, etc.),
+        // a periodic disk-truth probe rescues us. Cheap: one File.exists()
+        // per manifest part every 2 s, no native calls.
+        viewModelScope.launch {
+            while (isActiveDownload(manifest)) {
+                kotlinx.coroutines.delay(POLL_INSTALLED_INTERVAL_MS)
+                if (modelStorage.isInstalled(manifest) && _state.value is ChatState.DownloadingModel) {
+                    Log.i(TAG, "polling rescue: model installed on disk; switching to LoadingModel")
+                    downloadObserveJob?.cancel()
+                    downloadObserveJob = null
+                    _state.value = ChatState.LoadingModel
+                    launchLoadModelAndWarm(manifest)
+                    return@launch
+                }
+            }
+        }
+    }
+
+    private fun isActiveDownload(manifest: ModelManifest): Boolean {
+        val s = _state.value
+        return s is ChatState.DownloadingModel && _selectedModel.value?.id == manifest.id
     }
 
     /** Cancel an in-flight download; the .part file stays for resume. */
@@ -384,29 +412,35 @@ class ChatViewModel @Inject constructor(
     private fun applyDownloadStatus(manifest: ModelManifest, status: ModelStatus) {
         when (status) {
             is ModelStatus.NotInstalled -> {
+                Log.d(TAG, "  status → NotInstalled")
                 _state.value = ChatState.NoModelInstalled
             }
             is ModelStatus.Downloading -> {
+                Log.d(
+                    TAG,
+                    "  status → Downloading ${status.bytesDownloaded}/${status.bytesTotal} (part ${status.currentPart}/${status.totalParts})",
+                )
                 _state.value = ChatState.DownloadingModel(
                     bytesDownloaded = status.bytesDownloaded,
                     bytesTotal = status.bytesTotal,
                 )
             }
             is ModelStatus.Verifying -> {
-                // Verifying is brief; surface as "still downloading at
-                // 100%" so the UI doesn't flicker an empty state.
+                Log.d(TAG, "  status → Verifying")
                 _state.value = ChatState.DownloadingModel(
                     bytesDownloaded = manifest.totalSizeBytes,
                     bytesTotal = manifest.totalSizeBytes,
                 )
             }
             is ModelStatus.Installed -> {
+                Log.i(TAG, "  status → Installed @ ${status.mainFile.absolutePath}")
                 downloadObserveJob?.cancel()
                 downloadObserveJob = null
                 _state.value = ChatState.LoadingModel
                 launchLoadModelAndWarm(manifest)
             }
             is ModelStatus.Failed -> {
+                Log.w(TAG, "  status → Failed reason=${status.reason} msg=${status.message}")
                 downloadObserveJob?.cancel()
                 downloadObserveJob = null
                 _state.value = ChatState.Error(status.message)
@@ -447,5 +481,6 @@ class ChatViewModel @Inject constructor(
     private companion object {
         const val TAG = "ChatViewModel"
         const val MAX_TOKENS = 1024
+        const val POLL_INSTALLED_INTERVAL_MS = 2_000L
     }
 }
