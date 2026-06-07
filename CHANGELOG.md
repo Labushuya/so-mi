@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/Labushuya/so-mi/compare/v0.11.0...v0.11.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* vollständige refaktorierung — modell-erkennung, composer, icon und löschen funktionieren wieder ([58b891e](https://github.com/Labushuya/so-mi/commit/58b891e4201763d1b52f6aba39d1c6de8bfc8022))
+
 ## [0.11.0](https://github.com/Labushuya/so-mi/compare/v0.10.1...v0.11.0) (2026-06-07)
 
 
