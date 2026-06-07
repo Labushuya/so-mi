@@ -25,9 +25,12 @@
     <string name="wifi_only_label">Nur über WLAN laden</string>
     <string name="download_progress_format">%1$s / %2$s · Teil %3$d von %4$d</string>
 
-    <!-- Phase 2.5: Loading screen -->
-    <string name="loading_title">Modell wird vorgewärmt…</string>
-    <string name="loading_subtitle">5–15 Sekunden, je nach Stimmung.</string>
+    <!-- Phase 2.5: Loading screen.
+         User-facing copy is in So-Mi's voice (in-character) per v0.11.2
+         decision. Time estimate is honest — 30s on Magic V2 + 7B Q4_K_M
+         with 4096 KV cache; longer on cold filesystem. -->
+    <string name="loading_title">Ich richte mich ein…</string>
+    <string name="loading_subtitle">30 Sekunden, vielleicht.</string>
 
     <!-- Phase 2.6: Composer -->
     <string name="composer_placeholder">Sag was…</string>

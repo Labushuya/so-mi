@@ -86,12 +86,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Phase 2.10: pin the process at FOREGROUND_SERVICE oom_adj so
-        // MagicOS / iaware doesn't reap us mid-session. Idempotent —
-        // safe to call on every Activity create. Service stays alive
-        // even if MainActivity is destroyed; only an explicit user
-        // "Modell entladen" action stops it.
-        LlamaSessionService.start(this)
+        // Phase 2.10 / v0.11.2: the eager FGS start now lives in
+        // SoMiApp.onCreate (only when a model is on disk), so it wins
+        // the race against Android 14's 5 s ForegroundServiceDidNotStartInTime
+        // guard during a 7B prefill. We do NOT call LlamaSessionService.start
+        // here unconditionally anymore — that posted a misleading
+        // "Modell läuft" notification before any model was installed.
+        // Mid-session promotion (after a download completes) happens
+        // through ChatViewModel reacting to the lifecycle transition.
 
         setContent {
             SoMiTheme {
@@ -116,6 +118,26 @@ private fun SoMiAppRoot() {
 
     var showSettings by remember { mutableStateOf(false) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // v0.11.2: promote LlamaSessionService the instant we transition
+    // into a state where the engine matters (LoadingModel or further).
+    // SoMiApp.onCreate handles the cold-start case where a model is
+    // already on disk; this LaunchedEffect handles the post-download
+    // case where a fresh user just finished their first download and
+    // is about to enter Loading. Idempotent — start() can be called
+    // multiple times safely.
+    val unwrapped = state.unwrap()
+    LaunchedEffect(unwrapped::class) {
+        when (unwrapped) {
+            is ChatState.LoadingModel,
+            is ChatState.Idle,
+            is ChatState.Generating,
+            -> LlamaSessionService.start(context)
+            else -> Unit
+        }
+    }
+
     // Best-effort POST_NOTIFICATIONS request on Android 13+. Fire-and-forget.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val permLauncher = rememberLauncherForActivityResult(
@@ -127,6 +149,7 @@ private fun SoMiAppRoot() {
     }
 
     val instances by viewModel.instances.collectAsStateWithLifecycle()
+    val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
 
     if (showSettings) {
         SettingsScreen(
@@ -140,12 +163,15 @@ private fun SoMiAppRoot() {
     // Route on the underlying lifecycle — a WithBanner overlay must not
     // change which surface the user sees, only paint a banner on top.
     when (state.unwrap()) {
+        is ChatState.Booting -> BootingSplash()
         is ChatState.NoModelInstalled,
         is ChatState.DownloadingModel,
         -> FirstLaunchScreen(
             state = state,
             boot = boot,
             selected = selectedModel,
+            wifiOnly = wifiOnly,
+            onWifiOnlyChange = viewModel::setWifiOnly,
             onSelect = viewModel::selectModel,
             onStartDownload = viewModel::startDownload,
             onCancelDownload = viewModel::cancelDownload,
@@ -629,6 +655,7 @@ private fun lightGlyph(light: io.somi.data.Light?): String = when (light) {
 private fun chatStateLabel(state: ChatState): String {
     val hasBanner = state.banner() != null
     val label = when (state.unwrap()) {
+        is ChatState.Booting -> "booting"
         is ChatState.Idle -> "idle"
         is ChatState.LoadingModel -> "loading"
         is ChatState.NoModelInstalled -> "no-model"

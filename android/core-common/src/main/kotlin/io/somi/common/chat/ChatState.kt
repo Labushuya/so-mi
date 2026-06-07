@@ -10,6 +10,9 @@ package io.somi.common.chat
  *
  * Lifecycle ladder:
  *
+ *   Booting
+ *        │  hardware probe + soul.md cache + on-disk scan complete
+ *        ▼
  *   NoModelInstalled
  *        │  user picks tier on first-launch + taps "download"
  *        ▼
@@ -40,6 +43,20 @@ package io.somi.common.chat
  * "model loaded, ready to take input" — even if a banner is overlaid.
  */
 sealed interface ChatState {
+
+    /**
+     * Pre-flight: ChatViewModel is running its init coroutine (hardware
+     * probe + soul.md cache + on-disk model scan). UI shows a minimal
+     * splash without text or spinner — the LoadingScreen ("Ich richte
+     * mich ein…") is reserved for the actual llama_load phase, where
+     * the wait is real and the user benefits from feedback.
+     *
+     * Typical duration: 100–500 ms. If it stretches longer the init
+     * coroutine has thrown silently, which is now caught and routed to
+     * NoModelInstalled with an error banner — but Booting itself is
+     * never the long-tail surface.
+     */
+    data object Booting : ChatState
 
     /**
      * No GGUF on disk yet. UI shows the Hardware-Ampel + model picker.

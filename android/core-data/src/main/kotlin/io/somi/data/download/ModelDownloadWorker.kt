@@ -107,7 +107,18 @@ internal class ModelDownloadWorker @AssistedInject constructor(
                     setProgress(progressData(total, totalBytes, index + 1, manifest.parts.size))
                 }
 
-                // Verify before promoting.
+                // Verify before promoting. Surface a verifying flag in
+                // setProgress so the UI can switch from "73 %" to "Wird
+                // überprüft…" while we hash the bytes.
+                setProgress(
+                    workDataOf(
+                        KEY_BYTES_DONE to bytesDoneAcrossParts + part.sizeBytes,
+                        KEY_BYTES_TOTAL to totalBytes,
+                        KEY_CURRENT_PART to index + 1,
+                        KEY_TOTAL_PARTS to manifest.parts.size,
+                        KEY_VERIFYING to true,
+                    ),
+                )
                 if (!result.sha256Hex.equals(part.sha256, ignoreCase = true)) {
                     Log.e(TAG, "sha mismatch on ${part.filename}: " +
                         "expected=${part.sha256} got=${result.sha256Hex}")
@@ -220,6 +231,10 @@ internal class ModelDownloadWorker @AssistedInject constructor(
         const val KEY_BYTES_TOTAL = "bytesTotal"
         const val KEY_CURRENT_PART = "currentPart"
         const val KEY_TOTAL_PARTS = "totalParts"
+        // v0.11.2: surfaced for ~1s after byte transfer completes while
+        // SHA-256 + AtomicInstall.promote run. UI switches from
+        // percentage to "Wird überprüft…" when this is true.
+        const val KEY_VERIFYING = "verifying"
 
         const val REASON_BAD_INPUT = "bad_input"
         const val REASON_STORAGE_FULL = "storage_full"

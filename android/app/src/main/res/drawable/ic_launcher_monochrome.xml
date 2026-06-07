@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome layer for the adaptive launcher icon (Android 13+ themed
+  icons / Material You).
+
+  Themed-icon launchers — Pixel-style "themed icons", Kvaesitso, Niagara
+  with theming on, etc. — recolor this monochrome silhouette to the
+  user's accent color and ignore the foreground/background. WITHOUT a
+  monochrome layer, those launchers fall back to either the unstyled
+  adaptive icon or, in Kvaesitso's case, the system default icon —
+  which is exactly what the v0.11.1 user-report described.
+
+  Composition: a simple concentric-circles eye glyph at 108×108 dp,
+  visible content kept inside the central 66×66 dp safe zone (33 %
+  margin per Android adaptive-icon spec) so OEM clip masks
+  (squircle / circle / teardrop) cannot crop it.
+
+  The path is an alpha-only matte: filled regions = opaque, empty =
+  transparent. The launcher tints the opaque part to match the user's
+  theme. Eye design mirrors the master so themed and full-color icons
+  stay visually related.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer ring (octagon-ish circle) — keep within safe-zone radius 33 dp -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,21
+                         a33,33 0 1,0 0.001,0
+                         M54,29
+                         a25,25 0 1,1 -0.001,0 z" />
+
+    <!-- Iris ring -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,37
+                         a17,17 0 1,0 0.001,0
+                         M54,43
+                         a11,11 0 1,1 -0.001,0 z" />
+
+    <!-- Pupil dot -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,49
+                         a5,5 0 1,0 0.001,0 z" />
+
+</vector>
