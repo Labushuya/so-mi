@@ -99,13 +99,8 @@ internal fun SettingsScreen(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
         )
-        if (instances.size > 1) {
-            Text(
-                text = "${instances.size} Kopien gefunden — du kannst Duplikate löschen.",
-                color = songbird.glass,
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
+        // Single-root storage means at most one instance per model — no
+        // duplicates concept anymore (see ModelStorage.kt).
         Spacer(Modifier.height(16.dp))
 
         // List
@@ -139,13 +134,13 @@ private fun InstanceCard(
             .clip(RoundedCornerShape(12.dp))
             .background(songbird.aiBubble)
             .border(
-                width = if (instance.isCanonical) 1.dp else 1.dp,
-                color = if (instance.isCanonical) songbird.crimson else songbird.bubbleBorder,
+                width = 1.dp,
+                color = songbird.bubbleBorder,
                 shape = RoundedCornerShape(12.dp),
             )
             .padding(14.dp),
     ) {
-        // Title + canonical/duplicate badge
+        // Title + completeness badge
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = instance.displayName,
@@ -154,18 +149,20 @@ private fun InstanceCard(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
-            if (instance.isCanonical) {
-                BadgePill(label = "AKTIV", color = songbird.crimson)
-            } else {
-                BadgePill(label = "DUPLIKAT", color = songbird.signal)
+            if (instance.filesMissing.isNotEmpty()) {
+                BadgePill(label = "UNVOLLSTÄNDIG", color = songbird.signal)
             }
         }
         Spacer(Modifier.height(4.dp))
 
-        // Size + completeness
-        val statusLabel = when {
-            !instance.isComplete -> "${formatGB(instance.sizeBytes)} · unvollständig"
-            else -> formatGB(instance.sizeBytes)
+        // Size + completeness — count missing shards explicitly so the
+        // user can see how broken the install is and which files to
+        // sideload to repair it.
+        val statusLabel = if (instance.filesMissing.isNotEmpty()) {
+            val total = instance.filesPresent.size + instance.filesMissing.size
+            "${formatGB(instance.sizeBytes)} · ${instance.filesPresent.size}/$total Shards · ${instance.filesMissing.size} fehlen"
+        } else {
+            formatGB(instance.sizeBytes)
         }
         Text(
             text = statusLabel,
@@ -202,18 +199,14 @@ private fun InstanceCard(
         // Delete action
         if (!confirmDelete) {
             DeleteButton(
-                label = if (instance.isCanonical) "Modell löschen" else "Duplikat löschen",
+                label = "Modell löschen",
                 onClick = { confirmDelete = true },
-                isWarning = instance.isCanonical,
+                isWarning = true,
             )
         } else {
             Column {
                 Text(
-                    text = if (instance.isCanonical) {
-                        "Wirklich löschen? Du musst danach das Modell neu laden (4 GB)."
-                    } else {
-                        "Wirklich diese Kopie löschen?"
-                    },
+                    text = "Wirklich löschen? Du musst danach das Modell neu laden.",
                     color = songbird.bone,
                     style = MaterialTheme.typography.bodyMedium,
                 )

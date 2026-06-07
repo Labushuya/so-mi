@@ -15,7 +15,7 @@ import javax.inject.Singleton
  *   $externalFilesDir/models/
  *       $modelId/
  *           <part1>.gguf            ← final, SHA-256 verified
- *           <part2>.gguf
+ *           <part2>.gguf            ← multi-shard (e.g. 7B Q4_K_M = 2 parts)
  *           <part1>.gguf.part       ← in-flight (sidecar)
  *
  * The .part suffix is a contract: the loader MUST ignore any path
@@ -23,12 +23,19 @@ import javax.inject.Singleton
  * atomically — readers therefore either see no file or a complete,
  * verified file, never a torn one.
  *
- * Storage choice: `getExternalFilesDir(null)` because Magic V2's UFS
- * gives us hundreds of GB on the same volume as `filesDir`, and the
- * external path is MTP-visible so the user can sanity-check that a
- * 4.7 GiB download actually landed. Falls back to `filesDir` on
- * exotic OEM/work-profile configurations where externalFilesDir
- * returns null.
+ * **One root, period.** Earlier versions of this class searched three
+ * candidate roots (externalFilesDir, /sdcard/Documents/SoMi-Models,
+ * filesDir) so users mid-migrating between layouts wouldn't lose their
+ * 4 GB downloads. The cure was worse than the disease: the multi-path
+ * lookup returned null whenever a sideload landed at a slightly
+ * non-canonical path (e.g. directly in modelsDir/, not in
+ * modelsDir/<id>/), and the user saw "Modell konnte nicht geladen
+ * werden" while the GGUF sat on disk. The path-search is gone.
+ *
+ * The replacement is [rescueSideload]: if a manifest's parts are sitting
+ * loose in modelsDir/, we move them into the canonical
+ * modelsDir/<id>/ subdir once on first lookup. One try, deterministic,
+ * loud in logcat — not a permanent compatibility shim.
  *
  * NOT part of this class:
  *  - HTTP / WorkManager (lives in [io.somi.data.download.ModelDownloadWorker])
@@ -49,15 +56,9 @@ class ModelStorage @Inject constructor(
      *  - llama.cpp can mmap the file directly
      *  - Survives reboot but NOT uninstall and NOT "Clear data"
      *
-     * Earlier attempts to use `/sdcard/Documents/SoMi-Models/` for
-     * uninstall-survival failed: that path requires either
-     * MANAGE_EXTERNAL_STORAGE (a heavy permission we declined to ask for)
-     * or MediaStore content URIs (which llama.cpp cannot mmap by path).
-     * The trade-off is real but worth it: re-download on uninstall is
-     * painful, but better than an app that doesn't start at all.
-     *
-     * Migration from earlier path layouts is best-effort and never
-     * blocks startup — see [tryMigrateLegacy].
+     * If externalFilesDir returns null (exotic OEM/work-profile config),
+     * we fall back to filesDir. That path can't survive uninstall either,
+     * so the trade-off is identical from the user's perspective.
      */
     val modelsDir: File by lazy {
         val external = context.getExternalFilesDir(null)
@@ -83,10 +84,6 @@ class ModelStorage @Inject constructor(
      * Best-effort: ask the platform to free [bytes] before we start a
      * download. Avoids us getting half-way through a 4 GB pull and
      * dying with ENOSPC.
-     *
-     * @return true if the system allocated (or believes it can allocate)
-     *   the requested space; false if it gave up. The caller decides
-     *   whether to abort or proceed.
      */
     fun allocateBytes(bytes: Long): Boolean {
         return try {
@@ -107,154 +104,170 @@ class ModelStorage @Inject constructor(
         }
     }
 
-    /** True iff every part of this manifest can be found in any known historical location. */
-    fun isInstalled(manifest: ModelManifest): Boolean =
-        findInstalledRoot(manifest) != null
+    /**
+     * True iff every part of this manifest is on disk in the canonical
+     * directory at the expected size.
+     *
+     * Logs per-part presence + size so a future "GGUF da, App lügt"
+     * scenario is one logcat away from being diagnosable.
+     */
+    fun isInstalled(manifest: ModelManifest): Boolean {
+        val dir = File(modelsDir, manifest.id)
+        if (!dir.exists() || !dir.isDirectory) {
+            Log.i(TAG, "isInstalled(${manifest.id}) → false (dir missing)")
+            return false
+        }
+        var allOk = true
+        for (part in manifest.parts) {
+            val f = File(dir, part.filename)
+            val ok = f.exists() && f.length() > 0L
+            if (!ok) {
+                Log.i(
+                    TAG,
+                    "  part ${part.filename}: missing (exists=${f.exists()}, len=${if (f.exists()) f.length() else -1})",
+                )
+                allOk = false
+            }
+        }
+        if (allOk) Log.i(TAG, "isInstalled(${manifest.id}) → true")
+        else Log.i(TAG, "isInstalled(${manifest.id}) → false")
+        return allOk
+    }
 
     /**
      * Path to feed `LlamaContext.load(...)`; null if not installed.
      *
-     * Searches every historical storage location so users coming from
-     * v0.7.x / v0.9.x / v0.10.x don't lose their 4.4 GB downloads when
-     * we change the canonical path under their feet. The first root
-     * that has all parts wins — no migration, no copy, llama.cpp opens
-     * the file where it actually is.
+     * Always returns the first part's file in the canonical directory —
+     * llama.cpp resolves multi-shard 00001-of-00002.gguf siblings by
+     * stripping the suffix and looking next to the file it was given.
      */
     fun mainFileFor(manifest: ModelManifest): File? {
-        val root = findInstalledRoot(manifest) ?: return null
-        return File(root, manifest.parts[0].filename)
+        if (!isInstalled(manifest)) return null
+        return File(directoryFor(manifest.id), manifest.parts[0].filename)
     }
 
     /**
-     * Walk every known historical storage layout and return the first
-     * directory containing all parts of [manifest]. Order matters: the
-     * canonical (current) location wins if both have valid copies, so
-     * a future cleanup can prune the legacy locations safely.
+     * One-shot rescue for sideloaded GGUFs that landed at the wrong path.
      *
-     * Logged at INFO so future "where is my model?" debugging is one
-     * logcat away.
+     * Two scenarios this fixes:
+     *   1. User dropped the .gguf file directly into modelsDir/ (no
+     *      <id>/ subdir). We rename it into modelsDir/<id>/<filename>.
+     *   2. User pulled v0.9 model from the legacy
+     *      /sdcard/Documents/SoMi-Models/<id>/ path manually and put
+     *      it in modelsDir/<id>/ — already correct, [isInstalled] handles.
+     *
+     * Returns true if the manifest is now fully installed, false if at
+     * least one part is still missing.
+     *
+     * Idempotent: if the files are already in the right place, this is a
+     * cheap [isInstalled] check.
      */
-    private fun findInstalledRoot(manifest: ModelManifest): File? {
-        val candidates = candidateRoots(manifest.id)
-        for (root in candidates) {
-            val allPresent = manifest.parts.all { File(root, it.filename).exists() }
-            if (allPresent) {
-                Log.i(TAG, "model ${manifest.id} found at: ${root.absolutePath}")
-                return root
+    fun rescueSideload(manifest: ModelManifest): Boolean {
+        if (isInstalled(manifest)) return true
+
+        val dir = directoryFor(manifest.id)
+        var moved = 0
+        for (part in manifest.parts) {
+            val canonical = File(dir, part.filename)
+            if (canonical.exists()) continue
+
+            // Check if the file is sitting loose in modelsDir/.
+            val loose = File(modelsDir, part.filename)
+            if (loose.exists() && loose.isFile) {
+                Log.i(TAG, "rescueSideload: moving ${loose.absolutePath} → ${canonical.absolutePath}")
+                val ok = loose.renameTo(canonical)
+                if (!ok) {
+                    Log.w(TAG, "rescueSideload: renameTo failed; trying copy + delete")
+                    runCatching { loose.copyTo(canonical, overwrite = true) }
+                        .onSuccess {
+                            val deleted = loose.delete()
+                            if (!deleted) Log.w(TAG, "rescueSideload: copy ok but source delete failed")
+                            moved++
+                        }
+                        .onFailure { Log.w(TAG, "rescueSideload: copy failed", it) }
+                } else {
+                    moved++
+                }
             }
         }
-        Log.i(TAG, "model ${manifest.id} NOT FOUND in any of:")
-        candidates.forEach { Log.i(TAG, "  - ${it.absolutePath}") }
-        return null
-    }
-
-    /**
-     * Every storage path we have ever used for [modelId], canonical first.
-     * Order:
-     *   1. modelsDir/<id>/   — current canonical (externalFilesDir/models/<id>/)
-     *   2. /sdcard/Documents/SoMi-Models/<id>/  — v0.10.0 misadventure
-     *   3. context.filesDir/models/<id>/  — fallback when externalFilesDir was null
-     *
-     * Adding a path here is the migration. Removing one needs a
-     * deprecation cycle so users on old paths still find their model.
-     */
-    private fun candidateRoots(modelId: String): List<File> = buildList {
-        add(File(modelsDir, modelId))
-
-        val docsDir = File(
-            android.os.Environment.getExternalStoragePublicDirectory(
-                android.os.Environment.DIRECTORY_DOCUMENTS,
-            ),
-            "SoMi-Models",
-        )
-        add(File(docsDir, modelId))
-
-        add(File(context.filesDir, "$MODELS_SUBDIR/$modelId"))
+        val ok = isInstalled(manifest)
+        if (moved > 0) Log.i(TAG, "rescueSideload(${manifest.id}): moved $moved file(s), nowInstalled=$ok")
+        return ok
     }
 
     /**
      * Wipe a model's directory entirely, including .part sidecars.
-     * Called on user "remove" or after a fatal verification failure.
-     *
-     * Walks ALL historical paths so a "delete model" tap from the
-     * Settings UI cleans up wherever copies live, not just the
-     * canonical location.
+     * Returns true on success, false if anything in the tree refused to
+     * delete (logged at WARN). Idempotent.
      */
-    fun delete(manifest: ModelManifest) {
-        candidateRoots(manifest.id).forEach { root ->
-            if (root.exists()) {
-                runCatching { root.deleteRecursively() }
-                    .onFailure { Log.w(TAG, "delete ${root.absolutePath} failed", it) }
-            }
-        }
+    fun delete(manifest: ModelManifest): Boolean {
+        val dir = File(modelsDir, manifest.id)
+        if (!dir.exists()) return true
+        val ok = dir.deleteRecursively()
+        if (!ok) Log.w(TAG, "delete(${manifest.id}) returned false — partial wipe")
+        else Log.i(TAG, "delete(${manifest.id}) ok")
+        return ok
     }
 
     // ------------------------------------------------------------------
     // Storage-inspection API for the Settings screen.
     // ------------------------------------------------------------------
 
-    /** A single on-disk copy of a model — one [ModelInstance] per
-     *  directory that has at least one of the manifest's parts. */
+    /**
+     * A single on-disk model copy. With single-root storage there is
+     * exactly one [ModelInstance] per modelId — no duplicates, no
+     * canonical-vs-legacy distinction.
+     */
     data class ModelInstance(
         val manifestId: String,
         val displayName: String,
         val rootPath: File,
-        /** true if [rootPath] is the current canonical directory (delete
-         *  candidate is the OPPOSITE — see [findDuplicates]). */
-        val isCanonical: Boolean,
-        /** true if every manifest part is present + size matches. */
+        /** true if every manifest part is present + non-empty. */
         val isComplete: Boolean,
         /** total bytes on disk in [rootPath] including .part sidecars. */
         val sizeBytes: Long,
         /** human-readable list of file names actually present. */
         val filesPresent: List<String>,
+        /** filenames the manifest expects but that are missing on disk. */
+        val filesMissing: List<String>,
     )
 
     /**
-     * Scan EVERY historical storage path for EVERY catalog manifest and
-     * return one [ModelInstance] per directory that has any matching
-     * file. The Settings screen renders this list so the user can see
-     * "OK, I have 4.4 GB at externalFilesDir AND another 4.4 GB at
-     * Documents/, let me clean up".
+     * Walk modelsDir and return one [ModelInstance] per manifest that has
+     * at least one of its parts on disk. Not recursive — sideloads sitting
+     * loose in modelsDir/ won't show up here; they get adopted by
+     * [rescueSideload] on first load attempt.
      */
     fun findAllInstances(catalog: List<ModelManifest>): List<ModelInstance> = buildList {
         for (manifest in catalog) {
-            val roots = candidateRoots(manifest.id)
-            roots.forEachIndexed { index, root ->
-                if (!root.exists() || !root.isDirectory) return@forEachIndexed
-                val files = root.listFiles().orEmpty().filter { it.isFile }
-                if (files.isEmpty()) return@forEachIndexed
-                val expected = manifest.parts.map { it.filename }.toSet()
-                val complete = expected.all { name -> files.any { it.name == name } }
-                add(
-                    ModelInstance(
-                        manifestId = manifest.id,
-                        displayName = manifest.displayName,
-                        rootPath = root,
-                        isCanonical = (index == 0),
-                        isComplete = complete,
-                        sizeBytes = files.sumOf { it.length() },
-                        filesPresent = files.map { it.name }.sorted(),
-                    ),
-                )
-            }
+            val dir = File(modelsDir, manifest.id)
+            if (!dir.exists() || !dir.isDirectory) continue
+            val files = dir.listFiles().orEmpty().filter { it.isFile }
+            if (files.isEmpty()) continue
+            val expected = manifest.parts.map { it.filename }
+            val present = files.map { it.name }.sorted()
+            val missing = expected.filter { name -> files.none { it.name == name } }
+            add(
+                ModelInstance(
+                    manifestId = manifest.id,
+                    displayName = manifest.displayName,
+                    rootPath = dir,
+                    isComplete = missing.isEmpty(),
+                    sizeBytes = files.sumOf { it.length() },
+                    filesPresent = present,
+                    filesMissing = missing,
+                ),
+            )
         }
     }
 
-    /**
-     * Returns instances of [manifestId] that are duplicates — i.e. NOT
-     * the canonical-path copy. Useful for the "Duplikate löschen"
-     * action in Settings.
-     */
-    fun findDuplicates(catalog: List<ModelManifest>): List<ModelInstance> =
-        findAllInstances(catalog).filter { !it.isCanonical }
-
-    /** Delete a specific instance directory by path. Idempotent. */
-    fun deleteInstance(instance: ModelInstance) {
-        if (instance.rootPath.exists()) {
-            runCatching { instance.rootPath.deleteRecursively() }
-                .onFailure { Log.w(TAG, "deleteInstance ${instance.rootPath} failed", it) }
-        }
+    /** Delete a specific instance directory. Boolean-honest. Idempotent. */
+    fun deleteInstance(instance: ModelInstance): Boolean {
+        if (!instance.rootPath.exists()) return true
+        val ok = instance.rootPath.deleteRecursively()
+        if (!ok) Log.w(TAG, "deleteInstance(${instance.rootPath}) returned false")
+        else Log.i(TAG, "deleteInstance(${instance.rootPath}) ok")
+        return ok
     }
 
     /** UUID used as a request-id when the worker prefers one over modelId. */

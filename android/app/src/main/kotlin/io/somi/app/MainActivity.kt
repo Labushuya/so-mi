@@ -64,6 +64,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import io.somi.common.chat.Author
 import io.somi.common.chat.ChatState
+import io.somi.common.chat.ChatState.Companion.banner
+import io.somi.common.chat.ChatState.Companion.unwrap
 import io.somi.common.chat.Message
 import io.somi.ui.chat.ChatViewModel
 
@@ -124,23 +126,20 @@ private fun SoMiAppRoot() {
         }
     }
 
+    val instances by viewModel.instances.collectAsStateWithLifecycle()
+
     if (showSettings) {
-        // Re-list on every show — the user just deleted something.
-        val instances = remember(showSettings) { viewModel.listAllModelInstances() }
-        var refreshKey by remember { mutableStateOf(0) }
-        val currentInstances = remember(refreshKey) { viewModel.listAllModelInstances() }
         SettingsScreen(
-            instances = currentInstances,
-            onDeleteInstance = { inst ->
-                viewModel.deleteModelInstance(inst)
-                refreshKey++
-            },
+            instances = instances,
+            onDeleteInstance = { inst -> viewModel.deleteModelInstance(inst) },
             onClose = { showSettings = false },
         )
         return
     }
 
-    when (state) {
+    // Route on the underlying lifecycle — a WithBanner overlay must not
+    // change which surface the user sees, only paint a banner on top.
+    when (state.unwrap()) {
         is ChatState.NoModelInstalled,
         is ChatState.DownloadingModel,
         -> FirstLaunchScreen(
@@ -162,24 +161,10 @@ private fun SoMiAppRoot() {
             versionCode = BuildConfig.VERSION_CODE,
             onSubmit = viewModel::submit,
             onCancelGeneration = viewModel::cancelGeneration,
+            onRetry = viewModel::retry,
             onOpenSettings = { showSettings = true },
         )
-        is ChatState.Error -> {
-            // Error from an Idle session — show the chat with an error
-            // banner overlaid. FirstLaunchScreen handles errors during
-            // download / load.
-            ChatShellScreen(
-                state = state,
-                messages = messages,
-                boot = boot,
-                versionName = BuildConfig.VERSION_NAME,
-                versionCode = BuildConfig.VERSION_CODE,
-                onSubmit = viewModel::submit,
-                onCancelGeneration = viewModel::cancelGeneration,
-                onRetry = viewModel::retry,
-                onOpenSettings = { showSettings = true },
-            )
-        }
+        is ChatState.WithBanner -> Unit // unreachable: unwrap() never returns WithBanner
     }
 }
 
@@ -196,9 +181,12 @@ private fun ChatShellScreen(
     onOpenSettings: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    val isGenerating = state is ChatState.Generating
-    val partial = (state as? ChatState.Generating)?.partialResponse ?: ""
-    val partialPromptId = (state as? ChatState.Generating)?.promptId ?: -1L
+    // WithBanner over Generating must still drive the live-typing bubble,
+    // so every type-check inspects the unwrapped inner state.
+    val inner = state.unwrap()
+    val isGenerating = inner is ChatState.Generating
+    val partial = (inner as? ChatState.Generating)?.partialResponse ?: ""
+    val partialPromptId = (inner as? ChatState.Generating)?.promptId ?: -1L
 
     Column(
         modifier = Modifier
@@ -215,9 +203,15 @@ private fun ChatShellScreen(
             onOpenSettings = onOpenSettings,
         )
 
-        // Optional error banner above the message list.
-        if (state is ChatState.Error) {
-            ErrorBanner(message = state.message, onRetry = onRetry)
+        // Optional error banner above the message list, sourced from the
+        // WithBanner overlay (companion helper). The banner sits above
+        // whatever lifecycle is rendering — Idle, Generating, anything.
+        val bannerOverlay = state.banner()
+        if (bannerOverlay != null) {
+            ErrorBanner(
+                message = bannerOverlay.message,
+                onRetry = if (bannerOverlay.retryable) onRetry else null,
+            )
         }
 
         // Message history + live-typing bubble for in-flight generation.
@@ -262,7 +256,9 @@ private fun ChatShellScreen(
         }
 
         Composer(
-            enabled = state is ChatState.Idle,
+            // SendButton-enabled gates on the inner lifecycle so a banner
+            // overlay never disables the send action over an Idle screen.
+            enabled = inner is ChatState.Idle,
             isGenerating = isGenerating,
             onSubmit = onSubmit,
             onStop = onCancelGeneration,
@@ -508,13 +504,16 @@ private fun Composer(
         ) {
             BasicTextField(
                 value = input,
-                onValueChange = { if (enabled) input = it },
-                enabled = enabled,
+                // Typing is never blocked. Even when the SendButton is
+                // disabled (loading / generating / banner) the user can
+                // keep drafting their next message — that's the whole
+                // point of the WithBanner refactor (ChatState.kt:36).
+                onValueChange = { input = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 24.dp, max = 140.dp),
                 textStyle = LocalTextStyle.current.copy(
-                    color = if (enabled) songbird.bone else songbird.glass,
+                    color = songbird.bone,
                     fontSize = MaterialTheme.typography.bodyLarge.fontSize,
                 ),
                 cursorBrush = SolidColor(songbird.signal),
@@ -627,11 +626,15 @@ private fun lightGlyph(light: io.somi.data.Light?): String = when (light) {
     null -> ""
 }
 
-private fun chatStateLabel(state: ChatState): String = when (state) {
-    is ChatState.Idle -> "idle"
-    is ChatState.LoadingModel -> "loading"
-    is ChatState.NoModelInstalled -> "no-model"
-    is ChatState.DownloadingModel -> "downloading"
-    is ChatState.Generating -> "generating"
-    is ChatState.Error -> "error"
+private fun chatStateLabel(state: ChatState): String {
+    val hasBanner = state.banner() != null
+    val label = when (state.unwrap()) {
+        is ChatState.Idle -> "idle"
+        is ChatState.LoadingModel -> "loading"
+        is ChatState.NoModelInstalled -> "no-model"
+        is ChatState.DownloadingModel -> "downloading"
+        is ChatState.Generating -> "generating"
+        is ChatState.WithBanner -> "unknown" // unreachable after unwrap()
+    }
+    return if (hasBanner) "$label!" else label
 }

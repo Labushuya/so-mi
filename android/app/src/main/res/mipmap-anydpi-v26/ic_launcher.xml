@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive launcher icon (Android 8+).
+
+  v0.10 redesign: instead of the upstream brand's split foreground/
+  background PNGs, we use:
+   - background = solid Obsidian color drawable (#0A0203). Guarantees
+     the full launcher clip area is filled — eliminates the "white
+     background" launcher render some MagicOS launchers produced when
+     the bundled PNG background was perceived as transparent.
+   - foreground = the master 1024px composite, wrapped in <inset
+     android:inset="20%"> so the visible content sits inside the
+     adaptive-icon safe zone (inner 66dp of 108dp). Without that inset
+     the launcher's clip shape (circle/squircle/teardrop) cropped the
+     octagon corners off the top-level brand image and the icon could
+     read as empty.
+
+  This intentionally drops the per-density mipmap split — the master
+  PNG is large enough (1024px) to scale down to any density without
+  losing the eye detail, and the launcher's adaptive-icon engine
+  already rasterises foreground+background per launcher tile.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background_color" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground_inset" />
+</adaptive-icon>
