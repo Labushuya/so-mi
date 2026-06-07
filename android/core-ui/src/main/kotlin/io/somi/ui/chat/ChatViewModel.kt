@@ -7,9 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.somi.common.chat.Author
 import io.somi.common.chat.ChatState
 import io.somi.common.chat.Message
+import io.somi.data.ChatRepository
 import io.somi.data.DeviceInfo
 import io.somi.data.HardwareDetector
 import io.somi.data.ModelCatalog
@@ -26,14 +26,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
 /**
@@ -64,6 +66,7 @@ class ChatViewModel @Inject constructor(
     private val hardwareDetector: HardwareDetector,
     private val modelManager: ModelManager,
     private val modelStorage: ModelStorage,
+    private val chatRepository: ChatRepository,
     @ApplicationContext private val appContext: Context,
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
@@ -73,8 +76,17 @@ class ChatViewModel @Inject constructor(
     private val _state = MutableStateFlow<ChatState>(ChatState.LoadingModel)
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
-    private val _messages = MutableStateFlow<List<Message>>(emptyList())
-    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+    /**
+     * Persisted history, replayed by Room on every collect. Eagerly
+     * shared so the first frame after process recreate sees the
+     * already-loaded list rather than `emptyList()`.
+     */
+    val messages: StateFlow<List<Message>> = chatRepository.observeMessages()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList(),
+        )
 
     private val _boot = MutableStateFlow<BootSnapshot?>(null)
     val boot: StateFlow<BootSnapshot?> = _boot.asStateFlow()
@@ -92,9 +104,6 @@ class ChatViewModel @Inject constructor(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private val llamaDispatcher = Dispatchers.IO.limitedParallelism(1)
-
-    /** Monotonic id source for [Message.id] and the generating-prompt id. */
-    private val nextMessageId = AtomicLong(1L)
 
     /**
      * Lazy-cached soul.md text. Loaded once via [soulPromptLoader] at
@@ -245,10 +254,11 @@ class ChatViewModel @Inject constructor(
         val text = userText.trim()
         if (text.isEmpty()) return
 
-        val promptId = nextMessageId.getAndIncrement()
-        // Fire on the main scope but pin the actual native work to
-        // [llamaDispatcher] inside [runGeneration].
+        // Phase 3a: persist USER row first; the Room-assigned id becomes
+        // the streaming-bubble promptId, tying the LazyColumn key to the
+        // persisted row.
         generationJob = viewModelScope.launch {
+            val promptId = chatRepository.appendUser(text)
             runGeneration(promptId, text)
         }
     }
@@ -361,18 +371,16 @@ class ChatViewModel @Inject constructor(
 
     // --- Internal: generation -------------------------------------------
 
+    /**
+     * Runs a single user→assistant turn. The USER row has already been
+     * persisted by [submit]; [promptId] is its Room-assigned id. This
+     * function does NOT touch the messages StateFlow directly — inserts
+     * propagate through the Room invalidation tracker via
+     * [chatRepository.observeMessages].
+     */
     private suspend fun runGeneration(promptId: Long, userText: String) {
-        // 1. Append the user message to history.
-        val userMsg = Message(
-            id = promptId,
-            author = Author.USER,
-            text = userText,
-            timestamp = System.currentTimeMillis(),
-        )
-        _messages.value = _messages.value + userMsg
-
-        // 2. Flip into Generating with empty partial. The UI keys the
-        // streaming bubble by promptId.
+        // Flip into Generating with empty partial. The UI keys the
+        // streaming bubble by promptId (== persisted USER row id).
         _state.value = ChatState.Generating(promptId = promptId, partialResponse = "")
 
         val partial = StringBuilder()
@@ -384,9 +392,10 @@ class ChatViewModel @Inject constructor(
                     .cancellable()
                     .collect { chunk ->
                         partial.append(chunk)
-                        // Re-emit Generating with the new partial. Object
-                        // identity changes on every chunk so collectors
-                        // recompose.
+                        // Re-emit Generating with the new partial. The
+                        // partial is NOT persisted in Phase 3a — only
+                        // the final accumulated text hits the DB on the
+                        // commit path below.
                         _state.value = ChatState.Generating(
                             promptId = promptId,
                             partialResponse = partial.toString(),
@@ -395,7 +404,6 @@ class ChatViewModel @Inject constructor(
             }
             completed = true
         } catch (ce: CancellationException) {
-            // User tapped "stop". Fall through to commit partial as final.
             Log.i(TAG, "generation cancelled by user @ promptId=$promptId")
         } catch (t: Throwable) {
             Log.e(TAG, "generation failed @ promptId=$promptId", t)
@@ -408,18 +416,12 @@ class ChatViewModel @Inject constructor(
             generationJob = null
         }
 
-        // 3. Commit the final ASSISTANT message — both natural completion
+        // Commit the final ASSISTANT message — both natural completion
         // and user-cancellation paths land here. If we got zero chunks
         // before cancellation, skip committing an empty bubble.
         val finalText = partial.toString()
         if (finalText.isNotEmpty() || completed) {
-            val assistantMsg = Message(
-                id = nextMessageId.getAndIncrement(),
-                author = Author.ASSISTANT,
-                text = finalText,
-                timestamp = System.currentTimeMillis(),
-            )
-            _messages.value = _messages.value + assistantMsg
+            chatRepository.appendAssistant(finalText)
         }
         _state.value = ChatState.Idle
     }
