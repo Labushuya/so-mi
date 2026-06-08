@@ -45,6 +45,10 @@ dependencies {
     implementation(project(":core-common"))
     implementation(project(":core-llm"))
     implementation(project(":core-data"))
+    // v0.14.0 M6: ChatViewModel wires RagOrchestrator into the
+    // submit-pipeline. core-ui talks to core-rag only through the
+    // narrow RagOrchestrator + SaveOutcome surface.
+    implementation(project(":core-rag"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

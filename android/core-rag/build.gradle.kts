@@ -49,19 +49,34 @@ android {
 
 dependencies {
     implementation(project(":core-common"))
+    // v0.14.0 M2: reuse :core-data's ResumableDownloader + AtomicInstall
+    // for the embedding-model download. Avoids duplicating ~200 lines of
+    // tuned resume + sha256 logic. core-data is already a transitive
+    // sibling of :core-rag in the app graph; the :core-rag → :core-data
+    // edge is a deliberate exception to the "core-* depends only on
+    // core-common" rule, documented in CLAUDE.md.
+    implementation(project(":core-data"))
 
     // Phase-3 deps — see CLAUDE.md "ObjectBox/ONNX lockstep-pin"
     // invariant. Bumping either is a dedicated PR with smoke evidence.
     implementation(libs.objectbox.android)
     implementation(libs.objectbox.kotlin)
-    // ONNX Runtime imported in M1 as deps-only so M2 can land
-    // tokenizer + Embedder.kt without re-touching the deps surface.
     implementation(libs.onnxruntime.android)
 
-    // Hilt for the BoxStore singleton provider.
+    // Hilt for the BoxStore singleton provider + worker factory.
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+
+    // WorkManager for the embedding-model download worker.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
+    // OkHttp (transitive via :core-data, but explicit so :core-rag's
+    // download worker doesn't break if :core-data ever drops it).
+    implementation(libs.okhttp)
 
     // Smoke test exercises the BoxStore round-trip.
     androidTestImplementation(libs.androidx.test.ext.junit)
