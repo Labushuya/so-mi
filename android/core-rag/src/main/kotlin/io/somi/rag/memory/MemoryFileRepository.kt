@@ -1,0 +1,147 @@
+package io.somi.rag.memory
+
+import android.content.Context
+import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * v0.14.0 M4 — Markdown mirror of the conversational memory.
+ *
+ * Disk layout:
+ *
+ *   $externalFilesDir/memory/
+ *       persons.md
+ *       preferences.md
+ *       dates.md
+ *       technical.md
+ *       notes.md
+ *
+ * Why mirror at all: the user wanted user-readable, ADB-pullable
+ * `.md` files (per v0.14.0 planning). ObjectBox is the authoritative
+ * store; the `.md` files are a one-way export. Editing them by hand
+ * has no effect on the engine — the next save() rewrites the file
+ * from the ObjectBox state. Documented in CLAUDE.md.
+ *
+ * **Concurrency.** A single Mutex serializes writes across topics.
+ * The .md files are tiny (kilobytes); contention is unlikely but
+ * a mid-write append from a parallel save would corrupt headers.
+ *
+ * Format:
+ *
+ *     # Personen
+ *     <comment block: "auto-generiert von So-Mi, nicht manuell editieren">
+ *
+ *     - Christopher heißt Christopher (gespeichert: 2026-06-08 15:14)
+ *     - Hat einen Bruder namens Stefan (gespeichert: 2026-06-08 15:30)
+ */
+@Singleton
+class MemoryFileRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
+
+    private val mutex = Mutex()
+
+    val rootDir: File by lazy {
+        val external = context.getExternalFilesDir(null)
+        val target = File(external ?: context.filesDir, "memory")
+        target.mkdirs()
+        Log.i(TAG, "memory root = ${target.absolutePath}")
+        target
+    }
+
+    private fun fileFor(topic: MemoryTopic): File =
+        File(rootDir, "${topic.id}.md")
+
+    /**
+     * Append a single fact to its topic file. Idempotent at the
+     * filesystem level (we never check for duplicates — the
+     * ObjectBox row id is the source of truth, the `.md` is just a
+     * mirror).
+     */
+    suspend fun append(
+        fact: String,
+        topic: MemoryTopic,
+        createdAt: Long = System.currentTimeMillis(),
+    ) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val file = fileFor(topic)
+            if (!file.exists()) writeHeader(file, topic)
+            file.appendText(formatBullet(fact, createdAt))
+        }
+    }
+
+    /**
+     * Rewrite a topic file from the current ObjectBox state. Called
+     * after deletes / moves / edits in the Memory-Browser (M7) so the
+     * `.md` file matches the live store.
+     */
+    suspend fun rewrite(topic: MemoryTopic, facts: List<MemoryFact>) =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val file = fileFor(topic)
+                file.parentFile?.mkdirs()
+                val sb = StringBuilder()
+                appendHeader(sb, topic)
+                for (f in facts.sortedBy { it.createdAt }) {
+                    sb.append(formatBullet(f.fact, f.createdAt))
+                }
+                file.writeText(sb.toString())
+            }
+        }
+
+    /** Wipe a topic file (used by tests + Settings reset). */
+    suspend fun clear(topic: MemoryTopic) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val file = fileFor(topic)
+            if (file.exists()) file.delete()
+        }
+    }
+
+    /** Wipe everything. */
+    suspend fun clearAll() = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            for (topic in MemoryTopic.entries) {
+                val f = fileFor(topic)
+                if (f.exists()) f.delete()
+            }
+        }
+    }
+
+    private fun writeHeader(file: File, topic: MemoryTopic) {
+        val sb = StringBuilder()
+        appendHeader(sb, topic)
+        file.writeText(sb.toString())
+    }
+
+    private fun appendHeader(sb: StringBuilder, topic: MemoryTopic) {
+        sb.append("# ").append(topic.displayName).append('\n')
+        sb.append("\n")
+        sb.append("<!-- Auto-generiert von So-Mi. ObjectBox ist die ")
+        sb.append("Quelle der Wahrheit; manuelle Änderungen werden ")
+        sb.append("beim nächsten Speichern überschrieben. -->\n")
+        sb.append("\n")
+    }
+
+    private fun formatBullet(fact: String, createdAt: Long): String {
+        val ts = TIMESTAMP_FORMAT.format(Date(createdAt))
+        // Single-line bullets only — newlines in the fact text get
+        // collapsed to spaces so the bullet stays one logical row.
+        val safe = fact.replace('\n', ' ').replace('\r', ' ').trim()
+        return "- $safe  _(gespeichert: $ts)_\n"
+    }
+
+    private companion object {
+        const val TAG = "MemoryFileRepository"
+        val TIMESTAMP_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.GERMAN)
+    }
+}

@@ -32,8 +32,12 @@ import kotlin.coroutines.coroutineContext
  *  - HTTP 416 (Requested Range Not Satisfiable) means our existing
  *    partial is at-or-past the file size — caller should delete the
  *    .part and retry from byte 0.
+ *
+ * v0.14.0: visibility opened to `public` so :core-rag's embedding
+ * download worker can reuse it instead of duplicating ~150 lines of
+ * carefully-tuned resume + hash logic. Behavior unchanged.
  */
-internal class ResumableDownloader(private val client: OkHttpClient) {
+class ResumableDownloader(private val client: OkHttpClient) {
 
     data class Result(
         val sha256Hex: String,

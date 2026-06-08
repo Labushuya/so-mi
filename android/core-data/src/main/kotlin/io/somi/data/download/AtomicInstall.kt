@@ -16,8 +16,12 @@ import java.nio.file.StandardCopyOption
  * ending in .part. Only after a successful SHA-256 match do we rename
  * atomically — readers therefore either see no file or a complete,
  * verified file, never a torn one.
+ *
+ * v0.14.0: visibility opened to `public` so :core-rag's embedding
+ * download worker can reuse the same atomic-promote contract instead
+ * of duplicating the logic. Behavior unchanged.
  */
-internal object AtomicInstall {
+object AtomicInstall {
 
     /**
      * Promote a verified .part to its final filename, atomically when

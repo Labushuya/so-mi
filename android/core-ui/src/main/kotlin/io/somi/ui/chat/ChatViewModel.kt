@@ -86,6 +86,7 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val samplerSettings: io.somi.data.settings.SamplerSettingsRepository,
     val soulRepository: io.somi.data.soul.SoulRepository,
+    private val ragOrchestrator: io.somi.rag.RagOrchestrator,
     @ApplicationContext private val appContext: Context,
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
@@ -371,8 +372,16 @@ class ChatViewModel @Inject constructor(
             Log.w(TAG, "submit() ignored — lifecycle=${_lifecycle.value}")
             return
         }
-        if (_generation.value != null) {
-            Log.w(TAG, "submit() ignored — generation already running")
+        // v0.14.0 M6: gate on generationJob.isActive, NOT _generation.value.
+        // _generation.value is set inside runGeneration AFTER appendUser
+        // and handleRagTrigger have already suspended — leaving a
+        // multi-hundred-millisecond window where a double-tap would
+        // launch a parallel pipeline (duplicate USER rows, duplicate
+        // memory saves, KV cache corruption when both runGenerations
+        // serialize on the llama dispatcher). generationJob is assigned
+        // synchronously below so this gate closes the window.
+        if (generationJob?.isActive == true) {
+            Log.w(TAG, "submit() ignored — generation already running (job active)")
             return
         }
         val text = userText.trim()
@@ -383,10 +392,55 @@ class ChatViewModel @Inject constructor(
 
         // Phase 3a: persist USER row first; the Room-assigned id becomes
         // the streaming-bubble promptId.
+        // v0.14.0 M6: BEFORE generation, run the RagOrchestrator
+        // trigger pipeline. If "merk dir …" or similar fires, save
+        // the fact + emit a short "Hab ich."-bubble. Then proceed with
+        // the LLM generation as normal so follow-ups work without
+        // a second tap.
         generationJob = viewModelScope.launch {
             val promptId = chatRepository.appendUser(text)
-            runGeneration(promptId, text)
+            val ragOutcome = handleRagTrigger(text)
+            // If the trigger fired AND we successfully saved, the LLM
+            // sees a stripped query (no "merk dir, " prefix) so it
+            // doesn't echo the trigger phrase back at the user. On
+            // EMBEDDER_NOT_READY / NotTriggered we pass the original
+            // text through.
+            val llmInput = when (ragOutcome) {
+                is io.somi.rag.SaveOutcome.Saved -> ragOutcome.factText
+                else -> text
+            }
+            runGeneration(promptId, llmInput)
         }
+    }
+
+    /**
+     * Runs the trigger → embed → save → mirror pipeline.
+     * Returns the [SaveOutcome] so the caller can decide what to do
+     * with the LLM input (ack-only vs. forward to LLM).
+     */
+    private suspend fun handleRagTrigger(userText: String): io.somi.rag.SaveOutcome {
+        val outcome = runCatching { ragOrchestrator.maybeSaveOnSubmit(userText) }
+            .onFailure { Log.w(TAG, "rag orchestrator threw", it) }
+            .getOrDefault(io.somi.rag.SaveOutcome.NotTriggered)
+        when (outcome) {
+            is io.somi.rag.SaveOutcome.NotTriggered -> Unit
+            is io.somi.rag.SaveOutcome.Saved -> {
+                // Render an in-character ack as a fresh assistant
+                // bubble. Persisted in Room so it survives process
+                // recreation and shows up like any other message.
+                chatRepository.appendAssistant(SAVE_ACK_TEXT)
+            }
+            is io.somi.rag.SaveOutcome.SaveFailed -> {
+                val msg = when (outcome.reason) {
+                    io.somi.rag.SaveFailureReason.EMBEDDER_NOT_READY ->
+                        "Erinnerungs-Modell lädt noch — bei nächster Antwort merk ich's mir."
+                    io.somi.rag.SaveFailureReason.IO ->
+                        "Hab das gerade nicht weggeschrieben gekriegt. Sag's gleich nochmal."
+                }
+                surfaceError(msg, retryable = false, cause = outcome.cause)
+            }
+        }
+        return outcome
     }
 
     /**
@@ -726,5 +780,11 @@ class ChatViewModel @Inject constructor(
         const val TAG = "ChatViewModel"
         const val MAX_SYSTEM_PROMPT_CHARS = 1200
         const val LOAD_TIMEOUT_MS = 180_000L
+
+        // v0.14.0 M6 — in-character ack bubble after a "merk dir"
+        // trigger fires. Short by design; soul.md prefers terse over
+        // chatty. M9's classifier may eventually replace this with
+        // bucket-aware acks ("Notiert unter Personen.").
+        const val SAVE_ACK_TEXT = "Hab ich."
     }
 }
