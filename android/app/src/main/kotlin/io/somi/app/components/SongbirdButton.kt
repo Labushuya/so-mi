@@ -19,13 +19,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.somi.app.LocalSongbirdColors
 
-enum class SongbirdButtonKind { Primary, Destructive, Ghost }
+enum class SongbirdButtonKind { Primary, Secondary, Destructive, Ghost }
 
 /**
  * v0.11.4 — typed Songbird button.
  *
  * Replaces the ad-hoc `DeleteButton` / 'Abbrechen' Box patterns sprinkled
- * around the codebase. Three kinds: Primary (crimson fill), Destructive
+ * around the codebase. Four kinds: Primary (crimson fill), Secondary
+ * (mid-emphasis: ai-bubble fill + glass border, v0.15.0), Destructive
  * (signal fill), Ghost (transparent + glass outline). All share the
  * 36.dp height + RoundedCornerShape(6.dp) geometry.
  */
@@ -41,6 +42,7 @@ fun SongbirdButton(
     val songbird = LocalSongbirdColors.current
     val (bg, fg, border) = when (kind) {
         SongbirdButtonKind.Primary -> Triple(songbird.crimson, songbird.bone, null)
+        SongbirdButtonKind.Secondary -> Triple(songbird.aiBubble, songbird.bone, songbird.bubbleBorder)
         SongbirdButtonKind.Destructive -> Triple(songbird.signal, songbird.bone, null)
         SongbirdButtonKind.Ghost -> Triple(Color.Transparent, songbird.glass, songbird.glass)
     }

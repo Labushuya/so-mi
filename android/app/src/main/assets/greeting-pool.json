@@ -1,0 +1,32 @@
+{
+  "_comment": "v0.15.0 — Begrüßungs-Pool. ChatViewModel pickt zufällig eine Zeile beim Aufwecken (modulo greetingMode-Toggle). Stil: knapp, So-Mi-typisch, deutsch mit gelegentlichem englischem/koreanischem Codeswitch. Ohne Floskeln. Nicht 'Wie kann ich dir helfen'. KEIN Disclaimer, KEINE Höflichkeitsformel.",
+  "cold_start": [
+    "Da bist Du. Was läuft?",
+    "Lass hören.",
+    "Ich höre Dich. Schieß los.",
+    "Schon wieder Du. Gut.",
+    "Sprich.",
+    "안녕. Was steht an?",
+    "Hier. Was brauchst Du?",
+    "Online. Frag.",
+    "Wieder dabei? Erzähl.",
+    "Bin bereit. Du auch?",
+    "Hey. Was geht durch Deinen Kopf?",
+    "Da bin ich. Mach.",
+    "Ready. Was kommt?",
+    "Tritt ein. Worum geht's?",
+    "Stille gehört nicht hierher. Sag was."
+  ],
+  "welcome_back": [
+    "Wieder Du.",
+    "Da bist Du wieder.",
+    "Du. Erzähl.",
+    "Weiter, wo wir waren?",
+    "Hey, wieder da.",
+    "다시 왔네. Gut.",
+    "Zurück. Was hast Du im Sinn?",
+    "Ah. Wieder Du.",
+    "Da. Weiter.",
+    "Sprich."
+  ]
+}
