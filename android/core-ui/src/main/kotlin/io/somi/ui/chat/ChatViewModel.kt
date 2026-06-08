@@ -581,7 +581,7 @@ class ChatViewModel @Inject constructor(
             try {
                 val wm = androidx.work.WorkManager.getInstance(appContext)
                 wm.getWorkInfosForUniqueWorkFlow(
-                    io.somi.rag.download.EmbeddingModelDownloadWorker.WORK_NAME,
+                    ragBootstrap.embedderWorkName,
                 ).collectLatest { infos ->
                     val installed = ragBootstrap.isEmbedderInstalled()
                     if (installed) {
@@ -628,7 +628,7 @@ class ChatViewModel @Inject constructor(
             // operation so we don't race the file delete.
             try {
                 val wm = androidx.work.WorkManager.getInstance(appContext)
-                wm.cancelUniqueWork(io.somi.rag.download.EmbeddingModelDownloadWorker.WORK_NAME)
+                wm.cancelUniqueWork(ragBootstrap.embedderWorkName)
                     .result.get()
             } catch (t: Throwable) {
                 Log.w(TAG, "cancelUniqueWork before reinstall failed (continuing anyway)", t)
