@@ -21,6 +21,18 @@ plugins {
 // classpath dep is pulled in the root buildscript block.
 apply(plugin = "io.objectbox")
 
+// v0.14.1: ObjectBox 4.0.3 has a configuration-cache bug — its
+// `objectboxPrepareBuild` task captures a Project reference, which
+// Gradle 8.10's Config-Cache (on by default) rejects. Mark the task
+// incompatible so the build skips caching that task; everything else
+// stays cached. Fixed upstream in 4.1+; bump in lockstep with smoke
+// tests when upgrading.
+tasks.matching { it.name == "objectboxPrepareBuild" }.configureEach {
+    notCompatibleWithConfigurationCache(
+        "ObjectBox 4.0.3 PrepareTask captures Project reference"
+    )
+}
+
 android {
     namespace = "io.somi.rag"
     compileSdk = 35
