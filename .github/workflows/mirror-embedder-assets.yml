@@ -1,0 +1,66 @@
+# yamllint disable rule:line-length
+#
+# v0.15.0 — Embedder-Asset-Mirror auf GitHub Releases.
+#
+# Purpose: ein zweiter, von uns kontrollierter Download-Pfad für
+# das Embedder-Modell (model.onnx + tokenizer.json), falls
+# Hugging Face mal blockiert / langsam / down ist.
+#
+# Manuell auslösbar (workflow_dispatch). Lädt die Dateien von HF
+# herunter, verifiziert SHA-256, und veröffentlicht sie unter dem
+# Tag `embedder-assets` auf diesem Repo. Idempotent: wenn der Tag
+# schon existiert, werden Assets ersetzt (`gh release upload --clobber`).
+#
+# Die App konsumiert diese Mirror-URLs in EmbeddingModelCatalog:
+#
+#     https://github.com/Labushuya/so-mi/releases/download/embedder-assets/model.onnx
+#     https://github.com/Labushuya/so-mi/releases/download/embedder-assets/tokenizer.json
+#
+# Wird NICHT von release-please getriggert — getrennter Lifecycle.
+name: Mirror embedder assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download model.onnx from Hugging Face
+        run: |
+          set -euo pipefail
+          curl -L --fail --output model.onnx \
+            "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx"
+          echo "10f7a088420252b26caf819236ca2c9d2987afd0fc06fec7553b542a5655a05a  model.onnx" | sha256sum -c -
+
+      - name: Download tokenizer.json from Hugging Face
+        run: |
+          set -euo pipefail
+          curl -L --fail --output tokenizer.json \
+            "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json"
+          echo "2c3387be76557bd40970cec13153b3bbf80407865484b209e655e5e4729076b8  tokenizer.json" | sha256sum -c -
+
+      - name: Ensure tag and release exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! gh release view embedder-assets >/dev/null 2>&1; then
+            gh release create embedder-assets \
+              --title "Embedder assets (paraphrase-multilingual-MiniLM-L12-v2)" \
+              --notes "Mirror der Hugging-Face-Artefakte. SHA-256-verifiziert vom CI vor Upload. Failover-Pfad für die App." \
+              --target "$GITHUB_SHA"
+          fi
+
+      - name: Upload (or replace) assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload embedder-assets model.onnx tokenizer.json --clobber
