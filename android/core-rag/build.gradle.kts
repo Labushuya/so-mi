@@ -12,12 +12,14 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    // io.objectbox MUST be applied AFTER kotlin-android per the
-    // ObjectBox docs — its KSP processor reads kotlin metadata to
-    // generate the MyObjectBox schema, so the kotlin plugin has to
-    // see entities first.
-    alias(libs.plugins.objectbox)
 }
+
+// io.objectbox MUST be applied AFTER kotlin-android per the ObjectBox
+// docs — its annotation processor reads Kotlin metadata to generate
+// MyObjectBox. Applied via legacy plugin-id syntax because the
+// ObjectBox project doesn't publish a Plugin Portal marker; the
+// classpath dep is pulled in the root buildscript block.
+apply(plugin = "io.objectbox")
 
 android {
     namespace = "io.somi.rag"

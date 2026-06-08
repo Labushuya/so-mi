@@ -120,6 +120,11 @@ androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core",
 # arm64-only via abiFilters; pin exactly per the lockstep rule above.
 objectbox-android = { module = "io.objectbox:objectbox-android", version.ref = "objectbox" }
 objectbox-kotlin = { module = "io.objectbox:objectbox-kotlin", version.ref = "objectbox" }
+# ObjectBox Gradle plugin lives on Maven Central but does NOT publish a
+# Plugin Portal marker, so we pull it as a buildscript classpath in the
+# root build.gradle.kts and apply it via the legacy plugin-id syntax in
+# :core-rag instead of the alias(libs.plugins...) shortcut.
+objectbox-gradle-plugin = { module = "io.objectbox:objectbox-gradle-plugin", version.ref = "objectbox" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 
 [plugins]
@@ -131,7 +136,6 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
-objectbox = { id = "io.objectbox", version.ref = "objectbox" }
 
 [bundles]
 compose-ui = [
