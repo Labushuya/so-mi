@@ -21,6 +21,7 @@ import io.somi.data.Recommendation
 import io.somi.data.recommendModelTier
 import io.somi.llm.LlamaContext
 import io.somi.llm.SoulPromptLoader
+import io.somi.rag.RagBootstrap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,6 +88,8 @@ class ChatViewModel @Inject constructor(
     private val samplerSettings: io.somi.data.settings.SamplerSettingsRepository,
     val soulRepository: io.somi.data.soul.SoulRepository,
     private val ragOrchestrator: io.somi.rag.RagOrchestrator,
+    val uiSettings: io.somi.data.settings.UiSettingsRepository,
+    private val ragBootstrap: RagBootstrap,
     @ApplicationContext private val appContext: Context,
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
@@ -228,6 +231,19 @@ class ChatViewModel @Inject constructor(
     private var downloadObserveJob: Job? = null
 
     init {
+        // v0.15.0 — observe the embedder download for the Settings UI.
+        // Cheap (a single Flow collector, no work until WorkManager has
+        // something to report). Started here, not lazily, because the
+        // Settings screen reads the StateFlow eagerly.
+        startObservingEmbedderStatus()
+
+        // v0.15.0 — greeting hook. Reacts to the FIRST transition into
+        // Lifecycle.Ready per process launch (cold start) and to every
+        // subsequent Ready→Ready re-entry that follows a stop/restart
+        // gap longer than [GREETING_GAP_MS]. The Settings toggle decides
+        // whether either of those fires.
+        startGreetingHook()
+
         // Boot-time work: hardware probe, soul.md cache, on-disk scan.
         // All three are independent and I/O-bound, so we run them as
         // parallel async{}s. The whole block is wrapped in try/catch:
@@ -304,6 +320,17 @@ class ChatViewModel @Inject constructor(
         downloadObserveJob?.cancel()
         downloadObserveJob = null
         _errorBanner.value = null
+
+        // v0.15.0 KV-trample-fix: cancel any in-flight generation BEFORE
+        // we hand the dispatcher to a load() of a different model.
+        // Without this, an active generation against the OLD model would
+        // race the new load(), corrupting the upstream KV cache (the
+        // engine is a process-wide singleton; load() on file B while
+        // generate() is mid-decode against file A leaves the state
+        // machine in an unrecoverable mix). Was previously fixed only
+        // for deleteModelInstance(); now also covers picker-driven swap.
+        generationJob?.cancel()
+        _generation.value = null
 
         if (modelStorage.rescueSideload(manifest)) {
             // v0.13.0: same engine-already-loaded short-circuit as init.
@@ -518,6 +545,175 @@ class ChatViewModel @Inject constructor(
     /** Force-refresh the on-disk model inventory. */
     fun refreshInstances() {
         _instances.value = modelStorage.findAllInstances(ModelCatalog.ALL)
+    }
+
+    // ---------------------------------------------------------------
+    // v0.15.0 — embedder-download visibility & manual ops.
+    //
+    // The user reported in v0.14.3 that they had no way to tell whether
+    // the embedder was downloading, had finished, or had failed silently.
+    // The Settings → Downloads section consumes [embedderStatus] and
+    // exposes the buttons backed by the methods below.
+    // ---------------------------------------------------------------
+
+    /**
+     * Snapshot of the embedder-download status for the Settings UI.
+     *
+     * **Disk-installed wins.** Once the artifact passes the SHA-check
+     * and lives at the catalog path, it stays installed even if the
+     * worker row was pruned by WorkManager's GC after 7 days. So the
+     * Settings UI must consult disk first and only fall back to the
+     * worker state for "currently running / queued / failed".
+     */
+    enum class EmbedderStatus { Installed, Running, Enqueued, Failed, NotPresent }
+
+    private val _embedderStatus = MutableStateFlow(currentEmbedderStatus())
+    val embedderStatus: StateFlow<EmbedderStatus> = _embedderStatus.asStateFlow()
+
+    private fun currentEmbedderStatus(): EmbedderStatus =
+        if (ragBootstrap.isEmbedderInstalled()) EmbedderStatus.Installed
+        else EmbedderStatus.NotPresent
+
+    /** Hook the WorkManager flow once Hilt has handed us appContext. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun startObservingEmbedderStatus() {
+        viewModelScope.launch {
+            try {
+                val wm = androidx.work.WorkManager.getInstance(appContext)
+                wm.getWorkInfosForUniqueWorkFlow(
+                    io.somi.rag.download.EmbeddingModelDownloadWorker.WORK_NAME,
+                ).collectLatest { infos ->
+                    val installed = ragBootstrap.isEmbedderInstalled()
+                    if (installed) {
+                        _embedderStatus.value = EmbedderStatus.Installed
+                        return@collectLatest
+                    }
+                    val info = infos.firstOrNull()
+                    _embedderStatus.value = when (info?.state) {
+                        androidx.work.WorkInfo.State.RUNNING -> EmbedderStatus.Running
+                        androidx.work.WorkInfo.State.ENQUEUED,
+                        androidx.work.WorkInfo.State.BLOCKED -> EmbedderStatus.Enqueued
+                        androidx.work.WorkInfo.State.FAILED,
+                        androidx.work.WorkInfo.State.CANCELLED -> EmbedderStatus.Failed
+                        androidx.work.WorkInfo.State.SUCCEEDED -> EmbedderStatus.Installed
+                        else -> EmbedderStatus.NotPresent
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "embedder-status observer failed", t)
+            }
+        }
+    }
+
+    /**
+     * v0.15.0 — User-triggered embedder re-enqueue. Used from the
+     * Settings → Downloads section when the user wants to retry a
+     * failed download. Uses REPLACE policy so a stuck FAILED row
+     * doesn't block the new run.
+     */
+    fun manualEnqueueEmbedder() {
+        ragBootstrap.forceEnqueueEmbedderDownload(appContext)
+    }
+
+    /**
+     * v0.15.0 — User-triggered embedder delete + re-enqueue. Cancels
+     * any in-flight worker FIRST so its `model.onnx.part` write
+     * doesn't race the recursive directory delete (would either
+     * crash with ENOENT or leave a half-written file that survives
+     * the delete and the next run would SHA-fail on).
+     */
+    fun reinstallEmbedder() {
+        viewModelScope.launch {
+            // Cancel any RUNNING/ENQUEUED worker first; await the
+            // operation so we don't race the file delete.
+            try {
+                val wm = androidx.work.WorkManager.getInstance(appContext)
+                wm.cancelUniqueWork(io.somi.rag.download.EmbeddingModelDownloadWorker.WORK_NAME)
+                    .result.get()
+            } catch (t: Throwable) {
+                Log.w(TAG, "cancelUniqueWork before reinstall failed (continuing anyway)", t)
+            }
+            ragBootstrap.deleteEmbedder()
+            _embedderStatus.value = EmbedderStatus.NotPresent
+            ragBootstrap.forceEnqueueEmbedderDownload(appContext)
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // v0.15.0 — Greeting hook.
+    //
+    // Drops a single ASSISTANT message into the chat without invoking
+    // the LLM, modulo the GreetingMode toggle:
+    //   FULL       → on every Ready transition once the chat has been
+    //                idle for >= GREETING_GAP_MS
+    //   COLD_START → only on the first Ready of the process
+    //   NONE       → never
+    // ---------------------------------------------------------------
+
+    private var lastGreetedAt: Long = 0L
+    private var coldGreetingDone: Boolean = false
+
+    private fun startGreetingHook() {
+        viewModelScope.launch {
+            _lifecycle.collectLatest { state ->
+                if (state != Lifecycle.Ready) return@collectLatest
+                val mode = uiSettings.state.value.greetingMode
+                if (mode == io.somi.data.settings.GreetingMode.NONE) return@collectLatest
+
+                val now = System.currentTimeMillis()
+                val shouldGreet = when (mode) {
+                    io.somi.data.settings.GreetingMode.COLD_START -> !coldGreetingDone
+                    io.somi.data.settings.GreetingMode.FULL ->
+                        !coldGreetingDone || (now - lastGreetedAt) >= GREETING_GAP_MS
+                    io.somi.data.settings.GreetingMode.NONE -> false
+                }
+                if (!shouldGreet) return@collectLatest
+
+                // v0.15.0 — pool load + line pick + persist all on IO.
+                // viewModelScope defaults to Main.immediate; AssetManager
+                // open + JSON parse + Room insert have no business on
+                // the main thread.
+                withContext(Dispatchers.IO) {
+                    val pool = greetingPool ?: runCatching { loadGreetingPool() }
+                        .onSuccess { greetingPool = it }
+                        .getOrNull()
+                    val line = pool?.pick(coldStart = !coldGreetingDone)
+                    if (line != null) {
+                        runCatching { chatRepository.appendAssistant(line) }
+                            .onFailure { Log.w(TAG, "greeting append failed", it) }
+                    }
+                }
+                coldGreetingDone = true
+                lastGreetedAt = now
+            }
+        }
+    }
+
+    private var greetingPool: GreetingPool? = null
+
+    private data class GreetingPool(
+        val coldStart: List<String>,
+        val welcomeBack: List<String>,
+    ) {
+        // Index-based pseudo-random: System.nanoTime mod size, no
+        // RNG state needed, no java.util.Random allocation.
+        fun pick(coldStart: Boolean): String? {
+            val list = if (coldStart) this.coldStart else welcomeBack
+            if (list.isEmpty()) return null
+            val idx = (System.nanoTime() % list.size).toInt().let { if (it < 0) it + list.size else it }
+            return list[idx]
+        }
+    }
+
+    private fun loadGreetingPool(): GreetingPool {
+        val text = appContext.assets.open("greeting-pool.json").bufferedReader().use { it.readText() }
+        val obj = org.json.JSONObject(text)
+        val cold = obj.optJSONArray("cold_start")
+        val back = obj.optJSONArray("welcome_back")
+        return GreetingPool(
+            coldStart = (0 until (cold?.length() ?: 0)).map { cold!!.getString(it) },
+            welcomeBack = (0 until (back?.length() ?: 0)).map { back!!.getString(it) },
+        )
     }
 
     /**
@@ -780,6 +976,16 @@ class ChatViewModel @Inject constructor(
         const val TAG = "ChatViewModel"
         const val MAX_SYSTEM_PROMPT_CHARS = 1200
         const val LOAD_TIMEOUT_MS = 180_000L
+
+        /**
+         * v0.15.0 — gap after which a Ready→Ready re-entry counts as a
+         * fresh "welcome back" instead of an in-session refresh. 5 min
+         * matches MagicOS's typical background-resume window. Below
+         * this, the user almost certainly just rotated the device or
+         * popped a different app for a moment — greeting them again
+         * would be noise.
+         */
+        const val GREETING_GAP_MS = 5L * 60 * 1000
 
         // v0.14.0 M6 — in-character ack bubble after a "merk dir"
         // trigger fires. Short by design; soul.md prefers terse over

@@ -52,9 +52,9 @@ class MemoryFileRepository @Inject constructor(
     private val mutex = Mutex()
 
     val rootDir: File by lazy {
-        val external = context.getExternalFilesDir(null)
-        val target = File(external ?: context.filesDir, "memory")
-        target.mkdirs()
+        // v0.15.0: was externalFilesDir/memory directly; now under
+        // SoMi/memory/ for unified user-visible path.
+        val target = io.somi.data.StorageRoots.memory(context)
         Log.i(TAG, "memory root = ${target.absolutePath}")
         target
     }

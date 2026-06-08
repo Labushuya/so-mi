@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+v0.15.0 — FileProvider paths.
+Primärer Pfad: SoMi/ unter externalFilesDir.
+Fallback: SoMi/ unter filesDir, falls externalFilesDir auf einem
+exotischen Gerät null zurückgibt (StorageRoots fällt darauf zurück).
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-files-path
+        name="somi-root"
+        path="SoMi/" />
+    <files-path
+        name="somi-root-fallback"
+        path="SoMi/" />
+</paths>

@@ -3,6 +3,7 @@ package io.somi.data.soul
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.somi.data.StorageRoots
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,11 +35,13 @@ class SoulRepository @Inject constructor(
 ) {
 
     private val rootDir: File by lazy {
-        File(context.filesDir, "soul").apply { mkdirs() }
+        // v0.15.0: was filesDir/soul, now externalFilesDir/SoMi/soul/
+        // for user-visibility per StorageRoots consolidation.
+        StorageRoots.soul(context)
     }
 
     private val backupsDir: File by lazy {
-        File(rootDir, "backups").apply { mkdirs() }
+        StorageRoots.soulBackups(context)
     }
 
     private val overrideFile: File get() = File(rootDir, "soul.md")

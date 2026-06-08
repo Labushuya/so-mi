@@ -70,33 +70,84 @@ internal class EmbeddingModelDownloadWorker @AssistedInject constructor(
                     continue
                 }
 
+                // v0.15.0 — try bundled asset first. If the APK ships
+                // the file, copy + SHA-verify locally and skip the
+                // network entirely. Used today for tokenizer.json.
+                if (part.bundledAsset != null) {
+                    val seeded = trySeedFromAsset(
+                        assetName = part.bundledAsset,
+                        finalFile = finalFile,
+                        expectedSha256 = part.sha256,
+                    )
+                    if (seeded) {
+                        Log.i(TAG, "${part.filename} seeded from APK asset ${part.bundledAsset}")
+                        bytesDoneAcrossParts += part.sizeBytes
+                        setProgress(progressData(bytesDoneAcrossParts, totalBytes, index + 1, model.parts.size))
+                        continue
+                    }
+                    // Fall through to the network path on any failure.
+                }
+
                 val partFile = storage.partFile(model.id, part.filename)
                 val partStartingAt = bytesDoneAcrossParts
 
-                val result = downloader.download(
-                    url = part.url,
-                    partFile = partFile,
-                    userAgent = USER_AGENT,
-                ) { downloadedThisPart, _ ->
-                    val total = partStartingAt + downloadedThisPart
-                    maybeUpdateProgress(total, totalBytes, partLabel)
-                    setProgress(progressData(total, totalBytes, index + 1, model.parts.size))
+                // v0.15.0 — iterate mirror URLs in order, take the
+                // first one whose body matches part.sha256. urls is
+                // List<String>; legacy single-URL parts are migrated
+                // to a one-element list at the catalog layer.
+                val urls = part.urls
+                require(urls.isNotEmpty()) { "no URLs configured for ${part.filename}" }
+
+                var lastSha: String? = null
+                var promoted = false
+                for ((urlIdx, candidateUrl) in urls.withIndex()) {
+                    // Always start with a clean .part for a new mirror —
+                    // resuming a partial body across mirrors is unsafe
+                    // (servers can disagree on byte order or compression).
+                    AtomicInstall.cleanupOnFailure(partFile)
+
+                    val result = try {
+                        downloader.download(
+                            url = candidateUrl,
+                            partFile = partFile,
+                            userAgent = USER_AGENT,
+                        ) { downloadedThisPart, _ ->
+                            val total = partStartingAt + downloadedThisPart
+                            maybeUpdateProgress(total, totalBytes, partLabel)
+                            setProgress(progressData(total, totalBytes, index + 1, model.parts.size))
+                        }
+                    } catch (io: IOException) {
+                        Log.w(TAG, "mirror ${urlIdx + 1}/${urls.size} for ${part.filename} threw; trying next", io)
+                        if (urlIdx == urls.lastIndex) throw io
+                        continue
+                    }
+
+                    // Verify before promoting.
+                    setProgress(
+                        workDataOf(
+                            KEY_BYTES_DONE to bytesDoneAcrossParts + part.sizeBytes,
+                            KEY_BYTES_TOTAL to totalBytes,
+                            KEY_CURRENT_PART to index + 1,
+                            KEY_TOTAL_PARTS to model.parts.size,
+                            KEY_VERIFYING to true,
+                        ),
+                    )
+                    lastSha = result.sha256Hex
+                    if (!result.sha256Hex.equals(part.sha256, ignoreCase = true)) {
+                        Log.w(TAG, "sha mismatch on ${part.filename} from " +
+                            "mirror ${urlIdx + 1}/${urls.size}: " +
+                            "expected=${part.sha256} got=${result.sha256Hex}; trying next mirror")
+                        AtomicInstall.cleanupOnFailure(partFile)
+                        continue
+                    }
+
+                    AtomicInstall.promote(partFile, finalFile)
+                    promoted = true
+                    break
                 }
 
-                // Verify before promoting.
-                setProgress(
-                    workDataOf(
-                        KEY_BYTES_DONE to bytesDoneAcrossParts + part.sizeBytes,
-                        KEY_BYTES_TOTAL to totalBytes,
-                        KEY_CURRENT_PART to index + 1,
-                        KEY_TOTAL_PARTS to model.parts.size,
-                        KEY_VERIFYING to true,
-                    ),
-                )
-                if (!result.sha256Hex.equals(part.sha256, ignoreCase = true)) {
-                    Log.e(TAG, "sha mismatch on ${part.filename}: " +
-                        "expected=${part.sha256} got=${result.sha256Hex}")
-                    AtomicInstall.cleanupOnFailure(partFile)
+                if (!promoted) {
+                    Log.e(TAG, "all mirrors exhausted for ${part.filename}; lastSha=$lastSha")
                     return@withContext Result.failure(
                         workDataOf(
                             KEY_REASON to REASON_CHECKSUM_MISMATCH,
@@ -105,7 +156,6 @@ internal class EmbeddingModelDownloadWorker @AssistedInject constructor(
                     )
                 }
 
-                AtomicInstall.promote(partFile, finalFile)
                 bytesDoneAcrossParts += part.sizeBytes
                 setProgress(progressData(bytesDoneAcrossParts, totalBytes, index + 1, model.parts.size))
             }
@@ -118,6 +168,53 @@ internal class EmbeddingModelDownloadWorker @AssistedInject constructor(
         } catch (t: Throwable) {
             Log.e(TAG, "unexpected failure", t)
             return@withContext Result.failure(workDataOf(KEY_REASON to REASON_UNKNOWN))
+        }
+    }
+
+    /**
+     * v0.15.0 — copy a bundled asset into the embedder cache and
+     * SHA-verify it. Returns true on a verified install; false on
+     * any failure (asset missing, mismatch, IO). Caller falls back
+     * to the network path on false.
+     */
+    private fun trySeedFromAsset(
+        assetName: String,
+        finalFile: java.io.File,
+        expectedSha256: String,
+    ): Boolean {
+        return try {
+            finalFile.parentFile?.mkdirs()
+            val tmp = java.io.File(finalFile.parentFile, finalFile.name + ".asset")
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            applicationContext.assets.open(assetName).use { input ->
+                java.io.FileOutputStream(tmp).use { out ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n <= 0) break
+                        digest.update(buffer, 0, n)
+                        out.write(buffer, 0, n)
+                    }
+                    out.fd.sync()
+                }
+            }
+            val sha = digest.digest().joinToString("") { "%02x".format(it) }
+            if (!sha.equals(expectedSha256, ignoreCase = true)) {
+                Log.w(TAG, "asset sha mismatch for $assetName: expected=$expectedSha256 got=$sha")
+                tmp.delete()
+                return false
+            }
+            // Atomic-ish promote: rename onto the final path.
+            if (finalFile.exists()) finalFile.delete()
+            if (!tmp.renameTo(finalFile)) {
+                Log.w(TAG, "asset rename failed for $assetName")
+                tmp.delete()
+                return false
+            }
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "asset seed failed for $assetName", t)
+            false
         }
     }
 

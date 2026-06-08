@@ -9,6 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import javax.inject.Inject
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -87,6 +91,9 @@ import io.somi.ui.chat.ChatViewModel
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var uiSettingsRepository: io.somi.data.settings.UiSettingsRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -100,6 +107,25 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(SONGBIRD_OBSIDIAN_ARGB),
             navigationBarStyle = SystemBarStyle.dark(SONGBIRD_OBSIDIAN_ARGB),
         )
+
+        // v0.15.0: true fullscreen / immersive mode. User explicitly
+        // asked for status bar + nav bar HIDDEN, drawing the chat to
+        // every pixel. Toggle persisted in UiSettingsRepository;
+        // default is true. Re-applied imperatively via the controller
+        // because edge-to-edge alone leaves both bars visible.
+        // BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE lets the user reveal
+        // them by swiping from the screen edges — no escape hatch
+        // is otherwise reachable on a phone with no hardware keys.
+        applyImmersive(uiSettingsRepository.state.value.immersive)
+
+        // Re-apply on lifecycle resume — Android temporarily un-hides
+        // bars when the user switches apps; without this re-apply
+        // they stay visible after coming back.
+        lifecycleScope.launch {
+            uiSettingsRepository.state.collect { s ->
+                applyImmersive(s.immersive)
+            }
+        }
 
         // Phase 2.10 / v0.11.2: the eager FGS start now lives in
         // SoMiApp.onCreate (only when a model is on disk), so it wins
@@ -119,6 +145,26 @@ class MainActivity : ComponentActivity() {
                     SoMiAppRoot()
                 }
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // Re-apply immersive whenever the window regains focus —
+            // dialogs, IME, transient overlays all reset the bar state.
+            applyImmersive(uiSettingsRepository.state.value.immersive)
+        }
+    }
+
+    private fun applyImmersive(enabled: Boolean) {
+        val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+        if (enabled) {
+            controller.systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         }
     }
 
@@ -184,6 +230,8 @@ private fun SoMiAppRoot() {
                 onClose = { settingsRoute = SettingsRoute.Hidden },
                 onOpenSoulEditor = { settingsRoute = SettingsRoute.SoulEditor },
                 onOpenMemoryBrowser = { settingsRoute = SettingsRoute.MemoryBrowser },
+                onOpenModelCatalog = { settingsRoute = SettingsRoute.ModelCatalog },
+                onOpenDataBrowser = { settingsRoute = SettingsRoute.DataBrowser },
             )
             return
         }
@@ -198,6 +246,19 @@ private fun SoMiAppRoot() {
         }
         SettingsRoute.MemoryBrowser -> {
             io.somi.app.settings.MemoryBrowserScreen(
+                onBack = { settingsRoute = SettingsRoute.Root },
+            )
+            return
+        }
+        SettingsRoute.ModelCatalog -> {
+            io.somi.app.settings.ModelCatalogScreen(
+                viewModel = viewModel,
+                onBack = { settingsRoute = SettingsRoute.Root },
+            )
+            return
+        }
+        SettingsRoute.DataBrowser -> {
+            io.somi.app.settings.DataBrowserScreen(
                 onBack = { settingsRoute = SettingsRoute.Root },
             )
             return
@@ -268,15 +329,24 @@ private fun ChatShellScreen(
             // with navigationBarsPadding. The .background() above the
             // padding still paints obsidian behind both bars.
             //
-            // v0.14.3: also consume the IME inset at this level so the
-            // parent Column shrinks when the keyboard opens, instead
-            // of the Composer Box growing at the bottom. This makes
-            // the LazyColumn (weight 1f) resize naturally and
-            // eliminates the residual gap between keyboard top and
-            // Composer that the original v0.13.0 fix left behind.
+            // v0.14.3: also consumed the IME inset at this level — but
+            // that fix solved the wrong problem. The visible "leerraum"
+            // wasn't the keyboard distance, it was unused vertical
+            // space inside the LazyColumn between the last bubble and
+            // the Composer when the message list is shorter than the
+            // viewport.
+            //
+            // v0.15.0 reverts the IME consumption here; the Composer
+            // alone owns its IME inset. The actual fix is below:
+            // LazyColumn now uses Arrangement.Bottom so messages stack
+            // upward from just-above the Composer, eliminating the
+            // empty area that triggered the user's complaint.
+            //
+            // Top inset is union(systemBars.Top, displayCutout) so the
+            // chat doesn't get clipped under the punch-hole/notch.
             .windowInsetsPadding(
                 WindowInsets.systemBars.only(WindowInsetsSides.Top)
-                    .union(WindowInsets.ime),
+                    .union(WindowInsets.displayCutout),
             ),
     ) {
         ChatTopBar(
@@ -312,8 +382,14 @@ private fun ChatShellScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            // v0.15.0: tighter contentPadding (4dp top/bottom instead
+            // of 16dp) — the gap was perceived as unintentional. Plus
+            // Arrangement.spacedBy(8.dp, Alignment.Bottom): the Bottom
+            // alignment glues the message stack to the lower edge of
+            // the viewport, so a short chat doesn't leave a vast
+            // empty area between the last bubble and the Composer.
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
         ) {
             if (messages.isEmpty() && !isGenerating) {
                 item {
@@ -573,13 +649,16 @@ private fun Composer(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 10.dp)
-            // v0.14.3: parent Column now consumes the IME inset
-            // (systemBars.Top.union(ime)), so the Composer only needs
-            // to clear the navigation bar when the keyboard is closed.
-            // When the keyboard is open the parent Column has already
-            // shrunk, so this nav-bar padding sits effectively at zero
-            // height — no double-counting, no residual 10dp gap.
-            .windowInsetsPadding(WindowInsets.navigationBars),
+            // v0.15.0: Composer owns the IME inset directly. The parent
+            // Column went back to systemBars.only(Top) — that reverts
+            // v0.14.3's misdiagnosed move of the IME inset to the parent
+            // (which left the LazyColumn with stale top-anchored layout
+            // when the keyboard opened). Single union of ime + nav bar
+            // means the Composer rises with the keyboard and clears
+            // the nav bar when the keyboard is closed; on Android 11+
+            // the IME inset already includes the nav-bar height when
+            // the keyboard is open, so the union doesn't double-count.
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -734,4 +813,4 @@ private fun chatStateLabel(state: ChatState): String {
  * v0.11.4 — Settings sub-routes. We don't pull in nav-compose for
  * three destinations; an enum + LaunchedEffect-aware boolean is enough.
  */
-internal enum class SettingsRoute { Hidden, Root, SoulEditor, MemoryBrowser }
+internal enum class SettingsRoute { Hidden, Root, SoulEditor, MemoryBrowser, ModelCatalog, DataBrowser }

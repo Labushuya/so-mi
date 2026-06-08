@@ -12,5 +12,9 @@
          enableEdgeToEdge(SystemBarStyle.dark(...)) in MainActivity.onCreate. -->
     <style name="Theme.SoMi" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/songbird_obsidian</item>
+        <!-- v0.15.0: opt into drawing under display cutouts (notch, punch-hole)
+             so the immersive mode reaches every pixel. shortEdges = top+bottom
+             cutouts allowed, side cutouts in landscape get black bars. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>

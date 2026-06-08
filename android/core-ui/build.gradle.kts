@@ -67,6 +67,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
 
+    // v0.15.0 — ChatViewModel observes the embedder-download worker
+    // for the Settings → Downloads section via getWorkInfosForUniqueWorkFlow.
+    // core-data's WorkManager dep is `implementation` (private), so we
+    // need an explicit direct dep here.
+    implementation(libs.androidx.work.runtime.ktx)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)

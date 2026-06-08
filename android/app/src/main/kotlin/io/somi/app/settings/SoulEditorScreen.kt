@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -106,7 +111,8 @@ fun SoulEditorScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            .systemBarsPadding()
+            // v0.15.0: union of systemBars + displayCutout. imePadding stays — Editor needs to clear the keyboard.
+            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             .imePadding()
             .padding(16.dp),
     ) {

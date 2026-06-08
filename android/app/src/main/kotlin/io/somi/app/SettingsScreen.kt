@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,17 +70,23 @@ internal fun SettingsScreen(
     onClose: () -> Unit,
     onOpenSoulEditor: () -> Unit,
     onOpenMemoryBrowser: () -> Unit,
+    onOpenModelCatalog: () -> Unit,
+    onOpenDataBrowser: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     val instances by viewModel.instances.collectAsStateWithLifecycle()
     val sampler by viewModel.samplerParams.collectAsStateWithLifecycle()
     val boot by viewModel.boot.collectAsStateWithLifecycle()
+    val embedderStatus by viewModel.embedderStatus.collectAsStateWithLifecycle()
+    val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            .systemBarsPadding()
+            // v0.15.0: union of systemBars + displayCutout — see FirstLaunchScreen for rationale.
+            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         SongbirdTopBar(title = "Einstellungen", onBack = onClose)
@@ -105,6 +115,33 @@ internal fun SettingsScreen(
                     versionName = BuildConfig.VERSION_NAME,
                     versionCode = BuildConfig.VERSION_CODE,
                 )
+            }
+            item {
+                DownloadsSection(
+                    embedderStatus = embedderStatus,
+                    onOpenModelCatalog = onOpenModelCatalog,
+                    onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
+                    onReinstallEmbedder = { viewModel.reinstallEmbedder() },
+                )
+            }
+            item {
+                DisplaySection(
+                    immersive = uiSettings.immersive,
+                    onImmersiveChange = { v ->
+                        coroutineScope.launch { viewModel.uiSettings.setImmersive(v) }
+                    },
+                )
+            }
+            item {
+                GreetingSection(
+                    mode = uiSettings.greetingMode,
+                    onModeChange = { m ->
+                        coroutineScope.launch { viewModel.uiSettings.setGreetingMode(m) }
+                    },
+                )
+            }
+            item {
+                DataSection(onOpenDataBrowser = onOpenDataBrowser)
             }
             item {
                 StorageSection(
@@ -420,4 +457,195 @@ private fun formatGB(bytes: Long): String {
     val gb = bytes / 1_073_741_824.0
     return if (gb >= 1.0) "%.2f GB".format(gb)
     else "%.0f MB".format(bytes / 1_048_576.0)
+}
+
+// ---------------------------------------------------------------------------
+// v0.15.0 — Downloads
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DownloadsSection(
+    embedderStatus: ChatViewModel.EmbedderStatus,
+    onOpenModelCatalog: () -> Unit,
+    onRetryEmbedder: () -> Unit,
+    onReinstallEmbedder: () -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Downloads") {
+        Text(
+            text = "Was So-Mi gerade lädt — und wie Du selbst Hand anlegst, falls etwas hängt.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        // Embedder
+        Text("Erinnerungs-Modell (RAG)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = embedderStatusText(embedderStatus),
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SongbirdButton(
+                label = "Erneut laden",
+                kind = SongbirdButtonKind.Secondary,
+                onClick = onRetryEmbedder,
+            )
+            if (embedderStatus == ChatViewModel.EmbedderStatus.Installed) {
+                SongbirdButton(
+                    label = "Neu installieren",
+                    kind = SongbirdButtonKind.Ghost,
+                    onClick = onReinstallEmbedder,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // LLMs
+        Text("Sprach-Modelle", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter „Speicher“.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        SongbirdButton(
+            label = "Anderes Modell laden",
+            kind = SongbirdButtonKind.Primary,
+            onClick = onOpenModelCatalog,
+        )
+    }
+}
+
+private fun embedderStatusText(s: ChatViewModel.EmbedderStatus): String = when (s) {
+    ChatViewModel.EmbedderStatus.Installed -> "Installiert. Erinnerungen funktionieren."
+    ChatViewModel.EmbedderStatus.Running -> "Lädt gerade — schau in der Benachrichtigungsleiste."
+    ChatViewModel.EmbedderStatus.Enqueued -> "Wartet auf WLAN. Sobald Du im WLAN bist, geht's los."
+    ChatViewModel.EmbedderStatus.Failed -> "Fehlgeschlagen. Tap auf „Erneut laden“ für einen neuen Versuch."
+    ChatViewModel.EmbedderStatus.NotPresent -> "Noch nicht da. Tap auf „Erneut laden“, um den Download zu starten."
+}
+
+// ---------------------------------------------------------------------------
+// v0.15.0 — Anzeige (Immersive Fullscreen)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DisplaySection(
+    immersive: Boolean,
+    onImmersiveChange: (Boolean) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Anzeige") {
+        Text(
+            text = "Vollbild blendet die Status- und Navigations-Leisten aus. Ein Wisch vom Rand bringt sie kurz zurück.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Vollbild",
+                color = songbird.bone,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            androidx.compose.material3.Switch(
+                checked = immersive,
+                onCheckedChange = onImmersiveChange,
+            )
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// v0.15.0 — Begrüßung
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun GreetingSection(
+    mode: io.somi.data.settings.GreetingMode,
+    onModeChange: (io.somi.data.settings.GreetingMode) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Begrüßung") {
+        Text(
+            text = "So-Mi sagt Hallo, wenn Du sie aufweckst. Wähl, wann.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        GreetingRadioRow(
+            label = "Vollständig",
+            description = "Bei jedem Öffnen + Rückkehr aus dem Hintergrund.",
+            selected = mode == io.somi.data.settings.GreetingMode.FULL,
+            onSelect = { onModeChange(io.somi.data.settings.GreetingMode.FULL) },
+        )
+        GreetingRadioRow(
+            label = "Nur beim Start",
+            description = "Nur beim Kaltstart der App. Standard.",
+            selected = mode == io.somi.data.settings.GreetingMode.COLD_START,
+            onSelect = { onModeChange(io.somi.data.settings.GreetingMode.COLD_START) },
+        )
+        GreetingRadioRow(
+            label = "Aus",
+            description = "Keine Begrüßung. Nur Stille bis Du etwas tippst.",
+            selected = mode == io.somi.data.settings.GreetingMode.NONE,
+            onSelect = { onModeChange(io.somi.data.settings.GreetingMode.NONE) },
+        )
+    }
+}
+
+@Composable
+private fun GreetingRadioRow(
+    label: String,
+    description: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.RadioButton(
+            selected = selected,
+            onClick = onSelect,
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+            Text(description, color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// v0.15.0 — Daten (in-app file viewer entry point)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DataSection(onOpenDataBrowser: () -> Unit) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Daten") {
+        Text(
+            text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter „SoMi/“.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        SongbirdButton(
+            label = "Dateien anzeigen",
+            kind = SongbirdButtonKind.Secondary,
+            onClick = onOpenDataBrowser,
+        )
+    }
 }
