@@ -80,15 +80,16 @@ android {
         }
     }
 
-    // Vendored upstream Kotlin sources — referenced via srcDirs rather
-    // than copied. Filesystem symlinks would work too but are unreliable
-    // on Windows; Gradle srcDirs is portable.
+    // Vendored upstream Kotlin sources — copied into src/main/kotlin/
+    // (com.arm.aichat package) since v0.11.4 because we need to extend
+    // InferenceEngine with setSamplerParams, which means patching
+    // InferenceEngineImpl.kt. Editing inside upstream/ would be wiped
+    // by the next git submodule update; copying once gives us a stable
+    // override surface. Native ai_chat.cpp follows the same pattern
+    // (see core-llm-llama/src/main/cpp/ai_chat.cpp header comment).
     sourceSets {
         getByName("main") {
-            java.srcDirs(
-                "src/main/kotlin",
-                "upstream/examples/llama.android/lib/src/main/java",
-            )
+            java.srcDirs("src/main/kotlin")
         }
     }
 

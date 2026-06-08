@@ -471,13 +471,10 @@ private fun lightColor(light: Light, songbird: SongbirdColors): Color = when (li
 }
 
 /**
- * Mobile-data confirm dialog (v0.11.2). Triggered when the user taps
- * the download CTA with the "Nur über WLAN laden" toggle turned OFF.
- *
- * Shows the manifest's total GB up-front so a user staring down 4.4 GB
- * can back out before the bytes start flowing. Two buttons, signal-red
- * for the destructive (in-billing-terms) confirm, glass-grey outline
- * for cancel.
+ * Mobile-data confirm dialog. Triggered when the user taps the download
+ * CTA with the "Nur über WLAN laden" toggle turned OFF. v0.11.4 migrated
+ * to the unified SongbirdDialog component instead of a hand-rolled
+ * Material3 AlertDialog.
  */
 @Composable
 private fun MobileDataConfirmDialog(
@@ -485,59 +482,22 @@ private fun MobileDataConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val songbird = LocalSongbirdColors.current
     val gb = "%.1f GB".format(manifest.totalSizeBytes.toDouble() / 1_073_741_824.0)
-    androidx.compose.material3.AlertDialog(
+    io.somi.app.components.SongbirdDialog(
         onDismissRequest = onDismiss,
-        containerColor = songbird.aiBubble,
-        titleContentColor = songbird.bone,
-        textContentColor = songbird.bone,
-        title = {
-            Text(
-                text = "Mobilfunk?",
-                color = songbird.bone,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-        },
-        text = {
-            Text(
-                text = "Du bist gerade nicht im WLAN. $gb über mobile Daten — wirklich?",
-                color = songbird.glass,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        confirmButton = {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(songbird.signal)
-                    .clickable { onConfirm() }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = "Ja, $gb laden",
-                    color = songbird.bone,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        },
-        dismissButton = {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, songbird.glass, RoundedCornerShape(8.dp))
-                    .clickable { onDismiss() }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = "Abbrechen",
-                    color = songbird.glass,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        },
+        title = "Mobilfunk?",
+        message = "Du bist gerade nicht im WLAN. $gb über mobile Daten — wirklich?",
+        tone = io.somi.app.components.SongbirdDialogTone.Destructive,
+        confirm = io.somi.app.components.SongbirdDialogAction(
+            label = "Ja, $gb laden",
+            kind = io.somi.app.components.SongbirdDialogAction.Kind.Destructive,
+            onClick = onConfirm,
+        ),
+        dismiss = io.somi.app.components.SongbirdDialogAction(
+            label = "Abbrechen",
+            kind = io.somi.app.components.SongbirdDialogAction.Kind.Ghost,
+            onClick = onDismiss,
+        ),
     )
 }
 
