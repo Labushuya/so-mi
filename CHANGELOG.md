@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/Labushuya/so-mi/compare/v0.12.0...v0.12.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* build — release-compile-fehler durch eindeutige JNI-funktion behoben ([7dd6594](https://github.com/Labushuya/so-mi/commit/7dd6594b4eeaaec16689a911b78837de707bf64c))
+
 ## [0.12.0](https://github.com/Labushuya/so-mi/compare/v0.11.3...v0.12.0) (2026-06-08)
 
 
