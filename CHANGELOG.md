@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/Labushuya/so-mi/compare/v0.14.3...v0.15.0) (2026-06-08)
+
+
+### Features
+
+* 14B-Modelle Q3 und Q4 als Staging im Modell-Katalog (SHA-Verify in v0.15.1) ([a798233](https://github.com/Labushuya/so-mi/commit/a798233146335e722390639b9ffb710944ce392d))
+* alle Daten unter sichtbarem SoMi/-Verzeichnis bündeln ([b748d1b](https://github.com/Labushuya/so-mi/commit/b748d1bc3f98b09b9100040ec07d23fbb7bcbdab))
+* Begrüßung beim App-Start, Downloads-Sichtbarkeit und Modell-Wechsel im laufenden Betrieb ([1b83d51](https://github.com/Labushuya/so-mi/commit/1b83d516837bf83b39247e1bf90c2f0450ca2ec9))
+* Embedder-Mirror auf GitHub-Release als Failover, mit App-internem Asset-Pfad ([b865c4e](https://github.com/Labushuya/so-mi/commit/b865c4e48767aeb0798fbac121830cc362b74745))
+* in-App Daten-Browser unter Einstellungen, zeigt SoMi/-Verzeichnis und teilt Dateien ([d07e711](https://github.com/Labushuya/so-mi/commit/d07e711fbc91c8429a184753241898c9675c82e5))
+* Vollbild-Modus mit Toggle in Einstellungen, Notch und Tastatur sauber respektiert ([fe5dfa2](https://github.com/Labushuya/so-mi/commit/fe5dfa2f2a81216bee3e132b53d9d5c4d968a283))
+
 ## [0.14.3](https://github.com/Labushuya/so-mi/compare/v0.14.2...v0.14.3) (2026-06-08)
 
 
