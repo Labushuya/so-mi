@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/Labushuya/so-mi/compare/v0.14.2...v0.14.3) (2026-06-08)
+
+
+### Bug Fixes
+
+* erinnerungs-modell wird endlich heruntergeladen, tastatur-spacing endgültig weg ([cd5cdb0](https://github.com/Labushuya/so-mi/commit/cd5cdb0b29771079d7e2f70570096b9398e059ff))
+
 ## [0.14.2](https://github.com/Labushuya/so-mi/compare/v0.14.1...v0.14.2) (2026-06-08)
 
 
