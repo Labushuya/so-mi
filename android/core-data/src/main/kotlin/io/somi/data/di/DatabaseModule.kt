@@ -7,6 +7,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.somi.data.StorageRoots
 import io.somi.data.db.MessageDao
 import io.somi.data.db.SoMiDatabase
 import java.io.File
@@ -15,9 +16,10 @@ import javax.inject.Singleton
 /**
  * Hilt graph for the Phase-3a persistence layer.
  *
- * The DB file is placed at `context.filesDir/somi.db`. filesDir is the
- * same root that ModelStorage uses, so all of so-mi's persistent state
- * lives in one inspectable place during dev. Chat history NOT in
+ * v0.15.0: DB file moved from `filesDir/somi.db` to
+ * `externalFilesDir/SoMi/db/somi.db` so all user-relevant state
+ * lives under one visible root. StorageMigrator handles the
+ * cross-volume copy on first launch. Chat history still NOT in
  * adb-backup by design — privacy.
  */
 @Module
@@ -31,7 +33,7 @@ internal object DatabaseModule {
     fun provideSoMiDatabase(
         @ApplicationContext context: Context,
     ): SoMiDatabase {
-        val dbFile = File(context.filesDir, DB_FILE_NAME)
+        val dbFile = File(StorageRoots.db(context), DB_FILE_NAME)
         return Room.databaseBuilder(
             context.applicationContext,
             SoMiDatabase::class.java,

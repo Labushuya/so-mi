@@ -61,9 +61,11 @@ class ModelStorage @Inject constructor(
      * so the trade-off is identical from the user's perspective.
      */
     val modelsDir: File by lazy {
-        val external = context.getExternalFilesDir(null)
-        val target = File(external ?: context.filesDir, MODELS_SUBDIR)
-        target.mkdirs()
+        // v0.15.0: was `external/models/` directly under externalFilesDir.
+        // Now lives under StorageRoots' SoMi/llm/ for user visibility +
+        // single source of truth. StorageMigrator moves legacy paths
+        // on first launch.
+        val target = StorageRoots.llm(context)
         Log.i(TAG, "modelsDir = ${target.absolutePath}")
         target
     }
@@ -275,6 +277,5 @@ class ModelStorage @Inject constructor(
 
     private companion object {
         const val TAG = "ModelStorage"
-        const val MODELS_SUBDIR = "models"
     }
 }

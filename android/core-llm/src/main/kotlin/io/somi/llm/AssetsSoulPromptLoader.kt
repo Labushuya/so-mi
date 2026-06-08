@@ -35,7 +35,15 @@ internal class AssetsSoulPromptLoader @Inject constructor(
     private var cached: String? = null
 
     private val overrideFile: File
-        get() = File(File(context.filesDir, "soul"), "soul.md")
+        // v0.15.0: was filesDir/soul/soul.md, now SoMi/soul/soul.md
+        // under externalFilesDir for user-visibility (StorageRoots).
+        // core-llm doesn't depend on core-data so we hardcode the
+        // path here; if StorageRoots layout changes, both must move
+        // in lockstep.
+        get() {
+            val external = context.getExternalFilesDir(null) ?: context.filesDir
+            return File(File(File(external, "SoMi"), "soul"), "soul.md")
+        }
 
     override suspend fun load(): String {
         cached?.let { return it }
