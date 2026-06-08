@@ -99,7 +99,7 @@
 ### Features
 
 * Chat-Verlauf bleibt nach App-Neustart erhalten (Room-DB unter `filesDir/somi.db`).
-* **phase-3a:** chat persistence in Room + icon background fix ([c5afa9d](https://github.com/Labushuya/so-mi/commit/c5afa9df1bde0c82b7e0aee537d9c63f5aabf1c5))
+* **Chat-Persistenz + Icon-Hintergrund:** Chat-History wird in Room-DB persistiert; App-Icon-Hintergrund von weiß auf Obsidian-Schwarz umgestellt ([c5afa9d](https://github.com/Labushuya/so-mi/commit/c5afa9df1bde0c82b7e0aee537d9c63f5aabf1c5))
 
 ### ⚠ Bekannte Probleme
 
@@ -144,35 +144,35 @@
 
 ### Features
 
-* **phase-2.5-2.7:** end-to-end chat — first-launch flow + soul.md prefix + live-typing chat ([39d2942](https://github.com/Labushuya/so-mi/commit/39d294200cf90076e20248c12cdd2ce38bb1e9ef))
+* **Erste lauffähige Chat-Session:** End-to-end-Chat — Erst-Start-Flow mit Modell-Picker, soul.md als System-Prompt, Token-für-Token live-tippende Antworten ([39d2942](https://github.com/Labushuya/so-mi/commit/39d294200cf90076e20248c12cdd2ce38bb1e9ef))
 
 ## [0.7.0](https://github.com/Labushuya/so-mi/compare/v0.6.0...v0.7.0) (2026-06-06)
 
 
 ### Features
 
-* **phase-2.4:** model download manager (WorkManager + OkHttp + resumable + sha256) ([71ead78](https://github.com/Labushuya/so-mi/commit/71ead78c29d61549c1a2a92d6afe21ef823a57f0))
+* **Modell-Download-Manager:** WorkManager + OkHttp mit Resume-Support und SHA-256-Verifikation für GGUF-Downloads ([71ead78](https://github.com/Labushuya/so-mi/commit/71ead78c29d61549c1a2a92d6afe21ef823a57f0))
 
 ## [0.6.0](https://github.com/Labushuya/so-mi/compare/v0.5.0...v0.6.0) (2026-06-06)
 
 
 ### Features
 
-* **phase-2.3:** vendor llama.cpp + native libai-chat.so ([2fe5274](https://github.com/Labushuya/so-mi/commit/2fe527488028851b9a7555274af60c362fab6e4f))
+* **llama.cpp eingebaut:** Native Inferenz-Engine als Submodul vendored, libai-chat.so per NDK r27 für arm64 gebaut ([2fe5274](https://github.com/Labushuya/so-mi/commit/2fe527488028851b9a7555274af60c362fab6e4f))
 
 ## [0.5.0](https://github.com/Labushuya/so-mi/compare/v0.4.0...v0.5.0) (2026-06-06)
 
 
 ### Features
 
-* **phase-2.2:** hardware detection + recommendModelTier per SPEC §7 ([6f266d0](https://github.com/Labushuya/so-mi/commit/6f266d085f1bf0fda1dca87d293c10869ceb0da3))
+* **Hardware-Erkennung + Modell-Empfehlung:** App erkennt RAM, Speicher und GPU des Geräts, schlägt passendes Modell-Tier vor (Tiny/Small/Medium/Large) ([6f266d0](https://github.com/Labushuya/so-mi/commit/6f266d085f1bf0fda1dca87d293c10869ceb0da3))
 
 ## [0.4.0](https://github.com/Labushuya/so-mi/compare/v0.3.1...v0.4.0) (2026-06-06)
 
 
 ### Features
 
-* **phase-2.1:** hilt skeleton + ChatViewModel + module wiring ([d190177](https://github.com/Labushuya/so-mi/commit/d190177cfd1d8c325f48ac3e1940559304005ebd))
+* **Hilt-Grundgerüst + Chat-ViewModel:** Dependency-Injection-Framework eingebaut, ChatViewModel und Modul-Verkabelung als Basis für die folgenden Inkremente ([d190177](https://github.com/Labushuya/so-mi/commit/d190177cfd1d8c325f48ac3e1940559304005ebd))
 
 ## [0.3.1](https://github.com/Labushuya/so-mi/compare/v0.3.0...v0.3.1) (2026-06-06)
 
