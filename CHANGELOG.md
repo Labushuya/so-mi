@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/Labushuya/so-mi/compare/v0.13.0...v0.14.0) (2026-06-08)
+
+
+### Features
+
+* so-mi merkt sich was — 'merk dir' speichert fakten persistent ([e260018](https://github.com/Labushuya/so-mi/commit/e260018af04e4090229be3872d31475b7137c1ce))
+* speicher-fundament gelegt — datenbank für so-mi's gedächtnis ist da, noch ohne sichtbare funktion ([363950e](https://github.com/Labushuya/so-mi/commit/363950ebf1e6ea77809db14417c654cede2a053a))
+
 ## [0.13.0](https://github.com/Labushuya/so-mi/compare/v0.12.1...v0.13.0) (2026-06-08)
 
 
