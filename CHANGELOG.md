@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/Labushuya/so-mi/compare/v0.11.3...v0.12.0) (2026-06-08)
+
+
+### Features
+
+* einstellungen-refaktorierung — kategorisiert, songbird-stil, persönlichkeit editierbar, modell-verhalten regelbar ([5603ddb](https://github.com/Labushuya/so-mi/commit/5603ddb303be06ecef1c82aacae935c1206bd23d))
+
 ## [0.11.3](https://github.com/Labushuya/so-mi/compare/v0.11.2...v0.11.3) (2026-06-07)
 
 
