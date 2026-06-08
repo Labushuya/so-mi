@@ -79,11 +79,13 @@ import javax.inject.Inject
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val llama: LlamaContext,
-    private val soulPromptLoader: SoulPromptLoader,
+    val soulPromptLoader: SoulPromptLoader,
     private val hardwareDetector: HardwareDetector,
     private val modelManager: ModelManager,
     private val modelStorage: ModelStorage,
     private val chatRepository: ChatRepository,
+    private val samplerSettings: io.somi.data.settings.SamplerSettingsRepository,
+    val soulRepository: io.somi.data.soul.SoulRepository,
     @ApplicationContext private val appContext: Context,
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
@@ -183,6 +185,17 @@ class ChatViewModel @Inject constructor(
     fun setWifiOnly(value: Boolean) {
         _wifiOnly.value = value
     }
+
+    /**
+     * Live sampler-param state. Initial value comes from disk via
+     * [SamplerSettingsRepository]; user edits in Settings push back
+     * through [applySamplerParams] which both persists and forwards to
+     * the native engine.
+     */
+    val samplerParams: StateFlow<io.somi.common.llm.SamplerParams> = samplerSettings.params
+
+    /** Backups list for the Soul-Editor screen. */
+    val soulBackups = soulRepository.backups
 
     // --- Internal --------------------------------------------------------
 
@@ -416,6 +429,62 @@ class ChatViewModel @Inject constructor(
         _instances.value = modelStorage.findAllInstances(ModelCatalog.ALL)
     }
 
+    /**
+     * v0.11.4 — apply user-edited sampler params live.
+     *
+     * Persists to disk first (so a process restart preserves the
+     * choice) and then forwards to the native engine on the
+     * llamaDispatcher (mandatory: common_sampler_free + init must NOT
+     * race with a generateNextToken in flight).
+     *
+     * Safe to call in any lifecycle state. If the engine isn't loaded
+     * yet, the persistence still happens; the params are re-applied
+     * after the next [loadModel] via the init-block forwarding hook.
+     */
+    fun applySamplerParams(params: io.somi.common.llm.SamplerParams) {
+        viewModelScope.launch {
+            samplerSettings.save(params)
+            if (_lifecycle.value == Lifecycle.Ready || _lifecycle.value == Lifecycle.Loading) {
+                runCatching { llama.setSamplerParams(params) }
+                    .onFailure { Log.w(TAG, "applySamplerParams: native call failed", it) }
+            }
+        }
+    }
+
+    /**
+     * v0.11.4 — re-pump the system prompt after the user edited
+     * soul.md in Settings. Cancels any active generation, drops the
+     * loader cache, reloads from disk (filesDir override → asset
+     * fallback), and re-runs setSystemPrompt on the engine. Keeps the
+     * model loaded; only the persona changes.
+     */
+    fun reloadSoul() {
+        if (_lifecycle.value != Lifecycle.Ready) {
+            Log.w(TAG, "reloadSoul: ignored — lifecycle=${_lifecycle.value}")
+            return
+        }
+        viewModelScope.launch {
+            generationJob?.cancel()
+            _generation.value = null
+            cachedSoul = null
+            soulPromptLoader.invalidate()
+            try {
+                val newSoul = soulPromptLoader.load()
+                cachedSoul = newSoul
+                withContext(llamaDispatcher) {
+                    llama.setSystemPrompt(newSoul.take(MAX_SYSTEM_PROMPT_CHARS))
+                }
+                Log.i(TAG, "reloadSoul: applied new system prompt (${newSoul.length} chars)")
+            } catch (t: Throwable) {
+                Log.e(TAG, "reloadSoul failed", t)
+                surfaceError(
+                    "Persönlichkeit-Reload schiefgegangen. Soul-Editor nochmal öffnen?",
+                    cause = t,
+                )
+            }
+        }
+    }
+
     // --- Internal: model lifecycle --------------------------------------
 
     private fun launchLoadModel(manifest: ModelManifest) {
@@ -496,6 +565,14 @@ class ChatViewModel @Inject constructor(
 
         Log.i(TAG, "loadModel done — entering Ready")
         _lifecycle.value = Lifecycle.Ready
+
+        // Apply persisted sampler params after engine is up. The native
+        // side defaults are already correct on first launch; this hook
+        // ensures user-tuned values from a previous session take effect
+        // before the first generate.
+        runCatching {
+            withContext(llamaDispatcher) { llama.setSamplerParams(samplerSettings.params.value) }
+        }.onFailure { Log.w(TAG, "post-load sampler apply failed", it) }
     }
 
     // --- Internal: generation -------------------------------------------
@@ -508,8 +585,14 @@ class ChatViewModel @Inject constructor(
         var completed = false
 
         try {
+            // v0.11.4: read max-tokens from the persisted SamplerParams
+            // each turn so the user-facing slider in Settings actually
+            // takes effect. Falls back to DEFAULTS.maxTokens (1024)
+            // before SamplerSettingsRepository finishes its first disk
+            // load — same behavior as v0.11.3's hardcoded MAX_TOKENS.
+            val maxTokens = samplerSettings.params.value.maxTokens
             withContext(llamaDispatcher) {
-                llama.generate(userText, maxTokens = MAX_TOKENS)
+                llama.generate(userText, maxTokens = maxTokens)
                     .cancellable()
                     .collect { chunk ->
                         partial.append(chunk)
@@ -604,7 +687,6 @@ class ChatViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "ChatViewModel"
-        const val MAX_TOKENS = 1024
         const val MAX_SYSTEM_PROMPT_CHARS = 1200
         const val LOAD_TIMEOUT_MS = 180_000L
     }

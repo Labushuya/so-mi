@@ -1,34 +1,30 @@
 package io.somi.llm
 
 import android.content.Context
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Phase-2.10 implementation. Reads `assets/soul_condensed.md` once per
- * process and caches it.
+ * Phase-2.10 / v0.11.4 implementation.
  *
- * The full `soul.md` (~4 KB / ~1500 tokens) was too long for a CPU-only
- * 7B Q4_K_M boot path — prefill took 5–15 minutes. Earlier attempts to
- * naively `.take(600)` killed the persona because the alias-handling
- * rules and address-style rules live further down in the file.
+ * Lookup order (first hit wins):
+ *  1. `$filesDir/soul/soul.md`  — user edits via Settings → Persönlichkeit
+ *  2. `assets/soul_condensed.md` — factory default, ships with the APK
  *
- * The condensed file at `assets/soul_condensed.md` (~600 chars / ~200
- * Qwen2.5 tokens) is a hand-crafted compaction that preserves:
- *  - alias triad (So-Mi self / Songbird user-context / chingu trust-only)
- *  - address rule (first name OR nothing — never "Hey du" / "lieber Nutzer")
- *  - language hierarchy (DE default, EN code-switch, KO only for chingu)
- *  - tone (rauchig-leise / dringlich / trocken)
- *  - values (Freiheit / Loyalität / Pragmatismus / Misstrauen)
- *  - anti-corpo / anti-disclaimer / anti-cheerleading rules
+ * The factory default is the hand-crafted compaction that preserves the
+ * persona core (~600–800 chars). The full `soul.md` (~4 KB) is still in
+ * assets for Phase 3 RAG retrieval, but is NEVER fed to setSystemPrompt
+ * because prefill on a 7B Q4_K_M CPU path takes minutes for that length.
  *
- * The full `soul.md` still ships in the same assets dir; Phase-3 RAG
- * will retrieve passages from it (Beispiel-Dialoge, full values, the
- * meta-reflection passages) on demand.
+ * Live-reload: [invalidate] drops the @Volatile cache. ChatViewModel.reloadSoul()
+ * calls invalidate() then re-runs setSystemPrompt with the new text. Backups
+ * are managed by SoulRepository; this loader is read-only.
  *
- * Decoded as UTF-8 — soul_condensed.md contains German umlauts and
- * em-dashes; any other charset would corrupt them.
+ * Decoded as UTF-8 — soul.md contains German umlauts and em-dashes; any
+ * other charset would corrupt them.
  */
 @Singleton
 internal class AssetsSoulPromptLoader @Inject constructor(
@@ -38,18 +34,44 @@ internal class AssetsSoulPromptLoader @Inject constructor(
     @Volatile
     private var cached: String? = null
 
+    private val overrideFile: File
+        get() = File(File(context.filesDir, "soul"), "soul.md")
+
     override suspend fun load(): String {
         cached?.let { return it }
         synchronized(this) {
             cached?.let { return it }
-            val text = context.assets.open(ASSET_NAME).bufferedReader().use { it.readText() }
+            val text = readOverrideOrFallback()
             cached = text
             return text
         }
     }
 
+    override fun invalidate() {
+        cached = null
+        Log.i(TAG, "soul cache invalidated")
+    }
+
+    private fun readOverrideOrFallback(): String {
+        val override = overrideFile
+        if (override.exists() && override.canRead() && override.length() > 0L) {
+            try {
+                val text = override.readText(Charsets.UTF_8)
+                if (text.isNotBlank()) {
+                    Log.i(TAG, "soul loaded from override file: ${override.absolutePath}")
+                    return text
+                }
+            } catch (t: Throwable) {
+                // Override read failure is non-fatal — fall through to asset.
+                Log.w(TAG, "override read failed; falling back to asset", t)
+            }
+        }
+        Log.i(TAG, "soul loaded from asset $ASSET_NAME")
+        return context.assets.open(ASSET_NAME).bufferedReader().use { it.readText() }
+    }
+
     private companion object {
         const val ASSET_NAME = "soul_condensed.md"
+        const val TAG = "AssetsSoulPromptLoader"
     }
 }
-

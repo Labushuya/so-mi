@@ -1,5 +1,6 @@
 package io.somi.llm
 
+import io.somi.common.llm.SamplerParams
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import java.io.File
@@ -28,6 +29,10 @@ internal class NoOpLlamaContext @Inject constructor() : LlamaContext {
     }
 
     override fun generate(userMessage: String, maxTokens: Int): Flow<String> = flowOf()
+
+    override suspend fun setSamplerParams(params: SamplerParams) {
+        // no-op — the noop engine has no sampler to tune
+    }
 
     override fun close() {
         // no-op

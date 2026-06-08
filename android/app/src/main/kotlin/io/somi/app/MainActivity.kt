@@ -116,8 +116,6 @@ private fun SoMiAppRoot() {
     val boot by viewModel.boot.collectAsStateWithLifecycle()
     val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
 
-    var showSettings by remember { mutableStateOf(false) }
-
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // v0.11.2: promote LlamaSessionService the instant we transition
@@ -151,13 +149,39 @@ private fun SoMiAppRoot() {
     val instances by viewModel.instances.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
 
-    if (showSettings) {
-        SettingsScreen(
-            instances = instances,
-            onDeleteInstance = { inst -> viewModel.deleteModelInstance(inst) },
-            onClose = { showSettings = false },
-        )
-        return
+    // v0.11.4: Settings now has sub-screens. Single in-VM enum cheaper
+    // than nav-compose for three destinations and matches the rest of
+    // the app's "explicit boolean state" pattern.
+    var settingsRoute by remember { mutableStateOf(SettingsRoute.Hidden) }
+    val soulRepository = viewModel.soulRepository
+    val soulPromptLoader = viewModel.soulPromptLoader
+
+    when (settingsRoute) {
+        SettingsRoute.Hidden -> Unit
+        SettingsRoute.Root -> {
+            SettingsScreen(
+                viewModel = viewModel,
+                onClose = { settingsRoute = SettingsRoute.Hidden },
+                onOpenSoulEditor = { settingsRoute = SettingsRoute.SoulEditor },
+                onOpenMemoryBrowser = { settingsRoute = SettingsRoute.MemoryBrowser },
+            )
+            return
+        }
+        SettingsRoute.SoulEditor -> {
+            io.somi.app.settings.SoulEditorScreen(
+                viewModel = viewModel,
+                soulRepository = soulRepository,
+                soulPromptLoader = soulPromptLoader,
+                onBack = { settingsRoute = SettingsRoute.Root },
+            )
+            return
+        }
+        SettingsRoute.MemoryBrowser -> {
+            io.somi.app.settings.MemoryBrowserScreen(
+                onBack = { settingsRoute = SettingsRoute.Root },
+            )
+            return
+        }
     }
 
     // Route on the underlying lifecycle — a WithBanner overlay must not
@@ -176,7 +200,7 @@ private fun SoMiAppRoot() {
             onStartDownload = viewModel::startDownload,
             onCancelDownload = viewModel::cancelDownload,
             onRetry = viewModel::retry,
-            onOpenSettings = { showSettings = true },
+            onOpenSettings = { settingsRoute = SettingsRoute.Root },
         )
         is ChatState.LoadingModel -> LoadingScreen()
         is ChatState.Idle, is ChatState.Generating -> ChatShellScreen(
@@ -188,7 +212,7 @@ private fun SoMiAppRoot() {
             onSubmit = viewModel::submit,
             onCancelGeneration = viewModel::cancelGeneration,
             onRetry = viewModel::retry,
-            onOpenSettings = { showSettings = true },
+            onOpenSettings = { settingsRoute = SettingsRoute.Root },
         )
         is ChatState.WithBanner -> Unit // unreachable: unwrap() never returns WithBanner
     }
@@ -665,3 +689,9 @@ private fun chatStateLabel(state: ChatState): String {
     }
     return if (hasBanner) "$label!" else label
 }
+
+/**
+ * v0.11.4 — Settings sub-routes. We don't pull in nav-compose for
+ * three destinations; an enum + LaunchedEffect-aware boolean is enough.
+ */
+internal enum class SettingsRoute { Hidden, Root, SoulEditor, MemoryBrowser }

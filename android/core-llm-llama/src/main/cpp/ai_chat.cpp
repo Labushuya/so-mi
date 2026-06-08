@@ -53,6 +53,20 @@ constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;
 constexpr int   OVERFLOW_HEADROOM       = 4;
 constexpr int   BATCH_SIZE              = 512;
 constexpr float DEFAULT_SAMPLER_TEMP    = 0.3f;
+constexpr float DEFAULT_SAMPLER_TOP_P   = 0.9f;
+constexpr float DEFAULT_SAMPLER_REPEAT_PENALTY = 1.1f;
+constexpr int   DEFAULT_SAMPLER_TOP_K   = 40;
+
+// Latest sampler params, kept in static memory so prepare() can re-apply
+// them when the engine is recycled (model swap, soul edit). Default-init
+// matches the constexpr defaults above.
+struct SamplerParams {
+    float temp           = DEFAULT_SAMPLER_TEMP;
+    float top_p          = DEFAULT_SAMPLER_TOP_P;
+    float repeat_penalty = DEFAULT_SAMPLER_REPEAT_PENALTY;
+    int   top_k          = DEFAULT_SAMPLER_TOP_K;
+};
+static SamplerParams g_sampler_params;
 
 static llama_model                      * g_model;
 static llama_context                    * g_context;
@@ -125,9 +139,12 @@ static llama_context *init_context(llama_model *model, const int n_ctx = DEFAULT
     return context;
 }
 
-static common_sampler *new_sampler(float temp) {
+static common_sampler *new_sampler(const SamplerParams &params) {
     common_params_sampling sparams;
-    sparams.temp = temp;
+    sparams.temp           = params.temp;
+    sparams.top_p          = params.top_p;
+    sparams.penalty_repeat = params.repeat_penalty;
+    sparams.top_k          = params.top_k;
     return common_sampler_init(g_model, sparams);
 }
 
@@ -139,8 +156,32 @@ Java_com_arm_aichat_internal_InferenceEngineImpl_prepare(JNIEnv * /*env*/, jobje
     g_context = context;
     g_batch = llama_batch_init(BATCH_SIZE, 0, 1);
     g_chat_templates = common_chat_templates_init(g_model, "");
-    g_sampler = new_sampler(DEFAULT_SAMPLER_TEMP);
+    g_sampler = new_sampler(g_sampler_params);
     return 0;
+}
+
+// v0.11.4: live sampler-param tuning from Kotlin Settings.
+// MUST be called on the same single-thread llamaDispatcher as decode —
+// freeing the sampler while generateNextToken is mid-call would crash
+// natively. The Kotlin layer pins to limitedParallelism(1).
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_arm_aichat_internal_InferenceEngineImpl_setSamplerParams(
+        JNIEnv * /*env*/, jobject /*unused*/,
+        jfloat temp, jfloat top_p, jfloat repeat_penalty, jint top_k) {
+    g_sampler_params.temp           = temp;
+    g_sampler_params.top_p          = top_p;
+    g_sampler_params.repeat_penalty = repeat_penalty;
+    g_sampler_params.top_k          = top_k;
+    if (g_sampler != nullptr) {
+        common_sampler_free(g_sampler);
+        g_sampler = nullptr;
+    }
+    if (g_model != nullptr) {
+        g_sampler = new_sampler(g_sampler_params);
+    }
+    LOGi("setSamplerParams: temp=%.2f top_p=%.2f repeat_penalty=%.2f top_k=%d",
+         temp, top_p, repeat_penalty, top_k);
 }
 
 static std::string get_backend() {
@@ -577,6 +618,16 @@ Java_com_arm_aichat_internal_InferenceEngineImpl_unload(JNIEnv * /*unused*/, job
     llama_batch_free(g_batch);
     llama_free(g_context);
     llama_model_free(g_model);
+
+    // v0.11.4: null out the static pointers AFTER free so that any
+    // subsequent setSamplerParams call between an unload and the next
+    // prepare() doesn't double-free or hand a dangling g_model to
+    // common_sampler_init. The setSamplerParams JNI guards on
+    // (g_sampler != nullptr) and (g_model != nullptr), but those
+    // guards only work if we actually nullify on free.
+    g_sampler = nullptr;
+    g_context = nullptr;
+    g_model = nullptr;
 }
 
 extern "C"

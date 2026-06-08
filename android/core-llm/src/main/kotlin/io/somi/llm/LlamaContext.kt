@@ -1,5 +1,6 @@
 package io.somi.llm
 
+import io.somi.common.llm.SamplerParams
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
@@ -71,6 +72,14 @@ interface LlamaContext {
      *   even if it hasn't decided to end a turn
      */
     fun generate(userMessage: String, maxTokens: Int): Flow<String>
+
+    /**
+     * v0.11.4: live sampler-param tuning. Idempotent, callable any time
+     * the engine has a model loaded. Pinned to the same single-thread
+     * dispatcher as decode, so the swap is serialised; new params take
+     * effect on the next token batch.
+     */
+    suspend fun setSamplerParams(params: SamplerParams)
 
     /**
      * Release the native context and KV cache. Safe to call without

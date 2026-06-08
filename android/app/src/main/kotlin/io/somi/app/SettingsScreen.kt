@@ -6,122 +6,332 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.somi.app.components.SectionCard
+import io.somi.app.components.SectionHeader
+import io.somi.app.components.SettingsRow
+import io.somi.app.components.SongbirdButton
+import io.somi.app.components.SongbirdButtonKind
+import io.somi.app.components.SongbirdDialog
+import io.somi.app.components.SongbirdDialogAction
+import io.somi.app.components.SongbirdDialogTone
+import io.somi.app.components.SongbirdSlider
+import io.somi.app.components.SongbirdTopBar
+import io.somi.common.llm.SamplerParams
+import io.somi.data.Light
 import io.somi.data.ModelStorage
+import io.somi.ui.chat.ChatViewModel
+import kotlinx.coroutines.launch
 
 /**
- * Settings screen — for v0.10.x focused on storage / model cleanup.
+ * v0.11.4 — Settings refactor.
  *
- * Lists every on-disk model instance the app can find across all
- * historical storage paths, with size + completeness + canonical flag.
- * Lets the user delete duplicates without leaving the app.
+ * Sections (top → bottom, destructive last):
+ *   1. Persönlichkeit — soul.md preview, "Bearbeiten" → SoulEditorScreen
+ *   2. Verhalten      — LLM sampler sliders (temp / top_p / repeat_penalty / max_tokens) with in-character explanations
+ *   3. Lernen         — placeholder for v0.13 Memory-Browser
+ *   4. Diagnose       — boot.deviceInfo + recommendation tier traffic-light + version + model-load timings
+ *   5. Speicher       — model instances list + delete (destructive, always last)
+ *
+ * Single outer LazyColumn so all sections scroll together.
  */
 @Composable
 internal fun SettingsScreen(
-    instances: List<ModelStorage.ModelInstance>,
-    onDeleteInstance: (ModelStorage.ModelInstance) -> Unit,
+    viewModel: ChatViewModel,
     onClose: () -> Unit,
+    onOpenSoulEditor: () -> Unit,
+    onOpenMemoryBrowser: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
+    val instances by viewModel.instances.collectAsStateWithLifecycle()
+    val sampler by viewModel.samplerParams.collectAsStateWithLifecycle()
+    val boot by viewModel.boot.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            .padding(16.dp),
+            .systemBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        // Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
+        SongbirdTopBar(title = "Einstellungen", onBack = onClose)
+        Spacer(Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onClose() }
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "←",
-                    color = songbird.bone,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+            item {
+                PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
+            }
+            item {
+                BehaviourSection(
+                    sampler = sampler,
+                    onSamplerChange = { viewModel.applySamplerParams(it) },
                 )
             }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Speicher",
-                color = songbird.bone,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-
-        if (instances.isEmpty()) {
-            Text(
-                text = "Keine Modelle gefunden.",
-                color = songbird.glass,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            return@Column
-        }
-
-        // Total size summary
-        val totalBytes = instances.sumOf { it.sizeBytes }
-        Text(
-            text = "Insgesamt belegt: ${formatGB(totalBytes)}",
-            color = songbird.bone,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-        )
-        // Single-root storage means at most one instance per model — no
-        // duplicates concept anymore (see ModelStorage.kt).
-        Spacer(Modifier.height(16.dp))
-
-        // List
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            instances.forEach { inst ->
-                InstanceCard(
-                    instance = inst,
-                    onDelete = { onDeleteInstance(inst) },
+            item {
+                LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
+            }
+            item {
+                DiagnosticsSection(
+                    boot = boot,
+                    versionName = BuildConfig.VERSION_NAME,
+                    versionCode = BuildConfig.VERSION_CODE,
+                )
+            }
+            item {
+                StorageSection(
+                    instances = instances,
+                    onDeleteInstance = { viewModel.deleteModelInstance(it) },
                 )
             }
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// Persönlichkeit
+// ---------------------------------------------------------------------------
+
 @Composable
-private fun InstanceCard(
+private fun PersonalitySection(onOpenSoulEditor: () -> Unit) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Persönlichkeit") {
+        Text(
+            text = "So-Mis Stimme. Wird bei jeder Antwort als System-Prompt mitgegeben.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        SongbirdButton(
+            label = "Persönlichkeit bearbeiten",
+            kind = SongbirdButtonKind.Primary,
+            onClick = onOpenSoulEditor,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Verhalten — LLM sampler sliders
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun BehaviourSection(
+    sampler: SamplerParams,
+    onSamplerChange: (SamplerParams) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    val scope = rememberCoroutineScope()
+    var showResetConfirm by remember { mutableStateOf(false) }
+
+    // Local mirror so dragging the slider feels responsive; commit
+    // happens on slide-end (debounce-by-gesture).
+    var local by remember(sampler) { mutableStateOf(sampler) }
+
+    SectionCard(title = "Verhalten") {
+        Text(
+            text = "Schraub an den Reglern, um So-Mis Stimme nachzujustieren. Defaults sind sicher; Extreme produzieren Quatsch.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(8.dp))
+
+        SongbirdSlider(
+            label = "Temperatur",
+            value = local.temperature,
+            valueRange = SamplerParams.TEMPERATURE_RANGE,
+            valueText = "%.2f".format(local.temperature),
+            explanation = "Höher = So-Mi wird wilder, kreativer, halluziniert mehr. Niedriger = nüchterner, vorhersehbar. Default 0.30.",
+            onValueChange = { local = local.copy(temperature = it) },
+            onValueChangeFinished = { onSamplerChange(local) },
+        )
+        SongbirdSlider(
+            label = "Top-P",
+            value = local.topP,
+            valueRange = SamplerParams.TOP_P_RANGE,
+            valueText = "%.2f".format(local.topP),
+            explanation = "Wie groß die Kandidaten-Menge ist, aus der jedes Token kommt. Höher = mehr Wortauswahl, lockerer Stil. Default 0.90.",
+            onValueChange = { local = local.copy(topP = it) },
+            onValueChangeFinished = { onSamplerChange(local) },
+        )
+        SongbirdSlider(
+            label = "Wiederholungs-Bremse",
+            value = local.repeatPenalty,
+            valueRange = SamplerParams.REPEAT_PENALTY_RANGE,
+            valueText = "%.2f".format(local.repeatPenalty),
+            explanation = "Höher = So-Mi wiederholt sich seltener, klingt dafür angestrengter. Default 1.10.",
+            onValueChange = { local = local.copy(repeatPenalty = it) },
+            onValueChangeFinished = { onSamplerChange(local) },
+        )
+        SongbirdSlider(
+            label = "Top-K",
+            value = local.topK.toFloat(),
+            valueRange = SamplerParams.TOP_K_RANGE.first.toFloat()..SamplerParams.TOP_K_RANGE.last.toFloat(),
+            valueText = "${local.topK}",
+            explanation = "Wie viele Token-Kandidaten pro Schritt erlaubt sind. Niedriger = präzisere Sätze. Default 40.",
+            onValueChange = { local = local.copy(topK = it.toInt()) },
+            onValueChangeFinished = { onSamplerChange(local) },
+            steps = (SamplerParams.TOP_K_RANGE.last - SamplerParams.TOP_K_RANGE.first - 1).coerceAtLeast(0),
+        )
+        SongbirdSlider(
+            label = "Max-Tokens pro Antwort",
+            value = local.maxTokens.toFloat(),
+            valueRange = SamplerParams.MAX_TOKENS_RANGE.first.toFloat()..SamplerParams.MAX_TOKENS_RANGE.last.toFloat(),
+            valueText = "${local.maxTokens}",
+            explanation = "Hartes Limit, wie lang So-Mi pro Antwort werden darf. Default 1024.",
+            onValueChange = { local = local.copy(maxTokens = (it.toInt() / 64) * 64) },
+            onValueChangeFinished = { onSamplerChange(local) },
+            steps = ((SamplerParams.MAX_TOKENS_RANGE.last - SamplerParams.MAX_TOKENS_RANGE.first) / 64 - 1).coerceAtLeast(0),
+        )
+
+        Spacer(Modifier.height(8.dp))
+        SongbirdButton(
+            label = "Auf Default zurücksetzen",
+            kind = SongbirdButtonKind.Ghost,
+            onClick = { showResetConfirm = true },
+        )
+    }
+
+    if (showResetConfirm) {
+        SongbirdDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = "Defaults wiederherstellen?",
+            message = "Setzt alle Verhalten-Regler auf die mitgelieferten Werte zurück.",
+            tone = SongbirdDialogTone.Neutral,
+            confirm = SongbirdDialogAction(
+                label = "Zurücksetzen",
+                kind = SongbirdDialogAction.Kind.Primary,
+                onClick = {
+                    showResetConfirm = false
+                    onSamplerChange(SamplerParams.DEFAULTS)
+                },
+            ),
+            dismiss = SongbirdDialogAction(
+                label = "Abbrechen",
+                kind = SongbirdDialogAction.Kind.Ghost,
+                onClick = { showResetConfirm = false },
+            ),
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Lernen
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun LearningSection(onOpenMemoryBrowser: () -> Unit) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Lernen") {
+        Text(
+            text = "So-Mi merkt sich noch nichts zwischen Sessions. Kommt mit v0.13: hybrider Trigger ('merk dir das' + optional automatisch), nach Themen sortierte Notizen, Verschieben & Löschen einzelner Einträge.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        SongbirdButton(
+            label = "Erinnerungen ansehen (leer)",
+            kind = SongbirdButtonKind.Ghost,
+            onClick = onOpenMemoryBrowser,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Diagnose
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DiagnosticsSection(
+    boot: ChatViewModel.BootSnapshot?,
+    versionName: String,
+    versionCode: Int,
+) {
+    SectionCard(title = "Diagnose") {
+        SettingsRow(label = "App-Version", value = "v$versionName ($versionCode)")
+        if (boot != null) {
+            val device = boot.deviceInfo
+            SettingsRow(label = "RAM", value = "%.1f GB".format(device.totalRamGB))
+            SettingsRow(label = "Verfügbar", value = "%.1f GB".format(device.availRamGB))
+            SettingsRow(label = "GPU", value = device.gpuRenderer)
+            val auto = boot.recommendation.auto
+            val light = boot.recommendation.lights[auto]
+            val lightGlyph = when (light) {
+                Light.GREEN -> "🟢"
+                Light.YELLOW -> "🟡"
+                Light.RED -> "🔴"
+                null -> ""
+            }
+            SettingsRow(label = "Empfohlene Modell-Klasse", value = "$lightGlyph ${auto.name.lowercase()}")
+        } else {
+            SettingsRow(label = "Hardware-Probe", value = "läuft…")
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Speicher (model instances)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StorageSection(
+    instances: List<ModelStorage.ModelInstance>,
+    onDeleteInstance: (ModelStorage.ModelInstance) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Speicher") {
+        if (instances.isEmpty()) {
+            Text(
+                text = "Keine Modelle auf dem Gerät.",
+                color = songbird.glass,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            return@SectionCard
+        }
+        val totalBytes = instances.sumOf { it.sizeBytes }
+        Text(
+            text = "Insgesamt belegt: ${formatGB(totalBytes)}",
+            color = songbird.bone,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.height(12.dp))
+        instances.forEach { instance ->
+            InstanceRow(instance = instance, onDelete = { onDeleteInstance(instance) })
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun InstanceRow(
     instance: ModelStorage.ModelInstance,
     onDelete: () -> Unit,
 ) {
@@ -131,16 +341,11 @@ private fun InstanceCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(songbird.aiBubble)
-            .border(
-                width = 1.dp,
-                color = songbird.bubbleBorder,
-                shape = RoundedCornerShape(12.dp),
-            )
-            .padding(14.dp),
+            .clip(RoundedCornerShape(8.dp))
+            .background(songbird.composerBg)
+            .border(1.dp, songbird.composerBorder, RoundedCornerShape(8.dp))
+            .padding(12.dp),
     ) {
-        // Title + completeness badge
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = instance.displayName,
@@ -150,14 +355,23 @@ private fun InstanceCard(
                 modifier = Modifier.weight(1f),
             )
             if (instance.filesMissing.isNotEmpty()) {
-                BadgePill(label = "UNVOLLSTÄNDIG", color = songbird.signal)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(songbird.signal.copy(alpha = 0.2f))
+                        .border(1.dp, songbird.signal, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = "UNVOLLSTÄNDIG",
+                        color = songbird.signal,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
         Spacer(Modifier.height(4.dp))
-
-        // Size + completeness — count missing shards explicitly so the
-        // user can see how broken the install is and which files to
-        // sideload to repair it.
         val statusLabel = if (instance.filesMissing.isNotEmpty()) {
             val total = instance.filesPresent.size + instance.filesMissing.size
             "${formatGB(instance.sizeBytes)} · ${instance.filesPresent.size}/$total Shards · ${instance.filesMissing.size} fehlen"
@@ -170,115 +384,35 @@ private fun InstanceCard(
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(8.dp))
-
-        // Path
-        Text(
-            text = pathHint(instance.rootPath.absolutePath),
-            color = songbird.glass.copy(alpha = 0.7f),
-            style = MaterialTheme.typography.labelSmall,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = instance.rootPath.absolutePath,
-            color = songbird.glass.copy(alpha = 0.5f),
-            style = MaterialTheme.typography.labelSmall,
-        )
-
-        // Files (compact)
-        if (instance.filesPresent.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = instance.filesPresent.joinToString(" · "),
-                color = songbird.glass.copy(alpha = 0.5f),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // Delete action
         if (!confirmDelete) {
-            DeleteButton(
+            SongbirdButton(
                 label = "Modell löschen",
+                kind = SongbirdButtonKind.Destructive,
                 onClick = { confirmDelete = true },
-                isWarning = true,
             )
         } else {
-            Column {
-                Text(
-                    text = "Wirklich löschen? Du musst danach das Modell neu laden.",
-                    color = songbird.bone,
-                    style = MaterialTheme.typography.bodyMedium,
+            Text(
+                text = "Wirklich löschen? Du musst danach das Modell neu laden.",
+                color = songbird.bone,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SongbirdButton(
+                    label = "Ja, löschen",
+                    kind = SongbirdButtonKind.Destructive,
+                    onClick = {
+                        confirmDelete = false
+                        onDelete()
+                    },
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DeleteButton(
-                        label = "Ja, löschen",
-                        onClick = {
-                            confirmDelete = false
-                            onDelete()
-                        },
-                        isWarning = true,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .border(1.dp, songbird.glass, RoundedCornerShape(6.dp))
-                            .clickable { confirmDelete = false }
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Abbrechen",
-                            color = songbird.glass,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
-                }
+                SongbirdButton(
+                    label = "Abbrechen",
+                    kind = SongbirdButtonKind.Ghost,
+                    onClick = { confirmDelete = false },
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun BadgePill(label: String, color: androidx.compose.ui.graphics.Color) {
-    val songbird = LocalSongbirdColors.current
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.2f))
-            .border(1.dp, color, RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    ) {
-        Text(
-            text = label,
-            color = color,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun DeleteButton(label: String, onClick: () -> Unit, isWarning: Boolean) {
-    val songbird = LocalSongbirdColors.current
-    val color = if (isWarning) songbird.signal else songbird.glass
-    Box(
-        modifier = Modifier
-            .height(36.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(color)
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = songbird.bone,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-        )
     }
 }
 
@@ -286,11 +420,4 @@ private fun formatGB(bytes: Long): String {
     val gb = bytes / 1_073_741_824.0
     return if (gb >= 1.0) "%.2f GB".format(gb)
     else "%.0f MB".format(bytes / 1_048_576.0)
-}
-
-private fun pathHint(absPath: String): String = when {
-    absPath.contains("/Android/data/") -> "App-privater Speicher (geht bei Uninstall verloren)"
-    absPath.contains("/Documents/SoMi-Models") -> "Öffentlicher Documents-Ordner (überlebt Uninstall)"
-    absPath.contains("/data/data/") -> "App-interner Speicher (geht bei Uninstall verloren)"
-    else -> "Pfad"
 }

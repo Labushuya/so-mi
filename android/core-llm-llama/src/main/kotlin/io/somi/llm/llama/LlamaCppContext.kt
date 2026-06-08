@@ -5,6 +5,7 @@ import com.arm.aichat.AiChat
 import com.arm.aichat.InferenceEngine
 import com.arm.aichat.UnsupportedArchitectureException
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.somi.common.llm.SamplerParams
 import io.somi.llm.LlamaContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -62,6 +63,18 @@ internal class LlamaCppContext @Inject constructor(
         // template auto-application internally.
         engine.sendUserPrompt(userMessage, predictLength = maxTokens)
             .collect { token -> emit(token) }
+    }
+
+    override suspend fun setSamplerParams(params: SamplerParams) {
+        // Forward to the upstream impl. setSamplerParams there is
+        // already pinned to the engine's single-thread dispatcher;
+        // calling this from any caller thread is safe.
+        engine.setSamplerParams(
+            temperature = params.temperature,
+            topP = params.topP,
+            repeatPenalty = params.repeatPenalty,
+            topK = params.topK,
+        )
     }
 
     override fun close() {

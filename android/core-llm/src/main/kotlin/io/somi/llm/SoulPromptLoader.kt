@@ -15,4 +15,13 @@ package io.somi.llm
 interface SoulPromptLoader {
     /** Returns the soul.md contents. Cached after first call. */
     suspend fun load(): String
+
+    /**
+     * Drop the in-memory cache. Next [load] re-reads from disk —
+     * filesDir-override first, then assets fallback.
+     *
+     * Called from ChatViewModel.reloadSoul() after the user saves an
+     * edit in the Settings → Persönlichkeit screen.
+     */
+    fun invalidate()
 }
