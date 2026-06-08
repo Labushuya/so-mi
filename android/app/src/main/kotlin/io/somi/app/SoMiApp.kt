@@ -76,6 +76,17 @@ class SoMiApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
+        // v0.15.0: storage migration to SoMi/-Wurzel. Runs BEFORE the
+        // first Hilt-injected repository read so the new paths are in
+        // place before ModelStorage etc. consult them. StorageMigrator
+        // uses plain Context (no Hilt), so it's safe to invoke right
+        // after super.onCreate(). Sentinel-gated → idempotent.
+        try {
+            io.somi.data.migration.StorageMigrator(this).runIfNeeded()
+        } catch (t: Throwable) {
+            Log.w(TAG, "storage migration threw — legacy paths remain", t)
+        }
+
         // Promote to foreground service the instant the process starts —
         // BUT only if there is something worth pinning. A fresh-install
         // user who hasn't picked a model yet should not see a permanent

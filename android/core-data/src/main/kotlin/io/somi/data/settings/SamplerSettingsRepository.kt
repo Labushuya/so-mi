@@ -35,7 +35,8 @@ class SamplerSettingsRepository @Inject constructor(
 ) {
 
     private val rootDir: File by lazy {
-        File(context.filesDir, "settings").apply { mkdirs() }
+        // v0.15.0: moved from filesDir/settings/ to SoMi/settings/.
+        io.somi.data.StorageRoots.settings(context)
     }
 
     private val file: File get() = File(rootDir, "sampler.json")
