@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/Labushuya/so-mi/compare/v0.12.1...v0.13.0) (2026-06-08)
+
+
+### Features
+
+* vier User-Bugs behoben — Erst-Setup-Loop, Tastatur-Spacing, System-Bars und Lade-Animation aufgehübscht ([b03ac75](https://github.com/Labushuya/so-mi/commit/b03ac754c86d27e33271744efc41bab3a39b4e07))
+
 ## [0.12.1](https://github.com/Labushuya/so-mi/compare/v0.12.0...v0.12.1) (2026-06-08)
 
 
