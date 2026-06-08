@@ -24,6 +24,8 @@ internal class NoOpLlamaContext @Inject constructor() : LlamaContext {
         // no-op
     }
 
+    override suspend fun isLoaded(modelFile: File): Boolean = false
+
     override suspend fun setSystemPrompt(systemPrompt: String) {
         // no-op
     }

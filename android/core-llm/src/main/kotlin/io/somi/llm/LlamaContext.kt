@@ -45,13 +45,27 @@ interface LlamaContext {
     suspend fun load(modelFile: File)
 
     /**
+     * v0.13.0 — true if [load] has previously succeeded for [modelFile]
+     * in this process and the engine is still in a generate-ready
+     * state. Used by ChatViewModel.init to skip redundant load on
+     * Activity recreation, which previously threw against the strict
+     * upstream state machine and dropped the user back to NoModel.
+     *
+     * Compares paths via canonical-path equality so a relative-path or
+     * symlink mismatch doesn't false-negative.
+     */
+    suspend fun isLoaded(modelFile: File): Boolean
+
+    /**
      * Set the system prompt (soul.md). Pre-feeds it to the model and
      * caches the resulting KV state, so subsequent [generate] calls
      * don't re-process the prefix on every turn.
      *
-     * Must be called after [load] and before any [generate]. Call once
-     * per session; calling again is allowed but discards the existing
-     * KV cache.
+     * Must be called after [load] and before any [generate]. Idempotent
+     * since v0.13.0: calling with the same prompt content as the last
+     * successful call short-circuits without touching the engine, so
+     * Activity recreations on a still-loaded engine no longer trip the
+     * upstream's `_readyForSystemPrompt` check.
      */
     suspend fun setSystemPrompt(systemPrompt: String)
 

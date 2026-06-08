@@ -257,8 +257,24 @@ class ChatViewModel @Inject constructor(
                 // /<id>/ subdir on first launch.
                 val selected = _selectedModel.value
                 if (selected != null && modelStorage.rescueSideload(selected)) {
-                    _lifecycle.value = Lifecycle.Loading
-                    launchLoadModel(selected)
+                    val mainFile = modelStorage.mainFileFor(selected)
+                    // v0.13.0: if the engine survived the Activity (FGS pin
+                    // keeps the process alive), don't re-load. Jump
+                    // straight to Ready and avoid the breathing-screen
+                    // flicker → NoModel loop that was caused by the
+                    // upstream's strict state-machine check.
+                    if (mainFile != null && llama.isLoaded(mainFile)) {
+                        Log.i(TAG, "boot: engine already loaded for ${selected.id}, jumping to Ready")
+                        _lifecycle.value = Lifecycle.Ready
+                        // Re-apply persisted sampler params just in case
+                        // they changed in another VM instance.
+                        runCatching {
+                            llama.setSamplerParams(samplerSettings.params.value)
+                        }.onFailure { Log.w(TAG, "post-boot sampler apply failed", it) }
+                    } else {
+                        _lifecycle.value = Lifecycle.Loading
+                        launchLoadModel(selected)
+                    }
                 } else {
                     _lifecycle.value = Lifecycle.NoModel
                 }
@@ -289,8 +305,19 @@ class ChatViewModel @Inject constructor(
         _errorBanner.value = null
 
         if (modelStorage.rescueSideload(manifest)) {
-            _lifecycle.value = Lifecycle.Loading
-            launchLoadModel(manifest)
+            // v0.13.0: same engine-already-loaded short-circuit as init.
+            // Without this, picking the same model twice (rare but
+            // possible) would re-enter Loading and trip upstream state
+            // checks.
+            viewModelScope.launch {
+                val mainFile = modelStorage.mainFileFor(manifest)
+                if (mainFile != null && llama.isLoaded(mainFile)) {
+                    _lifecycle.value = Lifecycle.Ready
+                } else {
+                    _lifecycle.value = Lifecycle.Loading
+                    launchLoadModel(manifest)
+                }
+            }
         } else {
             _lifecycle.value = Lifecycle.NoModel
         }
@@ -385,8 +412,18 @@ class ChatViewModel @Inject constructor(
         _errorBanner.value = null
         val manifest = _selectedModel.value
         if (manifest != null && modelStorage.rescueSideload(manifest)) {
-            _lifecycle.value = Lifecycle.Loading
-            launchLoadModel(manifest)
+            // v0.13.0: same engine-already-loaded short-circuit as init.
+            // Without this, tapping retry on a still-loaded engine would
+            // loop NoModel → Loading → NoModel because re-load throws.
+            viewModelScope.launch {
+                val mainFile = modelStorage.mainFileFor(manifest)
+                if (mainFile != null && llama.isLoaded(mainFile)) {
+                    _lifecycle.value = Lifecycle.Ready
+                } else {
+                    _lifecycle.value = Lifecycle.Loading
+                    launchLoadModel(manifest)
+                }
+            }
         } else {
             _lifecycle.value = Lifecycle.NoModel
         }

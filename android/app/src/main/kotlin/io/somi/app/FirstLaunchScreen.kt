@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -84,6 +85,11 @@ internal fun FirstLaunchScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
+            // v0.13.0: enableEdgeToEdge in MainActivity flips the window
+            // into edge-to-edge on Android 11/12, so we now reserve the
+            // status/nav-bar inset explicitly here. Background extends
+            // behind the bars; content is inset.
+            .systemBarsPadding()
             .padding(horizontal = 16.dp, vertical = 24.dp),
     ) {
         // Header with settings entry
