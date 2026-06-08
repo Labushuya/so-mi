@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.1](https://github.com/Labushuya/so-mi/compare/v0.15.0...v0.15.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* build — embedder-worker-name aus rag-fassade exposen statt direkt referenzieren ([340698a](https://github.com/Labushuya/so-mi/commit/340698a3fc98b0711550d40e770018c5b74f1b8f))
+* build v0.15.0-Compile-Fehler ([30374a9](https://github.com/Labushuya/so-mi/commit/30374a9c93d9c5df30bf6ca15003f82dad514799))
+
 ## [0.15.0](https://github.com/Labushuya/so-mi/compare/v0.14.3...v0.15.0) (2026-06-08)
 
 
