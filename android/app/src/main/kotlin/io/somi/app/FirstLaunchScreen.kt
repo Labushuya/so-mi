@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -85,11 +89,11 @@ internal fun FirstLaunchScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            // v0.13.0: enableEdgeToEdge in MainActivity flips the window
-            // into edge-to-edge on Android 11/12, so we now reserve the
-            // status/nav-bar inset explicitly here. Background extends
-            // behind the bars; content is inset.
-            .systemBarsPadding()
+            // v0.15.0: union of systemBars + displayCutout. With
+            // immersive ON (default) the systemBars inset is zero —
+            // only the punch-hole/notch margin remains. With
+            // immersive OFF both insets are active.
+            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 24.dp),
     ) {
         // Header with settings entry
@@ -280,7 +284,7 @@ private fun HardwareSummary(boot: ChatViewModel.BootSnapshot) {
 }
 
 @Composable
-private fun ModelRow(
+internal fun ModelRow(
     manifest: ModelManifest,
     light: Light,
     isSelected: Boolean,
