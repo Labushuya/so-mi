@@ -267,7 +267,17 @@ private fun ChatShellScreen(
             // the keyboard-up case (imePadding) doesn't double-count
             // with navigationBarsPadding. The .background() above the
             // padding still paints obsidian behind both bars.
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+            //
+            // v0.14.3: also consume the IME inset at this level so the
+            // parent Column shrinks when the keyboard opens, instead
+            // of the Composer Box growing at the bottom. This makes
+            // the LazyColumn (weight 1f) resize naturally and
+            // eliminates the residual gap between keyboard top and
+            // Composer that the original v0.13.0 fix left behind.
+            .windowInsetsPadding(
+                WindowInsets.systemBars.only(WindowInsetsSides.Top)
+                    .union(WindowInsets.ime),
+            ),
     ) {
         ChatTopBar(
             versionName = versionName,
@@ -563,13 +573,13 @@ private fun Composer(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 10.dp)
-            // v0.13.0: single union-padding instead of imePadding +
-            // navigationBarsPadding stacked. Stacking double-counted
-            // the nav-bar height when the keyboard was open (IME inset
-            // already includes nav-bar on Android 11+) and left a
-            // static nav-bar-height strip below the composer when the
-            // keyboard was closed.
-            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+            // v0.14.3: parent Column now consumes the IME inset
+            // (systemBars.Top.union(ime)), so the Composer only needs
+            // to clear the navigation bar when the keyboard is closed.
+            // When the keyboard is open the parent Column has already
+            // shrunk, so this nav-bar padding sits effectively at zero
+            // height — no double-counting, no residual 10dp gap.
+            .windowInsetsPadding(WindowInsets.navigationBars),
         contentAlignment = Alignment.Center,
     ) {
         Column(
