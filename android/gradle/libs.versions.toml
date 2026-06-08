@@ -40,6 +40,15 @@ paparazzi = "1.3.5"
 androidxTestExtJunit = "1.2.1"
 androidxTestEspresso = "3.6.1"
 
+# Phase-3 RAG. ObjectBox + ONNX Runtime are pinned exact and bumped only
+# in dedicated PRs with smoke + size-delta evidence:
+#   - ObjectBox ships native libs that change APK signature surface
+#   - ONNX Runtime ships native libs that affect embedder reproducibility
+#   - bumping either without re-validation risks silent recall regressions
+# See CLAUDE.md "ObjectBox/ONNX lockstep-pin" invariant.
+objectbox = "4.0.3"
+onnxruntime = "1.18.0"
+
 [libraries]
 # AndroidX core
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -107,6 +116,12 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidxTestEspresso" }
 
+# Phase-3 RAG: ObjectBox vector DB + ONNX Runtime embedder. Both shipped
+# arm64-only via abiFilters; pin exactly per the lockstep rule above.
+objectbox-android = { module = "io.objectbox:objectbox-android", version.ref = "objectbox" }
+objectbox-kotlin = { module = "io.objectbox:objectbox-kotlin", version.ref = "objectbox" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
@@ -116,6 +131,7 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+objectbox = { id = "io.objectbox", version.ref = "objectbox" }
 
 [bundles]
 compose-ui = [
