@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Roadmap & Single Source of Truth
+
+**Read `ROADMAP.md` at the start of every session before reading `SPEC.md`.** It tracks IST-state vs. SPEC.md SOLL-state plus all user-agreed deviations from chat sessions that aren't in SPEC.md. SPEC.md is the original plan; ROADMAP.md tracks reality. When they conflict, ROADMAP.md wins because it's where session-locked decisions live (e.g. multilingual-MiniLM instead of bge-small per 2026-06-08, no Online-Boost per user veto, 14B-models pending after v0.15.0).
+
+When a planning workflow is launched, pass ROADMAP.md as additional context — not just SPEC.md. Plan-agents that consult only SPEC.md will reach wrong conclusions about scope (this happened in v0.14.3 — task #87 14B-models was wrongly closed as superseded because the plan-agent didn't see ROADMAP).
+
+After each release that changes scope: update ROADMAP.md "Aktueller Stand" + "Pipeline" sections. After each user agreement that adds a deviation: add it to the "User-Vereinbarungen" section with a date stamp.
+
 ## Repository Status
 
 **Phase 1 (Skeleton + Pipeline) is in place.** The repo has the full `android/` multi-module Gradle setup, the build-and-release GitHub Actions pipeline, all shell scripts including the verbatim `init-keystore.sh` from SPEC §6, `soul/soul.md` verbatim from SPEC §2, and the release-please configuration. **What's still missing for the first green CI run:** the user must execute `bash scripts/init-keystore.sh` once and commit `keystore/ci.keystore`. Until that file is on `main`, the build job fails its keystore-presence check.
