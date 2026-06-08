@@ -114,9 +114,16 @@ internal class InferenceEngineImpl private constructor(
      * sampler chain (common_sampler_free + common_sampler_init) so the
      * call MUST go through llamaDispatcher to be serialised against
      * generateNextToken().
+     *
+     * Renamed from setSamplerParams to nativeSetSamplerParams in v0.12.0
+     * because the suspend override and the non-suspend external shared
+     * the same Kotlin source signature, which ambiguous-overloaded in
+     * the Release build (Debug compiled fine via Continuation
+     * disambiguation, Release didn't). The "native" prefix removes the
+     * collision and matches the JNI convention.
      */
     @FastNative
-    private external fun setSamplerParams(
+    private external fun nativeSetSamplerParams(
         temp: Float,
         topP: Float,
         repeatPenalty: Float,
@@ -300,7 +307,7 @@ internal class InferenceEngineImpl private constructor(
         // Pinned to llamaDispatcher so the rebuild is serialised against
         // generateNextToken() and processUserPrompt().
         Log.i(TAG, "setSamplerParams: temp=$temperature top_p=$topP repeat_penalty=$repeatPenalty top_k=$topK")
-        setSamplerParams(temperature, topP, repeatPenalty, topK)
+        nativeSetSamplerParams(temperature, topP, repeatPenalty, topK)
     }
 
     /**

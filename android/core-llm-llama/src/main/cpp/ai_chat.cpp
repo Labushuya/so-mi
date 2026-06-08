@@ -162,11 +162,17 @@ Java_com_arm_aichat_internal_InferenceEngineImpl_prepare(JNIEnv * /*env*/, jobje
 
 // v0.11.4: live sampler-param tuning from Kotlin Settings.
 // MUST be called on the same single-thread llamaDispatcher as decode —
-// freeing the sampler while generateNextToken is mid-call would crash
+// freeing the sampler while generateNextToken() is mid-call would crash
 // natively. The Kotlin layer pins to limitedParallelism(1).
+//
+// v0.12.0: renamed from setSamplerParams to nativeSetSamplerParams
+// because the Kotlin-side `external fun setSamplerParams` and the
+// suspend override `setSamplerParams` shared the same source signature
+// and collided in the Release build (Debug disambiguated via
+// Continuation, Release did not).
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_arm_aichat_internal_InferenceEngineImpl_setSamplerParams(
+Java_com_arm_aichat_internal_InferenceEngineImpl_nativeSetSamplerParams(
         JNIEnv * /*env*/, jobject /*unused*/,
         jfloat temp, jfloat top_p, jfloat repeat_penalty, jint top_k) {
     g_sampler_params.temp           = temp;
