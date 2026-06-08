@@ -71,6 +71,47 @@ class RagBootstrap @Inject constructor(
         Log.i(TAG, "scheduleEmbedderDownload: enqueued (Wi-Fi only, KEEP policy)")
     }
 
+    /**
+     * v0.15.0 — manually re-enqueue the embedder download. Same as
+     * [scheduleEmbedderDownload] but uses [ExistingWorkPolicy.REPLACE]
+     * so the user can force a retry even if a previous attempt failed
+     * with `Result.failure()` and is still sitting in the WorkManager
+     * queue. Triggered from the Settings → Downloads section.
+     *
+     * Caller is responsible for deleting any stale on-disk file before
+     * calling — otherwise [EmbeddingModelDownloadWorker] short-circuits
+     * on the SHA-check.
+     */
+    fun forceEnqueueEmbedderDownload(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiresStorageNotLow(true)
+            .build()
+        val request = OneTimeWorkRequestBuilder<EmbeddingModelDownloadWorker>()
+            .setConstraints(constraints)
+            .build()
+        WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+            EmbeddingModelDownloadWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+        Log.i(TAG, "forceEnqueueEmbedderDownload: enqueued (REPLACE policy)")
+    }
+
+    /**
+     * v0.15.0 — delete the on-disk embedder artifact so the next
+     * [scheduleEmbedderDownload] / [forceEnqueueEmbedderDownload] call
+     * will actually re-download instead of short-circuiting.
+     */
+    fun deleteEmbedder() {
+        embeddingStorage.delete(EmbeddingModelCatalog.DEFAULT)
+        Log.i(TAG, "deleteEmbedder: artifact removed")
+    }
+
+    /** v0.15.0 — quick on-disk check for Settings UI. */
+    fun isEmbedderInstalled(): Boolean =
+        embeddingStorage.isInstalled(EmbeddingModelCatalog.DEFAULT)
+
     private companion object {
         const val TAG = "RagBootstrap"
     }
