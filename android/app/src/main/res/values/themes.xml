@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Songbird Phase-1 base theme.
+
          Compose Material3 paints all in-app surfaces. This theme only governs
-         the one-frame system-window flash before setContent runs and the
-         status/nav bar tint — all painted Obsidian so cold launches don't
-         flash white. -->
+         the one-frame system-window flash before setContent runs (windowBackground
+         keeps the cold-launch backdrop Obsidian instead of white).
+
+         v0.13.0: removed deprecated android:statusBarColor / navigationBarColor /
+         windowLightStatusBar / windowLightNavigationBar — all four are no-ops on
+         targetSdk 35 (Android 15+) and the actual bar tint is now controlled by
+         enableEdgeToEdge(SystemBarStyle.dark(...)) in MainActivity.onCreate. -->
     <style name="Theme.SoMi" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/songbird_obsidian</item>
-        <item name="android:statusBarColor">@color/songbird_obsidian</item>
-        <item name="android:navigationBarColor">@color/songbird_obsidian</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
