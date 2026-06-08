@@ -37,6 +37,17 @@ android {
         // `./gradlew :app:assembleRelease` just works.
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = project.findProperty("versionName") as String? ?: "0.0.0-dev"
+
+        // arm64-only ship per memory/phase2-architecture-decisions.md.
+        // v0.14.0 (M1) adds ObjectBox + ONNX Runtime, both of which
+        // bring multi-ABI native splits. Without an app-level filter
+        // the merge step pulls every ABI into the APK (~+45 MB).
+        // core-llm-llama and core-rag both filter at the library
+        // level too, but this app-level filter is the authoritative
+        // gate for the final merge.
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -103,6 +114,7 @@ dependencies {
     implementation(project(":core-llm"))
     implementation(project(":core-llm-llama"))
     implementation(project(":core-data"))
+    implementation(project(":core-rag"))
     implementation(project(":core-ui"))
 
     implementation(libs.androidx.core.ktx)

@@ -7,6 +7,11 @@ import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import io.somi.data.ModelCatalog
 import io.somi.data.ModelStorage
+import io.somi.rag.RagBootstrap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -46,6 +51,22 @@ class SoMiApp : Application(), Configuration.Provider {
 
     @Inject lateinit var modelStorage: ModelStorage
 
+    /**
+     * v0.14.0 M1 — RAG vector store (ObjectBox). The bootstrap is a
+     * lazy facade; touching `ensureOpen()` is the moment the
+     * BoxStore actually opens. We do that on a background coroutine
+     * after FGS-promote so cold-start time stays ±50ms of v0.13.0.
+     */
+    @Inject lateinit var ragBootstrap: RagBootstrap
+
+    /**
+     * Application-scoped supervisor for fire-and-forget warmups
+     * (RAG bootstrap, future Phase-3 indexers). SupervisorJob so
+     * one failure doesn't tear down siblings. Lives for the
+     * process lifetime — never cancelled.
+     */
+    private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -75,6 +96,21 @@ class SoMiApp : Application(), Configuration.Provider {
             // FGS will then start on the slower MainActivity path; load
             // may race the OS guard but the user can still launch.
             Log.w(TAG, "deferred FGS start (probe threw)", t)
+        }
+
+        // v0.14.0 M1 — open the RAG BoxStore in the background. Cheap
+        // (~10-50ms) but no point doing it on the main thread of cold
+        // start. Failures are logged and swallowed: a missing RAG
+        // store should not brick the app — the chat path doesn't
+        // depend on it yet (M6 onwards will, by which point any open
+        // failure will surface as a TalkBack-friendly banner).
+        warmupScope.launch {
+            try {
+                ragBootstrap.ensureOpen()
+                Log.i(TAG, "RAG bootstrap: BoxStore opened")
+            } catch (t: Throwable) {
+                Log.w(TAG, "RAG bootstrap failed", t)
+            }
         }
     }
 
