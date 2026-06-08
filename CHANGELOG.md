@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/Labushuya/so-mi/compare/v0.14.0...v0.14.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* build — objectbox-plugin korrekt verkabelt ([8d83786](https://github.com/Labushuya/so-mi/commit/8d83786be712afa33d64f23b577ade5c0965a2bb))
+
 ## [0.14.0](https://github.com/Labushuya/so-mi/compare/v0.13.0...v0.14.0) (2026-06-08)
 
 
