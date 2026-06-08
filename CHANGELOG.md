@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/Labushuya/so-mi/compare/v0.14.1...v0.14.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* build — ObjectBox-Task vom Configuration-Cache ausgenommen ([7080eb5](https://github.com/Labushuya/so-mi/commit/7080eb53979a669322607a14277d8bbf46300bef))
+
 ## [0.14.1](https://github.com/Labushuya/so-mi/compare/v0.14.0...v0.14.1) (2026-06-08)
 
 
