@@ -112,6 +112,15 @@ class RagBootstrap @Inject constructor(
     fun isEmbedderInstalled(): Boolean =
         embeddingStorage.isInstalled(EmbeddingModelCatalog.DEFAULT)
 
+    /**
+     * v0.15.0 — public name of the embedder-download unique-work
+     * entry. Exposed so consumers in `:core-ui` (which can't see the
+     * `internal` Worker class itself) can subscribe to its WorkInfo
+     * Flow and call `cancelUniqueWork`. Mirrors the value in
+     * [io.somi.rag.download.EmbeddingModelDownloadWorker.WORK_NAME].
+     */
+    val embedderWorkName: String = EmbeddingModelDownloadWorker.WORK_NAME
+
     private companion object {
         const val TAG = "RagBootstrap"
     }
