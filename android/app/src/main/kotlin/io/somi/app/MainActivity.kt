@@ -648,8 +648,7 @@ private fun Composer(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(

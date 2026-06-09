@@ -613,6 +613,11 @@ class ChatViewModel @Inject constructor(
     // exposes the buttons backed by the methods below.
     // ---------------------------------------------------------------
 
+    /** v0.16.7 — cancel a background download for a non-selected model. */
+    fun cancelModelDownload(manifest: ModelManifest) {
+        modelManager.cancel(manifest)
+    }
+
     /**
      * Snapshot of the embedder-download status for the Settings UI.
      *
