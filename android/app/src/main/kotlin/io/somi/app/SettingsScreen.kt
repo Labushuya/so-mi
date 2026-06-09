@@ -105,25 +105,6 @@ internal fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
             item {
-                PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
-            }
-            item {
-                BehaviourSection(
-                    sampler = sampler,
-                    onSamplerChange = { viewModel.applySamplerParams(it) },
-                )
-            }
-            item {
-                LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
-            }
-            item {
-                DiagnosticsSection(
-                    boot = boot,
-                    versionName = BuildConfig.VERSION_NAME,
-                    versionCode = BuildConfig.VERSION_CODE,
-                )
-            }
-            item {
                 val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
                 DownloadsSection(
                     embedderStatus = embedderStatus,
@@ -133,6 +114,9 @@ internal fun SettingsScreen(
                     onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
                     onReinstallEmbedder = { viewModel.reinstallEmbedder() },
                 )
+            }
+            item {
+                PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
             }
             item {
                 DisplaySection(
@@ -151,7 +135,23 @@ internal fun SettingsScreen(
                 )
             }
             item {
+                BehaviourSection(
+                    sampler = sampler,
+                    onSamplerChange = { viewModel.applySamplerParams(it) },
+                )
+            }
+            item {
+                LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
+            }
+            item {
                 DataSection(onOpenDataBrowser = onOpenDataBrowser)
+            }
+            item {
+                DiagnosticsSection(
+                    boot = boot,
+                    versionName = BuildConfig.VERSION_NAME,
+                    versionCode = BuildConfig.VERSION_CODE,
+                )
             }
             item {
                 StorageSection(

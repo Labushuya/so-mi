@@ -394,7 +394,7 @@ private fun ChatShellScreen(
             if (messages.isEmpty() && !isGenerating) {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
