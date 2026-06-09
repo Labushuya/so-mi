@@ -8,11 +8,12 @@
 
 ---
 
-## Aktueller Stand (2026-06-08)
+## Aktueller Stand (2026-06-09)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.15.0 | 🟡 in Push | Downloads-Section + 14B-Catalog + ModelCatalogScreen + DataBrowser + Greeting-Feature + Vollbild-Modus + SoMi/-Wurzel-Storage + Embedder-Mirror (HF + GH-Release) + tokenizer-Asset-Seed-Pfad |
+| v0.15.1 | ✅ live | Build-Fix: EmbeddingModelDownloadWorker.WORK_NAME aus RagBootstrap exposen statt internal-Klasse direkt referenzieren |
+| v0.15.0 | ✅ live (kein APK — Build-Bug) | Downloads-Section + 14B-Catalog + ModelCatalogScreen + DataBrowser + Greeting-Feature + Vollbild-Modus + SoMi/-Wurzel-Storage + Embedder-Mirror |
 | v0.14.3 | ✅ live | RagBootstrap.scheduleEmbedderDownload + Keyboard-Spacing-Fix + CHANGELOG-Aufräumen |
 | v0.14.2 | ✅ live | M1-M6 Lern-RAG-Schreibe-Pfad ("merk dir" → "Hab ich.") |
 | v0.13.0 | ✅ live | Settings-Refactor + Songbird-Dialog-Stil + LLM-Parameter + Persönlichkeits-Editor |
@@ -82,15 +83,35 @@ Diese Vereinbarungen wurden in Sitzungen mit Christopher getroffen und sind **bi
 - **Liste mit Akkordeon pro Topic** *(2026-06-08)* — ein-/ausklappbar
 - **Bullet-weise Lösch + Verschieben in andere `.md`** *(2026-06-08)*
 
+### Multi-Chat
+- **Mehrere parallele Gespräche** *(2026-06-09)* — conversationId-Spalte in Room, Chat-Liste als Einstieg vor dem Chat. Ein Floating-Action-Button "Neues Gespräch", Swipe-to-delete. Kommt in v0.16.x nach Recall.
+
 ### Anzeige & UX
-- **Tatsächlicher Vollbild-Modus per Toggle in Settings** *(2026-06-08)* — `WindowInsetsControllerCompat.hide(systemBars())` mit `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`; Default EIN; Swipe vom Rand bringt Bars kurz zurück
-- **Notch/Punch-Hole respektieren** *(2026-06-08)* — `windowLayoutInDisplayCutoutMode = shortEdges` plus `WindowInsets.systemBars.union(displayCutout)` auf allen Vollbild-Composables
-- **Keyboard-Spacing-Fix endgültig** *(2026-06-08)* — LazyColumn `Arrangement.spacedBy(8.dp, Alignment.Bottom)`, contentPadding vertical=4.dp, Composer mit `WindowInsets.ime.union(navigationBars)`
+- **Tatsächlicher Vollbild-Modus per Toggle in Settings** *(2026-06-08)*
+- **Breathing-Screen: Fade-Out-Animation beim Übergang in den Chat** *(2026-06-09)* — kein harter Cut. CrossFade-Composable oder AnimatedVisibility mit 300–400 ms.
+- **Settings-Scroll-Position: beim Zurück-Navigieren die zuletzt sichtbare Position beibehalten** *(2026-06-09)* — `rememberLazyListState` mit Snapshot-Save.
+- **Notch/Punch-Hole respektieren** *(2026-06-08)*
+- **Keyboard-Spacing-Fix endgültig** *(2026-06-08)*
 - **Begrüßungs-Feature mit 3-Mode-Toggle** *(2026-06-08)*
-  - FULL: bei jedem Aufwachen + Hintergrund-Rückkehr (>5 min)
-  - COLD_START: nur beim Kaltstart (Default)
-  - NONE: aus
-  - Begrüßung kommt OHNE LLM-Generation (Direct-Append in Chat) aus dem Pool `app/src/main/assets/greeting-pool.json`
+
+### Downloads & Modelle
+- **Wi-Fi-Toggle muss zurück in die Downloads-Sektion** *(2026-06-09)* — war in v0.14.x; in v0.15.0 versehentlich entfernt. Steuert ALLE großen Downloads (LLM + Embedder). Default: WLAN. Ohne Toggle: Soft-Lock wenn kein WLAN.
+- **ModelCatalogScreen braucht Download-Button** *(2026-06-09)* — Tippen auf ein Modell schlägt das Modell vor, aber löst keinen Download aus wenn das Modell noch nicht installiert ist. "Herunterladen"-Button pro Zeile (greyed-out wenn bereits installiert/lädt).
+- **Embedder-Status in der Downloads-Sektion sichtbar als Badge** *(2026-06-09)* — "Installiert ✓", "Lädt X%" Fortschrittsbalken, "Fehler — Erneut laden". Aktuell ist der Status-Text da aber ohne visuelles Gewicht.
+- **Optionale Downloads werden als Pflicht kommuniziert** *(2026-06-09)* — Embedder (RAG-Modell) und später Sprachpakete sollen beim Start automatisch angestoßen + mit in-App-Hinweis "Wird geladen…" signalisiert werden. Foreground-Notification bleibt als OS-Pflicht erhalten, aber kein extra Popup.
+- **RAG-Sektion in Downloads-Sektion getrennt von Sprachmodellen** *(2026-06-09)* — unter "Sprachmodelle" gehört nur der LLM; Embedder hat seine eigene Untersektion "Gedächtnis-Modell".
+
+### Notifications
+- **Download-Notifications reduzieren auf OS-Minimum** *(2026-06-09)* — Foreground-Service-Notification bleibt (OS-Pflicht), aber kein separates "Download abgeschlossen"-Pop. In-App-Status in der Downloads-Sektion ersetzt alle Nachrichteninhalte.
+
+### RAG / Memory
+- **Recall-Funktion (M8) ist noch nicht implementiert** *(Stand 2026-06-09)* — "merk dir" schreibt, Recall liest nicht zurück. Das ist erwartetes Verhalten und kein Bug — M8 kommt in v0.16.0. So-Mi vergisst zwischen Sessions, weil kein RAG-Inject in den Prompt passiert.
+
+### Prozess
+- **Eine User-sichtbare Bullet pro Commit** *(Memory)*
+- **Deutsche User-Prosa als Commit-Subjects**
+- **Automatisches Pushen ohne User-Aktion** *(2026-06-09)* — PR öffnen, mergen, release-please-PR mergen, alles vollautomatisch. User muss nichts mehr klicken.
+- **Workflow + Agents bevorzugen** *(2026-06-09)* — bei nicht-trivialen Bundles immer Workflow-Tool nutzen.
 
 ### Storage
 - **`$externalFilesDir/memory/<topic>.md`** *(2026-06-08)* — User-readable Mirror
@@ -128,48 +149,27 @@ Diese Vereinbarungen wurden in Sitzungen mit Christopher getroffen und sind **bi
 
 ## Pipeline (offene Vereinbarungen mit Reihenfolge)
 
-### v0.15.0 — Downloads-Sichtbarkeit + Vollbild + SoMi/-Wurzel + 14B-Catalog (in Push)
-1. ✅ Settings → Downloads-Section: zeigt Embedder-Status (Installed/Running/Enqueued/Failed/NotPresent) + LLM-Liste mit "Anderes Modell laden"-CTA
-2. ✅ ModelCatalogScreen — Modellwechsel mitten im Betrieb möglich
-3. ✅ DataBrowserScreen — In-App File-Tree für SoMi/, Datei-Teilen via FileProvider
-4. ✅ Multi-URL-Fallback in EmbeddingModelPart (HF primär, GH-Release sekundär)
-5. ✅ GH-Release-Workflow `mirror-embedder-assets.yml` lädt Assets unter Tag `embedder-assets` hoch
-6. ✅ Bundled-Asset-Seed-Pfad für tokenizer.json (Datei selbst NICHT eingecheckt — Hinweis in `assets/embedder/README.md` wie nachladen)
-7. ✅ Begrüßungs-Feature mit 3-Mode-Toggle und greeting-pool.json
-8. ✅ Echter Vollbild-Modus über `WindowInsetsControllerCompat`
-9. ✅ SoMi/-Wurzelverzeichnis + StorageMigrator
-10. ✅ 14B Q3 + Q4 im ModelCatalog mit verifizierten SHAs
-11. ✅ KV-Trample-Fix in selectModel (cancel generationJob vor load)
-12. ⏳ Resilienz-Härtung (Fail-Fast 404/410, Self-Heal 416, Cap-Retries 5xx) — verschoben nach v0.15.1
-13. ⏳ SAF-Manuell-Import als Tertiär-Pfad — verschoben nach v0.16.0
-14. ⏳ Verify-on-Launch (alle 7 Tage SHA-Check) — verschoben nach v0.16.0
+### v0.16.0 — Settings-Overhaul + Downloads-Fix + Breathing-Fade (nächster Sprint)
+Alle Punkte aus dem v0.15.1-Test die sofort adressiert werden müssen:
 
-### v0.15.1 — Resilienz-Härtung + 14B-Picker-UI
-1. ResumableDownloader: Fail-Fast bei 404/410, Self-Heal bei 416, Cap-Retries bei 5xx
-2. 14B-Picker-UI mit Quant-Tooltips (Q3 = sicherer, Q4 = besser+knapp)
-3. YELLOW-Tier-Songbird-Confirm "Knapper RAM. Wirklich Q4?" mit OOM-Fallback per User-Confirm
+1. **Wi-Fi-Toggle** zurück in Downloads-Sektion (Soft-Lock-Fix)
+2. **ModelCatalogScreen**: Download-Button pro Zeile + Download-Status-Badge (Fortschrittsbalken)
+3. **Embedder-Status-Badge** in Downloads-Sektion mit visuellem Gewicht (Fortschrittsbalken)
+4. **Breathing-Screen Fade-Out** → sanfter Übergang in Chat (300–400 ms CrossFade)
+5. **Settings-Scroll-Position** beim Zurück beibehalten (`rememberLazyListState`)
+6. **Settings-Struktur überarbeiten** — alle Sektionen korrekt beschriftet, RAG getrennt von LLM, keine fehlerhaften Abhängigkeiten
+7. **Automatisches Push** (PR öffnen + mergen ohne User-Aktion)
+8. **14B-SHAs live verifizieren** und in `ALL` überführen
 
-### v0.16.0 — Phase-3-Recall (M7+M8+M9)
-1. M7 — Memory-Browser-UI in Settings (Akkordeon, Bullet-Edit, Verschieben)
-2. M8 — Recall + RAG-Injection + Memory-Chip am Antwort-Bubble
-3. M9 — TopicClassifier (LLM-Pass mit Disambiguation)
-4. SAF-Manuell-Import als Tertiär-Download-Pfad
-5. Verify-on-Launch (7-Tage-SHA-Check)
-6. SPEC §7 Tier-Formel-Recalibration
-7. ObjectBox unter SoMi/-Wurzel verschieben (mit FUSE-Risk-Verifizierung)
+### v0.17.0 — Phase-3-Recall (M7+M8+M9)
+1. M7 — Memory-Browser-UI in Settings
+2. **M8 — Recall + RAG-Inject in den Prompt** ← das ist was Christopher als "So-Mi vergisst" erlebt
+3. M9 — TopicClassifier mit Disambiguation
 
-### v0.17.0+ — Phase-3-Rest
-1. M10 — Auto-Toggle in Settings
+### v0.18.0+ — Multi-Chat + Phase-3-Rest
+1. Multi-Chat: conversationId-Spalte, Chat-Liste, Swipe-to-delete
 2. KIWIX-AAR + libkiwix
 3. Notes-Corpus + Watcher
-4. `bootstrap-soul.sh` + `initial-memory.json`-Loader
-5. **Phase-3-Akzeptanztest erfüllen** ("So-Mi erinnert sich" + "KIWIX zitiert Quelle")
-
-### Phase 4 — neu zu konzipieren
-Online-Boost ist out (User-Entscheidung). Tools (12 aus SPEC §9) bleiben auf der Liste. Intent-Router lokal-only.
-
-### Phase 5 — Voice + In-App-Updater
-Wie SPEC.
 
 ---
 
