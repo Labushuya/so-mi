@@ -648,16 +648,7 @@ private fun Composer(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            // v0.15.0: Composer owns the IME inset directly. The parent
-            // Column went back to systemBars.only(Top) — that reverts
-            // v0.14.3's misdiagnosed move of the IME inset to the parent
-            // (which left the LazyColumn with stale top-anchored layout
-            // when the keyboard opened). Single union of ime + nav bar
-            // means the Composer rises with the keyboard and clears
-            // the nav bar when the keyboard is closed; on Android 11+
-            // the IME inset already includes the nav-bar height when
-            // the keyboard is open, so the union doesn't double-count.
+            .padding(horizontal = 12.dp)
             .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
         contentAlignment = Alignment.Center,
     ) {

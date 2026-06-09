@@ -515,7 +515,7 @@ private fun DownloadsSection(
         Spacer(Modifier.height(16.dp))
 
         // Embedder
-        Text("Erinnerungs-Modell (RAG)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Text("Gedächtnis-Modell (Embedder)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         EmbedderStatusBadge(status = embedderStatus)
         Spacer(Modifier.height(8.dp))
@@ -537,7 +537,7 @@ private fun DownloadsSection(
         Spacer(Modifier.height(20.dp))
 
         // LLMs
-        Text("Sprach-Modelle", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Text("LLM (Sprachmodell)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         Text(
             text = "Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter \"Speicher\".",

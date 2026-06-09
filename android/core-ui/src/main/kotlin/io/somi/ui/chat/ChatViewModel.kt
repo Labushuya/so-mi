@@ -546,6 +546,7 @@ class ChatViewModel @Inject constructor(
                 }.onFailure { Log.w(TAG, "llama.close() during delete failed", it) }
                 generationJob?.cancel()
                 _generation.value = null
+                _selectedModel.value = null
                 _lifecycle.value = Lifecycle.NoModel
             }
         }
