@@ -12,12 +12,15 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.16.0 | 🔜 pending release-please | WLAN-Toggle zurück, Settings-Position gemerkt, Katalog-Download-UI (Fortschrittsbalken + Herunterladen-Button), Ladeüberblendung (350 ms), Embedder-Ampel, 14B SHA-geprüft + freigeschaltet |
-| v0.15.1 | ✅ live | Build-Fix: EmbeddingModelDownloadWorker.WORK_NAME aus RagBootstrap exposen statt internal-Klasse direkt referenzieren |
-| v0.15.0 | ✅ live (kein APK — Build-Bug) | Downloads-Section + 14B-Catalog + ModelCatalogScreen + DataBrowser + Greeting-Feature + Vollbild-Modus + SoMi/-Wurzel-Storage + Embedder-Mirror |
-| v0.14.3 | ✅ live | RagBootstrap.scheduleEmbedderDownload + Keyboard-Spacing-Fix + CHANGELOG-Aufräumen |
-| v0.14.2 | ✅ live | M1-M6 Lern-RAG-Schreibe-Pfad ("merk dir" → "Hab ich.") |
-| v0.13.0 | ✅ live | Settings-Refactor + Songbird-Dialog-Stil + LLM-Parameter + Persönlichkeits-Editor |
+| v0.17.0 | 🟡 in Build | Tastatur dockt an Composer an (adjustResize), Settings Akkordeon-Sektionen, Speicher+Downloads gemergt |
+| v0.16.8 | ✅ live (ADB installiert) | Keyboard überlappt Chat, Download-Abbrechen, LLM-Status-Fix, Naming |
+| v0.16.7 | ✅ live | Spacing, Download-Button, Modell-Naming, Modell-Reset nach Löschen |
+| v0.16.6 | ✅ live | Downloads-Sektion ganz oben in Settings |
+| v0.16.5 | ✅ live | App-Crash-Fix: _modelStatuses NPE durch Init-Reihenfolge |
+| v0.16.x | ✅ live | Diverse Crash-Fixes (AnimatedContent, LazyListState.Saver, typografische Quotes) |
+| v0.15.1 | ✅ live | Build-Fix: EmbeddingModelDownloadWorker internal-Klasse |
+| v0.15.0 | ✅ live (kein APK) | Downloads-Section + 14B-Catalog + DataBrowser + Greeting + Vollbild + SoMi/-Wurzel |
+| v0.14.3 | ✅ live | Embedder-Enqueue + Keyboard-Spacing + CHANGELOG |
 | v0.12.x | ✅ live | Sprachdrift-Fix + Settings-Refactor (war ursprünglich als 14B-Release geplant — siehe "Verschoben") |
 | v0.11.x | ✅ live | Composer-Bug + System-Bars + Erst-Setup-Loop-Fix |
 
