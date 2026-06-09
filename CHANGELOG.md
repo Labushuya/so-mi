@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.1](https://github.com/Labushuya/so-mi/compare/v0.16.0...v0.16.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* typografische Anführungszeichen in SettingsScreen durch ASCII ersetzt ([4183e22](https://github.com/Labushuya/so-mi/commit/4183e22a803eb866a12b85d074967a03217c87c9))
+* typografische Anführungszeichen in SettingsScreen durch ASCII ersetzt ([eabbfea](https://github.com/Labushuya/so-mi/commit/eabbfea8464e344de02a8ee28d26d9145d792bef))
+
 ## [0.16.0](https://github.com/Labushuya/so-mi/compare/v0.15.1...v0.16.0) (2026-06-09)
 
 
