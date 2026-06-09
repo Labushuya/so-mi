@@ -59,7 +59,6 @@ fun ModelCatalogScreen(
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val modelStatuses by viewModel.modelStatuses.collectAsStateWithLifecycle()
     val instances by viewModel.instances.collectAsStateWithLifecycle()
-    val installedIds = instances.filter { it.isComplete }.map { it.manifestId }.toSet()
 
     Column(
         modifier = Modifier
@@ -95,19 +94,17 @@ fun ModelCatalogScreen(
                 val light = boot?.recommendation?.lights?.get(manifest.tier) ?: Light.RED
                 val isRecommended = boot?.recommendation?.auto == manifest.tier
                 val isSelected = selected?.id == manifest.id
-                // Use disk truth (instances) for installed status.
-                // modelStatuses alone reports Downloading(0%) for models
-                // that were never started (WorkManager empty-list race).
-                val isInstalledOnDisk = installedIds.contains(manifest.id)
+                val diskInstance = instances.firstOrNull { it.manifestId == manifest.id }
+                val isCompleteOnDisk = diskInstance?.isComplete == true
+                val isPartialOnDisk = diskInstance != null && !isCompleteOnDisk
                 val rawStatus = modelStatuses[manifest.id]
+                // Disk truth wins. NotInstalled only if no bytes on disk at all.
                 val effectiveStatus: ModelStatus = when {
-                    isInstalledOnDisk -> ModelStatus.Installed(
-                        // mainFile is not critical here — we just need the type
-                        java.io.File("")
-                    )
+                    isCompleteOnDisk -> ModelStatus.Installed(java.io.File(""))
                     rawStatus is ModelStatus.Downloading && rawStatus.bytesDownloaded > 0 -> rawStatus
                     rawStatus is ModelStatus.Verifying -> rawStatus
                     rawStatus is ModelStatus.Failed -> rawStatus
+                    isPartialOnDisk -> ModelStatus.NotInstalled // partial but not actively downloading
                     else -> ModelStatus.NotInstalled
                 }
 
@@ -117,17 +114,37 @@ fun ModelCatalogScreen(
                         light = light,
                         isSelected = isSelected,
                         isRecommended = isRecommended,
-                        onClick = { if (effectiveStatus is ModelStatus.Installed) viewModel.selectModel(manifest) },
+                        onClick = { if (isCompleteOnDisk) viewModel.selectModel(manifest) },
                     )
-                    Spacer(Modifier.height(6.dp))
-                    ModelActionRow(
-                        status = effectiveStatus,
-                        isSelected = isSelected,
-                        onActivate = { viewModel.selectModel(manifest) },
-                        onDownload = { viewModel.downloadModel(manifest, wifiOnly) },
-                        onCancel = { viewModel.cancelModelDownload(manifest) },
-                        songbirdColors = songbird,
-                    )
+                    if (isPartialOnDisk && effectiveStatus !is ModelStatus.Downloading && effectiveStatus !is ModelStatus.Verifying) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Unvollständig: ${diskInstance!!.filesPresent.size}/${manifest.parts.size} Teile",
+                                color = songbird.roseDust,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Button(
+                                onClick = { viewModel.downloadModel(manifest, wifiOnly) },
+                                colors = ButtonDefaults.buttonColors(containerColor = songbird.crimson),
+                            ) { Text("Vervollständigen") }
+                        }
+                    } else {
+                        Spacer(Modifier.height(6.dp))
+                        ModelActionRow(
+                            status = effectiveStatus,
+                            isSelected = isSelected,
+                            onActivate = { viewModel.selectModel(manifest) },
+                            onDownload = { viewModel.downloadModel(manifest, wifiOnly) },
+                            onCancel = { viewModel.cancelModelDownload(manifest) },
+                            songbirdColors = songbird,
+                        )
+                    }
                 }
             }
         }
@@ -183,7 +200,7 @@ private fun ModelActionRow(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Lade herunter … $pct %",
+                        text = "Lädt … $pct % (SHA-256 wird nach Download geprüft)",
                         color = songbirdColors.glass,
                         style = MaterialTheme.typography.labelSmall,
                     )
@@ -193,7 +210,7 @@ private fun ModelActionRow(
                             contentColor = songbirdColors.roseDust,
                         ),
                     ) {
-                        Text("Abbrechen")
+                        Text("Pausieren")  // Cancel = .part bleibt → Resume beim nächsten Download
                     }
                 }
                 Spacer(Modifier.height(4.dp))
