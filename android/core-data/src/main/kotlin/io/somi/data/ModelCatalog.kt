@@ -115,7 +115,7 @@ object ModelCatalog {
      */
     val QWEN25_14B_Q3 = ModelManifest(
         id = "qwen2.5-14b-instruct-q3_k_m",
-        tier = Tier.LARGE,
+        tier = Tier.XLARGE,
         displayName = "Qwen2.5 14B · Q3_K_M (sicherer)",
         license = "qwen-research",
         parts = listOf(
@@ -136,7 +136,7 @@ object ModelCatalog {
 
     val QWEN25_14B_Q4 = ModelManifest(
         id = "qwen2.5-14b-instruct-q4_k_m",
-        tier = Tier.LARGE,
+        tier = Tier.XLARGE,
         displayName = "Qwen2.5 14B · Q4_K_M (besser, knapp)",
         license = "qwen-research",
         parts = listOf(
