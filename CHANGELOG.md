@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.4](https://github.com/Labushuya/so-mi/compare/v0.16.3...v0.16.4) (2026-06-09)
+
+
+### Bug Fixes
+
+* App-Crash — AnimatedContent entfernt, fehlende compose-animation-Dep verursacht ClassNotFoundException ([#39](https://github.com/Labushuya/so-mi/issues/39)) ([8a8082f](https://github.com/Labushuya/so-mi/commit/8a8082facf28ec9c55f76da562c39b5779091eb4))
+
 ## [0.16.3](https://github.com/Labushuya/so-mi/compare/v0.16.2...v0.16.3) (2026-06-09)
 
 
