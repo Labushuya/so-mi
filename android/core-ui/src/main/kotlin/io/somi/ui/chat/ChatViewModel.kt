@@ -577,6 +577,12 @@ class ChatViewModel @Inject constructor(
             }
             merge(*perModel.toTypedArray()).collect { (id, status) ->
                 _modelStatuses.value = _modelStatuses.value + (id to status)
+                // Refresh instances when a model transitions to Installed or
+                // NotInstalled — keeps the UI button (Herunterladen/Aktivieren)
+                // in sync without requiring a full-app restart.
+                if (status is ModelStatus.Installed || status is ModelStatus.NotInstalled) {
+                    refreshInstances()
+                }
             }
         }
     }
