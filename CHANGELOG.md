@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/Labushuya/so-mi/compare/v0.15.1...v0.16.0) (2026-06-09)
+
+
+### Features
+
+* WLAN-Toggle, Katalog-Download-UI, Ladeüberblendung und 14B-Freischaltung (v0.16.0) ([f502b7d](https://github.com/Labushuya/so-mi/commit/f502b7dfaeac068685ca547f53f371c84a16f855))
+* WLAN-Toggle, Katalog-Download-UI, Ladeüberblendung und 14B-Freischaltung (v0.16.0) ([5c2395b](https://github.com/Labushuya/so-mi/commit/5c2395b3d2715e6990599d6e467415415e94e354))
+
 ## [0.15.1](https://github.com/Labushuya/so-mi/compare/v0.15.0...v0.15.1) (2026-06-08)
 
 
