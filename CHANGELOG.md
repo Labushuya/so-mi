@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.6](https://github.com/Labushuya/so-mi/compare/v0.16.5...v0.16.6) (2026-06-09)
+
+
+### Bug Fixes
+
+* Downloads in Settings ganz nach oben, Leerraum im Chat entfernt ([#43](https://github.com/Labushuya/so-mi/issues/43)) ([8dc57ea](https://github.com/Labushuya/so-mi/commit/8dc57eab2ca2537febb4aaf96920d66a726d2458))
+
 ## [0.16.5](https://github.com/Labushuya/so-mi/compare/v0.16.4...v0.16.5) (2026-06-09)
 
 
