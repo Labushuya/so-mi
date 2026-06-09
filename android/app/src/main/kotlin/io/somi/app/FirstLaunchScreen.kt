@@ -517,6 +517,7 @@ private fun tierLabel(tier: Tier): String = when (tier) {
     Tier.SMALL -> stringResource(R.string.tier_small)
     Tier.MEDIUM -> stringResource(R.string.tier_medium)
     Tier.LARGE -> stringResource(R.string.tier_large)
+    Tier.XLARGE -> stringResource(R.string.tier_xlarge)
 }
 
 private fun formatSizeGB(bytes: Long): String =
