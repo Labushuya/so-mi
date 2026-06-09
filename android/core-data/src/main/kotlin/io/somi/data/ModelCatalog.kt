@@ -101,12 +101,12 @@ object ModelCatalog {
     )
 
     /**
-     * v0.15.0 — 14B Q3_K_M (LARGE-Tier) und 14B Q4_K_M (LARGE-Tier).
+     * v0.15.1 — 14B-Modelle, verifiziert und in ALL aufgenommen.
      *
      * Beide tragen `qwen-research`-Lizenz (NICHT Apache wie 7B). Picker
      * MUSS das vor Download-Tap surfacen. Beide sind multi-shard.
      *
-     * Magic V2 (16 GB RAM) verträgt Q3 (~7 GB) komfortabel, Q4 (~9 GB)
+     * Magic V2 (16 GB RAM) verträgt Q3 (~7.3 GB) komfortabel, Q4 (~8.9 GB)
      * grenzwertig — die Tier-Formel-Recalibrierung in v0.16.0 entscheidet
      * welche Variante GREEN/YELLOW gefärbt wird. Bis dahin lassen wir
      * sie auf LARGE-Tier sitzen und der Picker überlässt dem User die
@@ -122,13 +122,13 @@ object ModelCatalog {
             ModelPart(
                 filename = "qwen2.5-14b-instruct-q3_k_m-00001-of-00002.gguf",
                 url = "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q3_k_m-00001-of-00002.gguf",
-                sizeBytes = 4_294_967_296L,
+                sizeBytes = 4_000_429_472L,
                 sha256 = "3f38798df3987883b1b37c923e6a98fbfebc88cff2d94743e9935baccf1d19ad",
             ),
             ModelPart(
                 filename = "qwen2.5-14b-instruct-q3_k_m-00002-of-00002.gguf",
                 url = "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q3_k_m-00002-of-00002.gguf",
-                sizeBytes = 3_588_346_880L,
+                sizeBytes = 3_338_774_688L,
                 sha256 = "fee42fd8be1b06f48c2e2313bfa09116446f56efded331543303a4642ba875ad",
             ),
         ),
@@ -143,19 +143,19 @@ object ModelCatalog {
             ModelPart(
                 filename = "qwen2.5-14b-instruct-q4_k_m-00001-of-00003.gguf",
                 url = "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m-00001-of-00003.gguf",
-                sizeBytes = 3_990_000_000L,
+                sizeBytes = 3_991_999_872L,
                 sha256 = "a09ea5e7b1eafb1b30b241726c3cc3c905c96f14ad41e246ffa5f44e53904f68",
             ),
             ModelPart(
                 filename = "qwen2.5-14b-instruct-q4_k_m-00002-of-00003.gguf",
                 url = "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m-00002-of-00003.gguf",
-                sizeBytes = 4_286_578_688L,
+                sizeBytes = 3_989_373_504L,
                 sha256 = "21b9457d079680d284e90ef69607c4b2d8ef64a09d4729cb7b5e1357bdba41ae",
             ),
             ModelPart(
                 filename = "qwen2.5-14b-instruct-q4_k_m-00003-of-00003.gguf",
                 url = "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m-00003-of-00003.gguf",
-                sizeBytes = 1_084_227_584L,
+                sizeBytes = 1_006_737_120L,
                 sha256 = "c8d37006760a387a35216e070e6664d7da927f10be8eb870fef2e3d4833d9976",
             ),
         ),
@@ -163,27 +163,22 @@ object ModelCatalog {
 
     /** Catalog ordered ascending by size, matching the picker layout.
      *
-     *  v0.15.0 NOTE: 14B Q3 + Q4 are NOT in `ALL` yet. Their SHA-256
-     *  hashes and exact byte sizes haven't been re-verified against
-     *  the live HF /api/models tree, and the Q4 split layout (3-shard
-     *  vs 2-shard) is uncertain. Shipping them with placeholder values
-     *  would burn ~7-9 GB of WLAN per pick before failing on
-     *  REASON_CHECKSUM_MISMATCH. Held back to v0.15.1 where the
-     *  picker-UI also lands and the hashes are pulled fresh.
+     *  v0.15.1: 14B Q3 + Q4 moved from PENDING_VERIFICATION into ALL.
+     *  SHAs and sizeBytes verified against HF API 2026-06-09 (lfs.oid /
+     *  lfs.size from blobs=true). The Q4 split is confirmed 3-shard.
      */
     val ALL: List<ModelManifest> = listOf(
         QWEN25_05B,
         QWEN25_15B,
         QWEN25_3B,
         QWEN25_7B,
-    )
-
-    /** v0.15.0 — staging area. Move into [ALL] once SHAs are verified
-     *  per the file-header docstring. */
-    val PENDING_VERIFICATION: List<ModelManifest> = listOf(
         QWEN25_14B_Q3,
         QWEN25_14B_Q4,
     )
+
+    /** Staging area for models whose SHAs have not yet been verified
+     *  against the live HF API. Empty as of v0.15.1. */
+    val PENDING_VERIFICATION: List<ModelManifest> = emptyList()
 
     /** Lookup by id; null if unknown. */
     fun byId(id: String): ModelManifest? = ALL.firstOrNull { it.id == id }
