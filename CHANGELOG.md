@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.5](https://github.com/Labushuya/so-mi/compare/v0.16.4...v0.16.5) (2026-06-09)
+
+
+### Bug Fixes
+
+* App-Crash — _modelStatuses vor init-Block deklariert (NPE durch Kotlin-Initialisierungsreihenfolge) ([#41](https://github.com/Labushuya/so-mi/issues/41)) ([cfd42ea](https://github.com/Labushuya/so-mi/commit/cfd42ea3f632dbfd43f8eda2cf904a82a2e8c651))
+
 ## [0.16.4](https://github.com/Labushuya/so-mi/compare/v0.16.3...v0.16.4) (2026-06-09)
 
 
