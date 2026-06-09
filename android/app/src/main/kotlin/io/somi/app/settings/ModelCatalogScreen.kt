@@ -58,16 +58,8 @@ fun ModelCatalogScreen(
     val selected by viewModel.selectedModel.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val modelStatuses by viewModel.modelStatuses.collectAsStateWithLifecycle()
-    // instances gives us the on-disk truth — modelStatuses alone
-    // can show Downloading(0%) for models that were never started
-    // because ModelManager.observe() treats an empty WorkInfo list
-    // as "just enqueued". We override with NotInstalled when there
-    // is no on-disk instance and no active WorkManager work running.
     val instances by viewModel.instances.collectAsStateWithLifecycle()
     val installedIds = instances.filter { it.isComplete }.map { it.manifestId }.toSet()
-    val activeDownloadIds = modelStatuses
-        .filter { (_, s) -> s is ModelStatus.Downloading && (s as ModelStatus.Downloading).bytesDownloaded > 0 }
-        .keys.toSet()
 
     Column(
         modifier = Modifier
@@ -103,14 +95,19 @@ fun ModelCatalogScreen(
                 val light = boot?.recommendation?.lights?.get(manifest.tier) ?: Light.RED
                 val isRecommended = boot?.recommendation?.auto == manifest.tier
                 val isSelected = selected?.id == manifest.id
-                // Derive effective status: disk truth wins over WorkManager state.
-                // Models that were never downloaded show NotInstalled (not Downloading 0%).
+                // Use disk truth (instances) for installed status.
+                // modelStatuses alone reports Downloading(0%) for models
+                // that were never started (WorkManager empty-list race).
+                val isInstalledOnDisk = installedIds.contains(manifest.id)
+                val rawStatus = modelStatuses[manifest.id]
                 val effectiveStatus: ModelStatus = when {
-                    installedIds.contains(manifest.id) -> modelStatuses[manifest.id]
-                        ?: ModelStatus.NotInstalled
-                    activeDownloadIds.contains(manifest.id) -> modelStatuses[manifest.id]
-                        ?: ModelStatus.NotInstalled
-                    modelStatuses[manifest.id] is ModelStatus.Failed -> modelStatuses[manifest.id]!!
+                    isInstalledOnDisk -> ModelStatus.Installed(
+                        // mainFile is not critical here — we just need the type
+                        java.io.File("")
+                    )
+                    rawStatus is ModelStatus.Downloading && rawStatus.bytesDownloaded > 0 -> rawStatus
+                    rawStatus is ModelStatus.Verifying -> rawStatus
+                    rawStatus is ModelStatus.Failed -> rawStatus
                     else -> ModelStatus.NotInstalled
                 }
 
@@ -128,6 +125,7 @@ fun ModelCatalogScreen(
                         isSelected = isSelected,
                         onActivate = { viewModel.selectModel(manifest) },
                         onDownload = { viewModel.downloadModel(manifest, wifiOnly) },
+                        onCancel = { viewModel.cancelModelDownload(manifest) },
                         songbirdColors = songbird,
                     )
                 }
@@ -142,6 +140,7 @@ private fun ModelActionRow(
     isSelected: Boolean,
     onActivate: () -> Unit,
     onDownload: () -> Unit,
+    onCancel: () -> Unit,
     songbirdColors: SongbirdColors,
 ) {
     when (status) {
@@ -178,11 +177,25 @@ private fun ModelActionRow(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp),
             ) {
-                Text(
-                    text = "Lade herunter … $pct %",
-                    color = songbirdColors.glass,
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Lade herunter … $pct %",
+                        color = songbirdColors.glass,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    OutlinedButton(
+                        onClick = onCancel,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = songbirdColors.roseDust,
+                        ),
+                    ) {
+                        Text("Abbrechen")
+                    }
+                }
                 Spacer(Modifier.height(4.dp))
                 LinearProgressIndicator(
                     progress = { status.progress },
