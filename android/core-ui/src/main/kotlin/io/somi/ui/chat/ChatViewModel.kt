@@ -177,12 +177,17 @@ class ChatViewModel @Inject constructor(
     private val _instances = MutableStateFlow<List<ModelStorage.ModelInstance>>(emptyList())
     val instances: StateFlow<List<ModelStorage.ModelInstance>> = _instances.asStateFlow()
 
+    // v0.15.1 — live status of every model in ModelCatalog.ALL for ModelCatalogScreen.
+    // Declared here (before init{}) so startObservingModelStatuses() in init can write to it.
+    private val _modelStatuses = MutableStateFlow(emptyMap<String, ModelStatus>())
+    val modelStatuses: StateFlow<Map<String, ModelStatus>> = _modelStatuses.asStateFlow()
+
     /**
      * In-session-persistent Wi-Fi-only download toggle. Lives here (not
      * in FirstLaunchScreen's local Compose state) so it survives
      * navigation away and back. Reset to TRUE on every cold start —
-     * persistence would risk a forgotten "off" costing the user
-     * mobile-data money.
+         * persistence would risk a forgotten "off" costing the user
+         * mobile-data money.
      */
     private val _wifiOnly = MutableStateFlow(true)
     val wifiOnly: StateFlow<Boolean> = _wifiOnly.asStateFlow()
@@ -559,14 +564,6 @@ class ChatViewModel @Inject constructor(
     // The merge keeps one Flow<Pair> per model; each emission replaces
     // only the affected key so the map is a live aggregate.
     // ---------------------------------------------------------------
-
-    /**
-     * Live status of every model in [ModelCatalog.ALL], keyed by
-     * manifest id. The [ModelCatalogScreen] collects this to drive
-     * per-row download / progress / installed state.
-     */
-    private val _modelStatuses = MutableStateFlow(emptyMap<String, ModelStatus>())
-    val modelStatuses: StateFlow<Map<String, ModelStatus>> = _modelStatuses.asStateFlow()
 
     private fun startObservingModelStatuses() {
         viewModelScope.launch {
