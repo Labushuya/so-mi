@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/Labushuya/so-mi/compare/v0.16.2...v0.16.3) (2026-06-09)
+
+
+### Bug Fixes
+
+* App-Crash — LazyListState.Saver ist internal, durch rememberLazyListState() ersetzt ([#37](https://github.com/Labushuya/so-mi/issues/37)) ([2985fd5](https://github.com/Labushuya/so-mi/commit/2985fd5d2f8cecaa42a9edbc32d059f4b3a2eebe))
+
 ## [0.16.2](https://github.com/Labushuya/so-mi/compare/v0.16.1...v0.16.2) (2026-06-09)
 
 
