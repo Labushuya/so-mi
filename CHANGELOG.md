@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/Labushuya/so-mi/compare/v0.17.1...v0.18.0) (2026-06-09)
+
+
+### Features
+
+* 14B-Ampel korrekt gelb, unvollständige Teile ergänzen, Download pausieren ([#53](https://github.com/Labushuya/so-mi/issues/53)) ([6512b2f](https://github.com/Labushuya/so-mi/commit/6512b2f6e93b8f7b2740768e2716499e7d377c42))
+
 ## [0.17.1](https://github.com/Labushuya/so-mi/compare/v0.17.0...v0.17.1) (2026-06-09)
 
 
