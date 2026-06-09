@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.8](https://github.com/Labushuya/so-mi/compare/v0.16.7...v0.16.8) (2026-06-09)
+
+
+### Bug Fixes
+
+* Tastatur überlappt Chat, Download abbrechen, LLM-Status korrekt ([#47](https://github.com/Labushuya/so-mi/issues/47)) ([083f8c9](https://github.com/Labushuya/so-mi/commit/083f8c972c35c3627e740dafc16779fd4942f778))
+
 ## [0.16.7](https://github.com/Labushuya/so-mi/compare/v0.16.6...v0.16.7) (2026-06-09)
 
 
