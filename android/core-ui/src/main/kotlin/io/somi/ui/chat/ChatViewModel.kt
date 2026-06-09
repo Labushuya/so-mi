@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -236,6 +237,9 @@ class ChatViewModel @Inject constructor(
         // something to report). Started here, not lazily, because the
         // Settings screen reads the StateFlow eagerly.
         startObservingEmbedderStatus()
+
+        // v0.15.1 — observe per-model statuses for ModelCatalogScreen.
+        startObservingModelStatuses()
 
         // v0.15.0 — greeting hook. Reacts to the FIRST transition into
         // Lifecycle.Ready per process launch (cold start) and to every
@@ -545,6 +549,61 @@ class ChatViewModel @Inject constructor(
     /** Force-refresh the on-disk model inventory. */
     fun refreshInstances() {
         _instances.value = modelStorage.findAllInstances(ModelCatalog.ALL)
+    }
+
+    // ---------------------------------------------------------------
+    // v0.15.1 — per-model status for ModelCatalogScreen.
+    //
+    // Merges ModelManager.observe() for every ModelCatalog.ALL entry
+    // into a single StateFlow<Map<String, ModelStatus>> keyed by id.
+    // The merge keeps one Flow<Pair> per model; each emission replaces
+    // only the affected key so the map is a live aggregate.
+    // ---------------------------------------------------------------
+
+    /**
+     * Live status of every model in [ModelCatalog.ALL], keyed by
+     * manifest id. The [ModelCatalogScreen] collects this to drive
+     * per-row download / progress / installed state.
+     */
+    private val _modelStatuses = MutableStateFlow(emptyMap<String, ModelStatus>())
+    val modelStatuses: StateFlow<Map<String, ModelStatus>> = _modelStatuses.asStateFlow()
+
+    private fun startObservingModelStatuses() {
+        viewModelScope.launch {
+            val perModel = ModelCatalog.ALL.map { manifest ->
+                kotlinx.coroutines.flow.flow<Pair<String, ModelStatus>> {
+                    modelManager.observe(manifest).collect { status ->
+                        emit(manifest.id to status)
+                    }
+                }
+            }
+            merge(*perModel.toTypedArray()).collect { (id, status) ->
+                _modelStatuses.value = _modelStatuses.value + (id to status)
+            }
+        }
+    }
+
+    /**
+     * Initiate a download for [manifest] from the [ModelCatalogScreen].
+     * Unlike [startDownload] (which operates on the currently-selected
+     * model and drives the global lifecycle), this targets any manifest
+     * explicitly — the user can queue a download for a model that is not
+     * yet selected. The [modelStatuses] flow reflects progress.
+     *
+     * If [manifest] is already the selected model we delegate to the
+     * standard [startDownload] path so the global lifecycle/download
+     * progress bars stay in sync.
+     */
+    fun downloadModel(manifest: ModelManifest, wifiOnly: Boolean) {
+        if (_selectedModel.value?.id == manifest.id) {
+            // Route through the standard path to keep _lifecycle in sync.
+            if (_wifiOnly.value != wifiOnly) _wifiOnly.value = wifiOnly
+            startDownload(wifiOnly)
+        } else {
+            // Background download for a non-selected model.
+            // modelStatuses will auto-update via the merge observer above.
+            modelManager.startDownload(manifest, wifiOnly = wifiOnly)
+        }
     }
 
     // ---------------------------------------------------------------

@@ -10,6 +10,22 @@ When a planning workflow is launched, pass ROADMAP.md as additional context — 
 
 After each release that changes scope: update ROADMAP.md "Aktueller Stand" + "Pipeline" sections. After each user agreement that adds a deviation: add it to the "User-Vereinbarungen" section with a date stamp.
 
+## Git & CI Workflow
+
+**Vollautomatisch pushen** (User-Vereinbarung 2026-06-09): PRs öffnen, mergen, release-please-PR mergen — alles ohne User-Aktion. Ablauf:
+
+```
+git checkout -b feat/... && git add -A && git commit && git push -u origin feat/...
+gh pr create ... && gh pr merge <nr> --squash   # Feature-PR
+# release-please-PR abwarten:
+gh pr list → gh pr merge <nr> --squash          # Release-PR
+gh run watch <run-id>                           # Build beobachten
+```
+
+Der User muss nichts mehr klicken. Bei Build-Fehlern: direkt fixen + weiterpushen.
+
+**Workflow-Tool bevorzugen** (User-Vereinbarung 2026-06-09): Bei nicht-trivialen Änderungsbündeln immer den Workflow-Tool für parallele Agents nutzen — Verify-Pass, Planning, Implement. Solo nur bei Trivial-Fixes.
+
 ## Repository Status
 
 **Phase 1 (Skeleton + Pipeline) is in place.** The repo has the full `android/` multi-module Gradle setup, the build-and-release GitHub Actions pipeline, all shell scripts including the verbatim `init-keystore.sh` from SPEC §6, `soul/soul.md` verbatim from SPEC §2, and the release-please configuration. **What's still missing for the first green CI run:** the user must execute `bash scripts/init-keystore.sh` once and commit `keystore/ci.keystore`. Until that file is on `main`, the build job fails its keystore-presence check.
