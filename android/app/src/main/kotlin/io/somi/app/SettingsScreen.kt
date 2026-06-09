@@ -86,12 +86,13 @@ internal fun SettingsScreen(
     val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    // Akkordeon-State: welche Sektion ist gerade aufgeklappt
+    var expandedSection by remember { mutableStateOf<String?>("modelle") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            // v0.15.0: union of systemBars + displayCutout — see FirstLaunchScreen for rationale.
             .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
@@ -101,51 +102,10 @@ internal fun SettingsScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
-            item {
-                val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
-                DownloadsSection(
-                    embedderStatus = embedderStatus,
-                    wifiOnly = wifiOnly,
-                    onWifiOnlyChange = { viewModel.setWifiOnly(it) },
-                    onOpenModelCatalog = onOpenModelCatalog,
-                    onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
-                    onReinstallEmbedder = { viewModel.reinstallEmbedder() },
-                )
-            }
-            item {
-                PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
-            }
-            item {
-                DisplaySection(
-                    immersive = uiSettings.immersive,
-                    onImmersiveChange = { v ->
-                        coroutineScope.launch { viewModel.uiSettings.setImmersive(v) }
-                    },
-                )
-            }
-            item {
-                GreetingSection(
-                    mode = uiSettings.greetingMode,
-                    onModeChange = { m ->
-                        coroutineScope.launch { viewModel.uiSettings.setGreetingMode(m) }
-                    },
-                )
-            }
-            item {
-                BehaviourSection(
-                    sampler = sampler,
-                    onSamplerChange = { viewModel.applySamplerParams(it) },
-                )
-            }
-            item {
-                LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
-            }
-            item {
-                DataSection(onOpenDataBrowser = onOpenDataBrowser)
-            }
+            // Diagnose — immer sichtbar, kein Akkordeon
             item {
                 DiagnosticsSection(
                     boot = boot,
@@ -153,11 +113,66 @@ internal fun SettingsScreen(
                     versionCode = BuildConfig.VERSION_CODE,
                 )
             }
+            // Modelle & Speicher
             item {
-                StorageSection(
-                    instances = instances,
-                    onDeleteInstance = { viewModel.deleteModelInstance(it) },
-                )
+                val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
+                AccordionSection(
+                    title = "Modelle & Speicher",
+                    expanded = expandedSection == "modelle",
+                    onToggle = { expandedSection = if (expandedSection == "modelle") null else "modelle" },
+                ) {
+                    ModelStorageSection(
+                        instances = instances,
+                        embedderStatus = embedderStatus,
+                        wifiOnly = wifiOnly,
+                        onWifiOnlyChange = { viewModel.setWifiOnly(it) },
+                        onOpenModelCatalog = onOpenModelCatalog,
+                        onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
+                        onReinstallEmbedder = { viewModel.reinstallEmbedder() },
+                        onDeleteInstance = { viewModel.deleteModelInstance(it) },
+                    )
+                }
+            }
+            // So-Mi — Persönlichkeit, Verhalten, Begrüßung, Lernen
+            item {
+                AccordionSection(
+                    title = "So-Mi",
+                    expanded = expandedSection == "somi",
+                    onToggle = { expandedSection = if (expandedSection == "somi") null else "somi" },
+                ) {
+                    PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
+                    Spacer(Modifier.height(16.dp))
+                    BehaviourSection(
+                        sampler = sampler,
+                        onSamplerChange = { viewModel.applySamplerParams(it) },
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    GreetingSection(
+                        mode = uiSettings.greetingMode,
+                        onModeChange = { m ->
+                            coroutineScope.launch { viewModel.uiSettings.setGreetingMode(m) }
+                        },
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
+                }
+            }
+            // Anzeige & Daten
+            item {
+                AccordionSection(
+                    title = "Anzeige & Daten",
+                    expanded = expandedSection == "anzeige",
+                    onToggle = { expandedSection = if (expandedSection == "anzeige") null else "anzeige" },
+                ) {
+                    DisplaySection(
+                        immersive = uiSettings.immersive,
+                        onImmersiveChange = { v ->
+                            coroutineScope.launch { viewModel.uiSettings.setImmersive(v) }
+                        },
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    DataSection(onOpenDataBrowser = onOpenDataBrowser)
+                }
             }
         }
     }
@@ -181,6 +196,158 @@ private fun PersonalitySection(onOpenSoulEditor: () -> Unit) {
             label = "Persönlichkeit bearbeiten",
             kind = SongbirdButtonKind.Primary,
             onClick = onOpenSoulEditor,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Akkordeon-Wrapper
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun AccordionSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .background(songbird.aiBubble)
+            .border(1.dp, songbird.bubbleBorder, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = title,
+                color = songbird.bone,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = if (expanded) "▲" else "▼",
+                color = songbird.glass,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        if (expanded) {
+            androidx.compose.material3.HorizontalDivider(color = songbird.bubbleBorder)
+            Column(modifier = Modifier.padding(16.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Modelle & Speicher (merged)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ModelStorageSection(
+    instances: List<io.somi.data.ModelStorage.ModelInstance>,
+    embedderStatus: io.somi.ui.chat.ChatViewModel.EmbedderStatus,
+    wifiOnly: Boolean,
+    onWifiOnlyChange: (Boolean) -> Unit,
+    onOpenModelCatalog: () -> Unit,
+    onRetryEmbedder: () -> Unit,
+    onReinstallEmbedder: () -> Unit,
+    onDeleteInstance: (io.somi.data.ModelStorage.ModelInstance) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    val coroutineScope = rememberCoroutineScope()
+    var confirmDelete by remember { mutableStateOf<io.somi.data.ModelStorage.ModelInstance?>(null) }
+
+    // Wi-Fi Toggle
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "Nur per WLAN",
+            color = songbird.bone,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f),
+        )
+        androidx.compose.material3.Switch(
+            checked = wifiOnly,
+            onCheckedChange = onWifiOnlyChange,
+        )
+    }
+    if (!wifiOnly) {
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "WLAN aus: Downloads laufen auch über mobile Daten.",
+            color = songbird.signal,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+
+    Spacer(Modifier.height(16.dp))
+
+    // Gedächtnis-Modell
+    Text("Gedächtnis-Modell (Embedder)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+    Spacer(Modifier.height(4.dp))
+    EmbedderStatusBadge(status = embedderStatus)
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SongbirdButton(label = "Erneut laden", kind = SongbirdButtonKind.Secondary, onClick = onRetryEmbedder)
+        if (embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.Installed) {
+            SongbirdButton(label = "Neu installieren", kind = SongbirdButtonKind.Ghost, onClick = onReinstallEmbedder)
+        }
+    }
+
+    Spacer(Modifier.height(20.dp))
+
+    // LLM
+    Text("LLM", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+    Spacer(Modifier.height(4.dp))
+    if (instances.isEmpty()) {
+        Text("Kein Modell installiert.", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+    } else {
+        instances.forEach { instance ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(instance.manifestId, color = songbird.bone, style = MaterialTheme.typography.bodySmall)
+                    Text(formatGB(instance.sizeBytes), color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+                }
+                SongbirdButton(
+                    label = "Löschen",
+                    kind = SongbirdButtonKind.Destructive,
+                    onClick = { confirmDelete = instance },
+                    minHeight = 32.dp,
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    SongbirdButton(
+        label = "Anderes LLM laden",
+        kind = SongbirdButtonKind.Primary,
+        onClick = onOpenModelCatalog,
+    )
+
+    if (confirmDelete != null) {
+        SongbirdDialog(
+            title = "Modell löschen?",
+            message = "${confirmDelete!!.manifestId} wird von Disk entfernt. Download nötig wenn Du es wieder willst.",
+            tone = SongbirdDialogTone.Destructive,
+            actions = listOf(
+                SongbirdDialogAction("Löschen") { onDeleteInstance(confirmDelete!!); confirmDelete = null },
+                SongbirdDialogAction("Abbrechen") { confirmDelete = null },
+            ),
+            onDismiss = { confirmDelete = null },
         )
     }
 }

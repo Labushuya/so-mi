@@ -648,7 +648,7 @@ private fun Composer(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 0.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(

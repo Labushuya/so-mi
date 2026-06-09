@@ -95,6 +95,9 @@ Diese Vereinbarungen wurden in Sitzungen mit Christopher getroffen und sind **bi
 - **Keyboard-Spacing-Fix endgültig** *(2026-06-08)*
 - **Begrüßungs-Feature mit 3-Mode-Toggle** *(2026-06-08)*
 
+### Keyboard
+- **Tastatur überlappt Chat, kein Layout-Hochschieben** *(2026-06-09)* — `adjustNothing` im Manifest. Composer liegt immer am Bildschirmrand. Tastatur schiebt sich über den Chat-Bereich. User scrollt hoch für ältere Nachrichten.
+
 ### Downloads & Modelle
 - **Wi-Fi-Toggle muss zurück in die Downloads-Sektion** *(2026-06-09)* — war in v0.14.x; in v0.15.0 versehentlich entfernt. Steuert ALLE großen Downloads (LLM + Embedder). Default: WLAN. Ohne Toggle: Soft-Lock wenn kein WLAN.
 - **ModelCatalogScreen braucht Download-Button** *(2026-06-09)* — Tippen auf ein Modell schlägt das Modell vor, aber löst keinen Download aus wenn das Modell noch nicht installiert ist. "Herunterladen"-Button pro Zeile (greyed-out wenn bereits installiert/lädt).
