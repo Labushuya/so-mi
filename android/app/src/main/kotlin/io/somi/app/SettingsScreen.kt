@@ -16,12 +16,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,6 +87,7 @@ internal fun SettingsScreen(
     val embedderStatus by viewModel.embedderStatus.collectAsStateWithLifecycle()
     val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
 
     Column(
         modifier = Modifier
@@ -93,6 +101,7 @@ internal fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(bottom = 24.dp),
@@ -117,8 +126,11 @@ internal fun SettingsScreen(
                 )
             }
             item {
+                val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
                 DownloadsSection(
                     embedderStatus = embedderStatus,
+                    wifiOnly = wifiOnly,
+                    onWifiOnlyChange = { viewModel.setWifiOnly(it) },
                     onOpenModelCatalog = onOpenModelCatalog,
                     onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
                     onReinstallEmbedder = { viewModel.reinstallEmbedder() },
@@ -466,37 +478,58 @@ private fun formatGB(bytes: Long): String {
 @Composable
 private fun DownloadsSection(
     embedderStatus: ChatViewModel.EmbedderStatus,
+    wifiOnly: Boolean,
+    onWifiOnlyChange: (Boolean) -> Unit,
     onOpenModelCatalog: () -> Unit,
     onRetryEmbedder: () -> Unit,
     onReinstallEmbedder: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    SectionCard(title = "Downloads") {
+    SectionCard(title = “Downloads”) {
         Text(
-            text = "Was So-Mi gerade lädt — und wie Du selbst Hand anlegst, falls etwas hängt.",
+            text = “Was So-Mi gerade lädt — und wie Du selbst Hand anlegst, falls etwas hängt.”,
             color = songbird.glass,
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(12.dp))
 
+        // Wi-Fi-Toggle
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                “Nur per WLAN”,
+                color = songbird.bone,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            androidx.compose.material3.Switch(
+                checked = wifiOnly,
+                onCheckedChange = onWifiOnlyChange,
+            )
+        }
+        if (!wifiOnly) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = “WLAN aus: Downloads laufen auch über mobile Daten. Kann Kosten verursachen.”,
+                color = songbird.signal,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+
         // Embedder
-        Text("Erinnerungs-Modell (RAG)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Text(“Erinnerungs-Modell (RAG)”, color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = embedderStatusText(embedderStatus),
-            color = songbird.glass,
-            style = MaterialTheme.typography.bodySmall,
-        )
+        EmbedderStatusBadge(status = embedderStatus)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SongbirdButton(
-                label = "Erneut laden",
+                label = “Erneut laden”,
                 kind = SongbirdButtonKind.Secondary,
                 onClick = onRetryEmbedder,
             )
             if (embedderStatus == ChatViewModel.EmbedderStatus.Installed) {
                 SongbirdButton(
-                    label = "Neu installieren",
+                    label = “Neu installieren”,
                     kind = SongbirdButtonKind.Ghost,
                     onClick = onReinstallEmbedder,
                 )
@@ -506,28 +539,61 @@ private fun DownloadsSection(
         Spacer(Modifier.height(20.dp))
 
         // LLMs
-        Text("Sprach-Modelle", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Text(“Sprach-Modelle”, color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter „Speicher“.",
+            text = “Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter „Speicher”.”,
             color = songbird.glass,
             style = MaterialTheme.typography.bodySmall,
         )
         Spacer(Modifier.height(8.dp))
         SongbirdButton(
-            label = "Anderes Modell laden",
+            label = “Anderes Modell laden”,
             kind = SongbirdButtonKind.Primary,
             onClick = onOpenModelCatalog,
         )
     }
 }
 
-private fun embedderStatusText(s: ChatViewModel.EmbedderStatus): String = when (s) {
-    ChatViewModel.EmbedderStatus.Installed -> "Installiert. Erinnerungen funktionieren."
-    ChatViewModel.EmbedderStatus.Running -> "Lädt gerade — schau in der Benachrichtigungsleiste."
-    ChatViewModel.EmbedderStatus.Enqueued -> "Wartet auf WLAN. Sobald Du im WLAN bist, geht's los."
-    ChatViewModel.EmbedderStatus.Failed -> "Fehlgeschlagen. Tap auf „Erneut laden“ für einen neuen Versuch."
-    ChatViewModel.EmbedderStatus.NotPresent -> "Noch nicht da. Tap auf „Erneut laden“, um den Download zu starten."
+@Composable
+private fun EmbedderStatusBadge(status: ChatViewModel.EmbedderStatus) {
+    val songbird = LocalSongbirdColors.current
+    val dotColor = when (status) {
+        ChatViewModel.EmbedderStatus.Installed -> Color(0xFF4CAF50)
+        ChatViewModel.EmbedderStatus.Running -> Color(0xFF4CAF50)
+        ChatViewModel.EmbedderStatus.Enqueued -> Color(0xFFFFCC00)
+        ChatViewModel.EmbedderStatus.Failed -> songbird.roseDust
+        ChatViewModel.EmbedderStatus.NotPresent -> songbird.glass
+    }
+    val label = when (status) {
+        ChatViewModel.EmbedderStatus.Installed -> “Installiert”
+        ChatViewModel.EmbedderStatus.Running -> “Lädt…”
+        ChatViewModel.EmbedderStatus.Enqueued -> “Wartet auf WLAN”
+        ChatViewModel.EmbedderStatus.Failed -> “Fehler”
+        ChatViewModel.EmbedderStatus.NotPresent -> “Nicht installiert”
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (status == ChatViewModel.EmbedderStatus.Running) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(8.dp),
+                color = dotColor,
+                strokeWidth = 1.5.dp,
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(dotColor),
+            )
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            color = dotColor,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------
