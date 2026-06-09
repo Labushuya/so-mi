@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.7](https://github.com/Labushuya/so-mi/compare/v0.16.6...v0.16.7) (2026-06-09)
+
+
+### Bug Fixes
+
+* Keyboard-Spacing, Download-Button im Katalog, Modell-Naming, Modell-Reset nach Löschen ([#45](https://github.com/Labushuya/so-mi/issues/45)) ([5a3d1dd](https://github.com/Labushuya/so-mi/commit/5a3d1ddceb14a96f735b0496531f68c955826aae))
+
 ## [0.16.6](https://github.com/Labushuya/so-mi/compare/v0.16.5...v0.16.6) (2026-06-09)
 
 
