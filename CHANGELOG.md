@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/Labushuya/so-mi/compare/v0.16.1...v0.16.2) (2026-06-09)
+
+
+### Bug Fixes
+
+* build — typografische Anführungszeichen in Kotlin-Strings ersetzt ([#35](https://github.com/Labushuya/so-mi/issues/35)) ([b83cd83](https://github.com/Labushuya/so-mi/commit/b83cd839d0ad7f0defe4fcc338f9642e95f6bb64))
+
 ## [0.16.1](https://github.com/Labushuya/so-mi/compare/v0.16.0...v0.16.1) (2026-06-09)
 
 
