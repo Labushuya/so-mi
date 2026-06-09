@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/Labushuya/so-mi/compare/v0.18.0...v0.18.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* build — XLARGE-Branch in tierLabel when-Ausdruck ergänzt ([#55](https://github.com/Labushuya/so-mi/issues/55)) ([fb88409](https://github.com/Labushuya/so-mi/commit/fb884095dda516873384e284b2b6b0022e059c8b))
+
 ## [0.18.0](https://github.com/Labushuya/so-mi/compare/v0.17.1...v0.18.0) (2026-06-09)
 
 
