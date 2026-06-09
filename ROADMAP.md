@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.16.0 | 🔜 pending release-please | WLAN-Toggle zurück, Settings-Position gemerkt, Katalog-Download-UI (Fortschrittsbalken + Herunterladen-Button), Ladeüberblendung (350 ms), Embedder-Ampel, 14B SHA-geprüft + freigeschaltet |
 | v0.15.1 | ✅ live | Build-Fix: EmbeddingModelDownloadWorker.WORK_NAME aus RagBootstrap exposen statt internal-Klasse direkt referenzieren |
 | v0.15.0 | ✅ live (kein APK — Build-Bug) | Downloads-Section + 14B-Catalog + ModelCatalogScreen + DataBrowser + Greeting-Feature + Vollbild-Modus + SoMi/-Wurzel-Storage + Embedder-Mirror |
 | v0.14.3 | ✅ live | RagBootstrap.scheduleEmbedderDownload + Keyboard-Spacing-Fix + CHANGELOG-Aufräumen |
