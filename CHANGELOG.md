@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/Labushuya/so-mi/compare/v0.16.8...v0.17.0) (2026-06-09)
+
+
+### Features
+
+* Tastatur dockt nahtlos an Chat an, Settings mit Akkordeon-Sektionen ([#49](https://github.com/Labushuya/so-mi/issues/49)) ([7fa659c](https://github.com/Labushuya/so-mi/commit/7fa659cd45db539d9b4a110369c63e1eb64129f8))
+
 ## [0.16.8](https://github.com/Labushuya/so-mi/compare/v0.16.7...v0.16.8) (2026-06-09)
 
 
