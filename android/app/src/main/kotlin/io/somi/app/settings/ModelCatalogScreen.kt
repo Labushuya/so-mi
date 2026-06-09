@@ -58,6 +58,16 @@ fun ModelCatalogScreen(
     val selected by viewModel.selectedModel.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val modelStatuses by viewModel.modelStatuses.collectAsStateWithLifecycle()
+    // instances gives us the on-disk truth — modelStatuses alone
+    // can show Downloading(0%) for models that were never started
+    // because ModelManager.observe() treats an empty WorkInfo list
+    // as "just enqueued". We override with NotInstalled when there
+    // is no on-disk instance and no active WorkManager work running.
+    val instances by viewModel.instances.collectAsStateWithLifecycle()
+    val installedIds = instances.filter { it.isComplete }.map { it.manifestId }.toSet()
+    val activeDownloadIds = modelStatuses
+        .filter { (_, s) -> s is ModelStatus.Downloading && (s as ModelStatus.Downloading).bytesDownloaded > 0 }
+        .keys.toSet()
 
     Column(
         modifier = Modifier
@@ -66,7 +76,7 @@ fun ModelCatalogScreen(
             .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        SongbirdTopBar(title = "Modell laden", onBack = onBack)
+        SongbirdTopBar(title = "LLM auswählen", onBack = onBack)
         Spacer(Modifier.height(12.dp))
 
         LazyColumn(
@@ -93,8 +103,16 @@ fun ModelCatalogScreen(
                 val light = boot?.recommendation?.lights?.get(manifest.tier) ?: Light.RED
                 val isRecommended = boot?.recommendation?.auto == manifest.tier
                 val isSelected = selected?.id == manifest.id
-                val status = modelStatuses[manifest.id]
-                val isInstalled = status is ModelStatus.Installed
+                // Derive effective status: disk truth wins over WorkManager state.
+                // Models that were never downloaded show NotInstalled (not Downloading 0%).
+                val effectiveStatus: ModelStatus = when {
+                    installedIds.contains(manifest.id) -> modelStatuses[manifest.id]
+                        ?: ModelStatus.NotInstalled
+                    activeDownloadIds.contains(manifest.id) -> modelStatuses[manifest.id]
+                        ?: ModelStatus.NotInstalled
+                    modelStatuses[manifest.id] is ModelStatus.Failed -> modelStatuses[manifest.id]!!
+                    else -> ModelStatus.NotInstalled
+                }
 
                 Column {
                     ModelRow(
@@ -102,11 +120,11 @@ fun ModelCatalogScreen(
                         light = light,
                         isSelected = isSelected,
                         isRecommended = isRecommended,
-                        onClick = { if (isInstalled) viewModel.selectModel(manifest) },
+                        onClick = { if (effectiveStatus is ModelStatus.Installed) viewModel.selectModel(manifest) },
                     )
                     Spacer(Modifier.height(6.dp))
                     ModelActionRow(
-                        status = status,
+                        status = effectiveStatus,
                         isSelected = isSelected,
                         onActivate = { viewModel.selectModel(manifest) },
                         onDownload = { viewModel.downloadModel(manifest, wifiOnly) },
