@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/Labushuya/so-mi/compare/v0.17.0...v0.17.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* build — SongbirdDialog-Signatur korrigiert (kein actions-Parameter) ([#51](https://github.com/Labushuya/so-mi/issues/51)) ([dc01c8a](https://github.com/Labushuya/so-mi/commit/dc01c8acff12334958cf7fd3315006ce58fb24d1))
+
 ## [0.17.0](https://github.com/Labushuya/so-mi/compare/v0.16.8...v0.17.0) (2026-06-09)
 
 
