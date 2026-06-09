@@ -12,11 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -272,47 +267,35 @@ private fun SoMiAppRoot() {
 
     // Route on the underlying lifecycle — a WithBanner overlay must not
     // change which surface the user sees, only paint a banner on top.
-    // v0.15.1: AnimatedContent cross-fades between screens (350 ms) so
-    // the breathing/loading screen dissolves smoothly into the chat
-    // instead of cutting hard. The targetState key is the KClass of the
-    // unwrapped state so the transition fires on screen-level changes
-    // only — mid-state mutations (partial text, progress %) don't
-    // trigger a re-fade.
-    AnimatedContent(
-        targetState = state.unwrap()::class,
-        transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(350)) },
-        label = "screen-crossfade",
-    ) { _ ->
-        when (state.unwrap()) {
-            is ChatState.Booting -> BootingSplash()
-            is ChatState.NoModelInstalled,
-            is ChatState.DownloadingModel,
-            -> FirstLaunchScreen(
-                state = state,
-                boot = boot,
-                selected = selectedModel,
-                wifiOnly = wifiOnly,
-                onWifiOnlyChange = viewModel::setWifiOnly,
-                onSelect = viewModel::selectModel,
-                onStartDownload = viewModel::startDownload,
-                onCancelDownload = viewModel::cancelDownload,
-                onRetry = viewModel::retry,
-                onOpenSettings = { settingsRoute = SettingsRoute.Root },
-            )
-            is ChatState.LoadingModel -> LoadingScreen()
-            is ChatState.Idle, is ChatState.Generating -> ChatShellScreen(
-                state = state,
-                messages = messages,
-                boot = boot,
-                versionName = BuildConfig.VERSION_NAME,
-                versionCode = BuildConfig.VERSION_CODE,
-                onSubmit = viewModel::submit,
-                onCancelGeneration = viewModel::cancelGeneration,
-                onRetry = viewModel::retry,
-                onOpenSettings = { settingsRoute = SettingsRoute.Root },
-            )
-            is ChatState.WithBanner -> Unit // unreachable: unwrap() never returns WithBanner
-        }
+    when (state.unwrap()) {
+        is ChatState.Booting -> BootingSplash()
+        is ChatState.NoModelInstalled,
+        is ChatState.DownloadingModel,
+        -> FirstLaunchScreen(
+            state = state,
+            boot = boot,
+            selected = selectedModel,
+            wifiOnly = wifiOnly,
+            onWifiOnlyChange = viewModel::setWifiOnly,
+            onSelect = viewModel::selectModel,
+            onStartDownload = viewModel::startDownload,
+            onCancelDownload = viewModel::cancelDownload,
+            onRetry = viewModel::retry,
+            onOpenSettings = { settingsRoute = SettingsRoute.Root },
+        )
+        is ChatState.LoadingModel -> LoadingScreen()
+        is ChatState.Idle, is ChatState.Generating -> ChatShellScreen(
+            state = state,
+            messages = messages,
+            boot = boot,
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE,
+            onSubmit = viewModel::submit,
+            onCancelGeneration = viewModel::cancelGeneration,
+            onRetry = viewModel::retry,
+            onOpenSettings = { settingsRoute = SettingsRoute.Root },
+        )
+        is ChatState.WithBanner -> Unit // unreachable: unwrap() never returns WithBanner
     }
 }
 
