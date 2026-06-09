@@ -55,6 +55,7 @@
     <string name="tier_small">SMALL</string>
     <string name="tier_medium">MEDIUM</string>
     <string name="tier_large">LARGE</string>
+    <string name="tier_xlarge">XLARGE</string>
 
     <!-- Empty chat state -->
     <string name="empty_chat_hint">Schreib was, ich hör zu.</string>
