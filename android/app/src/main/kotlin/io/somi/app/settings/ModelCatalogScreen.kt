@@ -83,7 +83,7 @@ fun ModelCatalogScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Bei „qwen-research"-Lizenz: rein für Dich, nicht für kommerzielle Nutzung. So-Mi distribuiert das Modell nicht weiter — Du lädst direkt von Hugging Face.",
+                        text = "Bei \"qwen-research\"-Lizenz: rein für Dich, nicht für kommerzielle Nutzung. So-Mi distribuiert das Modell nicht weiter — Du lädst direkt von Hugging Face.",
                         color = songbird.glass,
                         style = MaterialTheme.typography.labelSmall,
                     )

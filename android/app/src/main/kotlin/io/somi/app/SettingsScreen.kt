@@ -542,7 +542,7 @@ private fun DownloadsSection(
         Text("Sprach-Modelle", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter „Speicher".",
+            text = "Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter \"Speicher\".",
             color = songbird.glass,
             style = MaterialTheme.typography.bodySmall,
         )
@@ -703,7 +703,7 @@ private fun DataSection(onOpenDataBrowser: () -> Unit) {
     val songbird = LocalSongbirdColors.current
     SectionCard(title = "Daten") {
         Text(
-            text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter „SoMi/".",
+            text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter \"SoMi/\".",
             color = songbird.glass,
             style = MaterialTheme.typography.bodyMedium,
         )
