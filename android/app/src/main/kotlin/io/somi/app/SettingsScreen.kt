@@ -21,10 +21,8 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -87,7 +85,7 @@ internal fun SettingsScreen(
     val embedderStatus by viewModel.embedderStatus.collectAsStateWithLifecycle()
     val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
-    val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
+    val listState = rememberLazyListState()
 
     Column(
         modifier = Modifier
