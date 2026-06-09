@@ -3,11 +3,14 @@ package io.somi.data
 /**
  * Model size tier per SPEC §7.
  *
- * Ordered ascending: TINY < SMALL < MEDIUM < LARGE. The picker auto-selects
- * the LARGEST tier whose ramp-light is GREEN — that ordering is load-bearing
- * for [recommendModelTier].
+ * Ordered ascending: TINY < SMALL < MEDIUM < LARGE < XLARGE. The picker
+ * auto-selects the LARGEST tier whose ramp-light is GREEN — that ordering
+ * is load-bearing for [recommendModelTier].
+ *
+ * XLARGE = 14B+ models. Separate tier so 14B gets YELLOW on Magic V2 (16 GB)
+ * while 7B stays GREEN. Both map to Tier.LARGE previously — this splits them.
  */
-enum class Tier { TINY, SMALL, MEDIUM, LARGE }
+enum class Tier { TINY, SMALL, MEDIUM, LARGE, XLARGE }
 
 /**
  * Hardware-Ampel verdict for a given tier on a given device.
@@ -68,6 +71,16 @@ val TIER_SPECS: List<TierSpec> = listOf(
         storageMinGB = 7.0,
         exampleModel = "Qwen2.5 7B Q4_K_M",
         expectedTokPerSec = "4–6",
+    ),
+    TierSpec(
+        tier = Tier.XLARGE,
+        // 14B Q4_K_M needs ~9 GB process RAM. On Magic V2 (16 GB total,
+        // budget = 7.2 GB) this exceeds GREEN (6.5) but fits YELLOW (×1.15 = 8.28).
+        // Q3_K_M needs ~7.3 GB — also YELLOW on Magic V2.
+        ramMinGB = 8.5,
+        storageMinGB = 10.0,
+        exampleModel = "Qwen2.5 14B Q4_K_M",
+        expectedTokPerSec = "2–3",
     ),
 )
 
