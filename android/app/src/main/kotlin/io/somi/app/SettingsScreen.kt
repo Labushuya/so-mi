@@ -485,9 +485,9 @@ private fun DownloadsSection(
     onReinstallEmbedder: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    SectionCard(title = “Downloads”) {
+    SectionCard(title = "Downloads") {
         Text(
-            text = “Was So-Mi gerade lädt — und wie Du selbst Hand anlegst, falls etwas hängt.”,
+            text = "Was So-Mi gerade lädt — und wie Du selbst Hand anlegst, falls etwas hängt.",
             color = songbird.glass,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -496,7 +496,7 @@ private fun DownloadsSection(
         // Wi-Fi-Toggle
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                “Nur per WLAN”,
+                "Nur per WLAN",
                 color = songbird.bone,
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
@@ -509,7 +509,7 @@ private fun DownloadsSection(
         if (!wifiOnly) {
             Spacer(Modifier.height(4.dp))
             Text(
-                text = “WLAN aus: Downloads laufen auch über mobile Daten. Kann Kosten verursachen.”,
+                text = "WLAN aus: Downloads laufen auch über mobile Daten. Kann Kosten verursachen.",
                 color = songbird.signal,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -517,19 +517,19 @@ private fun DownloadsSection(
         Spacer(Modifier.height(16.dp))
 
         // Embedder
-        Text(“Erinnerungs-Modell (RAG)”, color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Text("Erinnerungs-Modell (RAG)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         EmbedderStatusBadge(status = embedderStatus)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SongbirdButton(
-                label = “Erneut laden”,
+                label = "Erneut laden",
                 kind = SongbirdButtonKind.Secondary,
                 onClick = onRetryEmbedder,
             )
             if (embedderStatus == ChatViewModel.EmbedderStatus.Installed) {
                 SongbirdButton(
-                    label = “Neu installieren”,
+                    label = "Neu installieren",
                     kind = SongbirdButtonKind.Ghost,
                     onClick = onReinstallEmbedder,
                 )
@@ -539,16 +539,16 @@ private fun DownloadsSection(
         Spacer(Modifier.height(20.dp))
 
         // LLMs
-        Text(“Sprach-Modelle”, color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Text("Sprach-Modelle", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = “Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter „Speicher”.”,
+            text = "Pick' eines aus dem Katalog — vom 0.5B-Notnagel bis zum 14B-Schwergewicht. Aktuell installierte Modelle siehst Du unten unter „Speicher".",
             color = songbird.glass,
             style = MaterialTheme.typography.bodySmall,
         )
         Spacer(Modifier.height(8.dp))
         SongbirdButton(
-            label = “Anderes Modell laden”,
+            label = "Anderes Modell laden",
             kind = SongbirdButtonKind.Primary,
             onClick = onOpenModelCatalog,
         )
@@ -566,11 +566,11 @@ private fun EmbedderStatusBadge(status: ChatViewModel.EmbedderStatus) {
         ChatViewModel.EmbedderStatus.NotPresent -> songbird.glass
     }
     val label = when (status) {
-        ChatViewModel.EmbedderStatus.Installed -> “Installiert”
-        ChatViewModel.EmbedderStatus.Running -> “Lädt…”
-        ChatViewModel.EmbedderStatus.Enqueued -> “Wartet auf WLAN”
-        ChatViewModel.EmbedderStatus.Failed -> “Fehler”
-        ChatViewModel.EmbedderStatus.NotPresent -> “Nicht installiert”
+        ChatViewModel.EmbedderStatus.Installed -> "Installiert"
+        ChatViewModel.EmbedderStatus.Running -> "Lädt…"
+        ChatViewModel.EmbedderStatus.Enqueued -> "Wartet auf WLAN"
+        ChatViewModel.EmbedderStatus.Failed -> "Fehler"
+        ChatViewModel.EmbedderStatus.NotPresent -> "Nicht installiert"
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (status == ChatViewModel.EmbedderStatus.Running) {
@@ -703,7 +703,7 @@ private fun DataSection(onOpenDataBrowser: () -> Unit) {
     val songbird = LocalSongbirdColors.current
     SectionCard(title = "Daten") {
         Text(
-            text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter „SoMi/“.",
+            text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter „SoMi/".",
             color = songbird.glass,
             style = MaterialTheme.typography.bodyMedium,
         )
