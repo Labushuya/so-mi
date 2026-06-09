@@ -339,15 +339,21 @@ private fun ModelStorageSection(
     )
 
     if (confirmDelete != null) {
+        val instance = confirmDelete!!
         SongbirdDialog(
+            onDismissRequest = { confirmDelete = null },
             title = "Modell löschen?",
-            message = "${confirmDelete!!.manifestId} wird von Disk entfernt. Download nötig wenn Du es wieder willst.",
+            message = "${instance.manifestId} wird von Disk entfernt. Download nötig wenn Du es wieder willst.",
             tone = SongbirdDialogTone.Destructive,
-            actions = listOf(
-                SongbirdDialogAction("Löschen") { onDeleteInstance(confirmDelete!!); confirmDelete = null },
-                SongbirdDialogAction("Abbrechen") { confirmDelete = null },
+            confirm = SongbirdDialogAction(
+                label = "Löschen",
+                onClick = { onDeleteInstance(instance); confirmDelete = null },
+                kind = SongbirdDialogAction.Kind.Destructive,
             ),
-            onDismiss = { confirmDelete = null },
+            dismiss = SongbirdDialogAction(
+                label = "Abbrechen",
+                onClick = { confirmDelete = null },
+            ),
         )
     }
 }
