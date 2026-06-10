@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/Labushuya/so-mi/compare/v0.19.0...v0.19.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* build — KDoc-Kommentar in RagOrchestrator korrekt geschlossen ([#67](https://github.com/Labushuya/so-mi/issues/67)) ([5dfc88e](https://github.com/Labushuya/so-mi/commit/5dfc88eba77e86686cdd5db6a5210791fb0acde2))
+
 ## [0.19.0](https://github.com/Labushuya/so-mi/compare/v0.18.5...v0.19.0) (2026-06-10)
 
 
