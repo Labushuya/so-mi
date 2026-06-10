@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/Labushuya/so-mi/compare/v0.21.1...v0.21.2) (2026-06-10)
+
+
+### Bug Fixes
+
+* build — BasicAlertDialog durch AlertDialog ersetzt ([#75](https://github.com/Labushuya/so-mi/issues/75)) ([e49af89](https://github.com/Labushuya/so-mi/commit/e49af891b15c528f1842529a48d0670259e19da2))
+
 ## [0.21.1](https://github.com/Labushuya/so-mi/compare/v0.21.0...v0.21.1) (2026-06-10)
 
 
