@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/Labushuya/so-mi/compare/v0.21.0...v0.21.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* build — doppelter KDoc-Kommentar in HardwareDetector ([#73](https://github.com/Labushuya/so-mi/issues/73)) ([37a1c00](https://github.com/Labushuya/so-mi/commit/37a1c00f1aca28484818b04cf2451f4759a5ce66))
+
 ## [0.21.0](https://github.com/Labushuya/so-mi/compare/v0.20.0...v0.21.0) (2026-06-10)
 
 
