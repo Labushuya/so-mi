@@ -75,8 +75,14 @@ class MemoryFileRepository @Inject constructor(
     ) = withContext(Dispatchers.IO) {
         mutex.withLock {
             val file = fileFor(topic)
+            // Ensure directory exists — mkdirs() is idempotent.
+            // Without this, writeHeader() + appendText() both fail
+            // silently with FileNotFoundException when SoMi/memory/
+            // hasn't been created yet (fresh install, first save).
+            file.parentFile?.mkdirs()
             if (!file.exists()) writeHeader(file, topic)
             file.appendText(formatBullet(fact, createdAt))
+            Log.i(TAG, "appended to ${file.absolutePath}: $fact")
         }
     }
 

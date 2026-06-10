@@ -69,18 +69,35 @@ class TriggerDetector @Inject constructor() {
          * trigger.
          */
         private val PHRASES: List<TriggerPhrase> = listOf(
-            // German
+            // German — explizite Formen
             TriggerPhrase("merk dir"),
             TriggerPhrase("merk's dir"),
             TriggerPhrase("merke dir"),
+            TriggerPhrase("merken"),       // "merken: ich heiße X"
             TriggerPhrase("vergiss nicht"),
+            TriggerPhrase("vergiss das nicht"),
             TriggerPhrase("wichtig:"),
             TriggerPhrase("speichere"),
+            TriggerPhrase("speichern"),
+            TriggerPhrase("speicher das"),
             TriggerPhrase("erinnere dich"),
+            TriggerPhrase("erinnere dich daran"),
+            TriggerPhrase("erinnern"),
+            TriggerPhrase("notiere"),
+            TriggerPhrase("notier"),
+            TriggerPhrase("halte fest"),
+            TriggerPhrase("denk daran"),
             // English
             TriggerPhrase("remember"),
+            TriggerPhrase("remember that"),
+            TriggerPhrase("note that"),
+            TriggerPhrase("note:"),
+            TriggerPhrase("save this"),
+            TriggerPhrase("keep in mind"),
             // Slash-command
             TriggerPhrase("/note"),
+            TriggerPhrase("/merke"),
+            TriggerPhrase("/remember"),
         )
 
         private val PUNCTUATION_AFTER_TRIGGER = charArrayOf(
