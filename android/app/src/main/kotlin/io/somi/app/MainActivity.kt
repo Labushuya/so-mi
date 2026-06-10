@@ -3,6 +3,7 @@ package io.somi.app
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -232,6 +233,13 @@ private fun SoMiAppRoot() {
     var settingsRoute by remember { mutableStateOf(SettingsRoute.Hidden) }
     val soulRepository = viewModel.soulRepository
     val soulPromptLoader = viewModel.soulPromptLoader
+
+    // v0.20.0: Hardware-Back-Button navigiert Settings-intern statt App zu schließen.
+    // Auf Root-Screen (Chat, settingsRoute=Hidden) schließt Back die App normal.
+    BackHandler(enabled = settingsRoute != SettingsRoute.Hidden) {
+        settingsRoute = if (settingsRoute == SettingsRoute.Root) SettingsRoute.Hidden
+                        else SettingsRoute.Root
+    }
 
     when (settingsRoute) {
         SettingsRoute.Hidden -> Unit

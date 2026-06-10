@@ -105,7 +105,7 @@ internal fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
-            // Diagnose — immer sichtbar, kein Akkordeon
+            // 1. Diagnose — immer sichtbar, kein Akkordeon
             item {
                 DiagnosticsSection(
                     boot = boot,
@@ -113,11 +113,35 @@ internal fun SettingsScreen(
                     versionCode = BuildConfig.VERSION_CODE,
                 )
             }
-            // Modelle & Speicher
+            // 2. So-Mi — Erinnerungen ZUERST, dann Persönlichkeit, Verhalten, Begrüßung, Lernen
+            item {
+                AccordionSection(
+                    title = "So-Mi",
+                    expanded = expandedSection == "somi",
+                    onToggle = { expandedSection = if (expandedSection == "somi") null else "somi" },
+                ) {
+                    LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
+                    Spacer(Modifier.height(16.dp))
+                    PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
+                    Spacer(Modifier.height(16.dp))
+                    BehaviourSection(
+                        sampler = sampler,
+                        onSamplerChange = { viewModel.applySamplerParams(it) },
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    GreetingSection(
+                        mode = uiSettings.greetingMode,
+                        onModeChange = { m ->
+                            coroutineScope.launch { viewModel.uiSettings.setGreetingMode(m) }
+                        },
+                    )
+                }
+            }
+            // 3. Modelle & Abhängigkeiten (LLM + Gedächtnis-Modell + künftige Pakete)
             item {
                 val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
                 AccordionSection(
-                    title = "Modelle & Speicher",
+                    title = "Modelle & Abhängigkeiten",
                     expanded = expandedSection == "modelle",
                     onToggle = { expandedSection = if (expandedSection == "modelle") null else "modelle" },
                 ) {
@@ -133,31 +157,7 @@ internal fun SettingsScreen(
                     )
                 }
             }
-            // So-Mi — Persönlichkeit, Verhalten, Begrüßung, Lernen
-            item {
-                AccordionSection(
-                    title = "So-Mi",
-                    expanded = expandedSection == "somi",
-                    onToggle = { expandedSection = if (expandedSection == "somi") null else "somi" },
-                ) {
-                    PersonalitySection(onOpenSoulEditor = onOpenSoulEditor)
-                    Spacer(Modifier.height(16.dp))
-                    BehaviourSection(
-                        sampler = sampler,
-                        onSamplerChange = { viewModel.applySamplerParams(it) },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    GreetingSection(
-                        mode = uiSettings.greetingMode,
-                        onModeChange = { m ->
-                            coroutineScope.launch { viewModel.uiSettings.setGreetingMode(m) }
-                        },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    LearningSection(onOpenMemoryBrowser = onOpenMemoryBrowser)
-                }
-            }
-            // Anzeige & Daten
+            // 4. Anzeige & Daten
             item {
                 AccordionSection(
                     title = "Anzeige & Daten",
@@ -469,15 +469,36 @@ private fun BehaviourSection(
 @Composable
 private fun LearningSection(onOpenMemoryBrowser: () -> Unit) {
     val songbird = LocalSongbirdColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var memoryCount by remember { mutableStateOf(-1) }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val root = io.somi.data.StorageRoots.memory(context)
+            val count = io.somi.rag.memory.MemoryTopic.entries.sumOf { topic ->
+                val file = java.io.File(root, "${topic.id}.md")
+                if (!file.exists()) 0
+                else file.readLines().count { it.trimStart().startsWith("- ") }
+            }
+            memoryCount = count
+        }
+    }
+
+    val buttonLabel = when {
+        memoryCount < 0 -> "Erinnerungen ansehen"
+        memoryCount == 0 -> "Erinnerungen ansehen (keine gespeichert)"
+        else -> "Erinnerungen ansehen ($memoryCount gespeichert)"
+    }
+
     SectionCard(title = "Lernen") {
         Text(
-            text = "So-Mi merkt sich noch nichts zwischen Sessions. Kommt mit v0.13: hybrider Trigger ('merk dir das' + optional automatisch), nach Themen sortierte Notizen, Verschieben & Löschen einzelner Einträge.",
+            text = "So-Mi merkt sich, was Du ihr sagst. Sag 'Merke dir, ...' oder 'Vergiss nicht, ...' — So-Mi speichert den Fakt und erinnert sich bei zukünftigen Antworten daran.",
             color = songbird.glass,
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(12.dp))
         SongbirdButton(
-            label = "Erinnerungen ansehen (leer)",
+            label = buttonLabel,
             kind = SongbirdButtonKind.Ghost,
             onClick = onOpenMemoryBrowser,
         )
