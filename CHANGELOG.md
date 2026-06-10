@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/Labushuya/so-mi/compare/v0.22.0...v0.23.0) (2026-06-10)
+
+
+### Features
+
+* Fakten-Split korrigiert, eigene Kategorien anlegen, Settings zugeklappt ([#79](https://github.com/Labushuya/so-mi/issues/79)) ([aa7396a](https://github.com/Labushuya/so-mi/commit/aa7396ae4aa6b266011b09eb3c674fd354b5425f))
+
 ## [0.22.0](https://github.com/Labushuya/so-mi/compare/v0.21.2...v0.22.0) (2026-06-10)
 
 
