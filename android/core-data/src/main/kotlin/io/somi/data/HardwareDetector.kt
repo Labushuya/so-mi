@@ -110,17 +110,29 @@ class HardwareDetector @Inject constructor(
 
     /**
      * Free space on the volume we'll write models to (`getExternalFilesDir`).
-     * Falls back to `filesDir` if external returns null on this OEM /
-     * profile (rare but happens with work profiles).
+    /**
+     * Free storage in GB — reads the physical device storage, not the
+     * app's quota'd allocation. On Android 11+ StatFs on getExternalFilesDir
+     * returns the allocatable quota (can be much smaller than physical free),
+     * which caused 14B models to show RED on devices with 280+ GB free.
+     * Environment.getExternalStorageDirectory() returns the real volume.
      */
     private fun freeStorageGB(): Double {
-        val dir = context.getExternalFilesDir(null) ?: context.filesDir
         return try {
-            val stat = StatFs(dir.absolutePath)
+            // Primary: physical external storage (SD card / UFS internal)
+            val extDir = android.os.Environment.getExternalStorageDirectory()
+            val stat = StatFs(extDir.absolutePath)
             stat.availableBytes.toDouble() / GIB
         } catch (e: Exception) {
-            Log.w(TAG, "StatFs failed for ${dir.absolutePath}", e)
-            0.0
+            Log.w(TAG, "StatFs on external storage failed, falling back", e)
+            try {
+                val dir = context.getExternalFilesDir(null) ?: context.filesDir
+                val stat = StatFs(dir.absolutePath)
+                stat.availableBytes.toDouble() / GIB
+            } catch (e2: Exception) {
+                Log.w(TAG, "StatFs fallback also failed", e2)
+                0.0
+            }
         }
     }
 
