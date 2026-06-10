@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/Labushuya/so-mi/compare/v0.20.0...v0.21.0) (2026-06-10)
+
+
+### Features
+
+* Erinnerungen löschen und verschieben, 14B-Ampel nutzt echten Gerätespeicher ([#71](https://github.com/Labushuya/so-mi/issues/71)) ([86961a6](https://github.com/Labushuya/so-mi/commit/86961a6a550addb8155487dac950669fbbef18a8))
+
 ## [0.20.0](https://github.com/Labushuya/so-mi/compare/v0.19.1...v0.20.0) (2026-06-10)
 
 
