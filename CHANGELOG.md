@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.5](https://github.com/Labushuya/so-mi/compare/v0.18.4...v0.18.5) (2026-06-10)
+
+
+### Bug Fixes
+
+* Erinnerungen ohne installierten Embedder speichern, MagicOS ADJUST_PAN überschreiben ([#63](https://github.com/Labushuya/so-mi/issues/63)) ([0b908c2](https://github.com/Labushuya/so-mi/commit/0b908c20c30087d6c233581d1897d960a09bf366))
+
 ## [0.18.4](https://github.com/Labushuya/so-mi/compare/v0.18.3...v0.18.4) (2026-06-10)
 
 
