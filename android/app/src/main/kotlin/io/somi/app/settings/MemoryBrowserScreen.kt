@@ -60,7 +60,13 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                 if (!file.exists()) return@associateWith emptyList()
                 file.readLines()
                     .filter { it.trimStart().startsWith("- ") }
-                    .map { it.trimStart().removePrefix("- ").trim() }
+                    .map { line ->
+                        line.trimStart()
+                            .removePrefix("- ")
+                            .replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "")
+                            .trim()
+                    }
+                    .filter { it.isNotBlank() }
             }
             topicData = data
         }
