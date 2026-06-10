@@ -166,7 +166,11 @@ fun recommendModelTier(d: DeviceInfo): Recommendation {
         val ramOk = spec.ramMinGB <= budget
         val ramTight = spec.ramMinGB <= budget * 1.15
         val storageOk = d.freeStorageGB >= spec.storageMinGB * 3
-        val storageRedline = d.freeStorageGB < spec.storageMinGB * 1.5
+        // v0.20.0: 1.5 × multiplier was too aggressive — flagged 14B red
+        // on a device with 281 GB free because StatFs returns quota'd
+        // allocation, not physical free space. 1.1 × (10% buffer) is
+        // sufficient to avoid disk-full failures during download.
+        val storageRedline = d.freeStorageGB < spec.storageMinGB * 1.1
         val light = when {
             !ramTight || storageRedline -> Light.RED
             !ramOk || !storageOk -> Light.YELLOW
