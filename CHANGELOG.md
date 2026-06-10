@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.2](https://github.com/Labushuya/so-mi/compare/v0.18.1...v0.18.2) (2026-06-10)
+
+
+### Bug Fixes
+
+* 14B-Ampel gelb statt rot — XLARGE ramMinGB auf 7.5 GB korrigiert ([#57](https://github.com/Labushuya/so-mi/issues/57)) ([4b8f1d7](https://github.com/Labushuya/so-mi/commit/4b8f1d7e89bf1014be73aaa23ba3803bfc33175b))
+
 ## [0.18.1](https://github.com/Labushuya/so-mi/compare/v0.18.0...v0.18.1) (2026-06-09)
 
 
