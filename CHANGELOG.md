@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/Labushuya/so-mi/compare/v0.19.1...v0.20.0) (2026-06-10)
+
+
+### Features
+
+* Settings-Reihenfolge, Back-Navigation, Erinnerungen-Zähler, 14B-Ampel-Fix ([#69](https://github.com/Labushuya/so-mi/issues/69)) ([a0474a9](https://github.com/Labushuya/so-mi/commit/a0474a99e91e7ee3f116eb8925d98669f0811871))
+
 ## [0.19.1](https://github.com/Labushuya/so-mi/compare/v0.19.0...v0.19.1) (2026-06-10)
 
 
