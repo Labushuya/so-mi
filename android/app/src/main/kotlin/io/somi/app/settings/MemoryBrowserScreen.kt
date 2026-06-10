@@ -262,8 +262,8 @@ private fun FactAccordion(
                         Text("· $display", color = songbird.bone, style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f).padding(end = 8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            SongbirdButton("↗", SongbirdButtonKind.Ghost, { onMove(rawLine) }, minHeight = 28.dp)
-                            SongbirdButton("✕", SongbirdButtonKind.Destructive, { onDelete(rawLine) }, minHeight = 28.dp)
+                            SongbirdButton("↗", onClick = { onMove(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 28.dp)
+                            SongbirdButton("✕", onClick = { onDelete(rawLine) }, kind = SongbirdButtonKind.Destructive, minHeight = 28.dp)
                         }
                     }
                 }
@@ -296,7 +296,7 @@ private fun MoveDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { SongbirdButton("Abbrechen", SongbirdButtonKind.Ghost, onDismiss) },
+        dismissButton = { SongbirdButton("Abbrechen", onClick = onDismiss, kind = SongbirdButtonKind.Ghost) },
         containerColor = songbird.aiBubble,
         titleContentColor = songbird.bone,
     )
@@ -326,9 +326,9 @@ private fun NewCategoryDialog(
             }
         },
         confirmButton = {
-            SongbirdButton("Anlegen", SongbirdButtonKind.Primary, { if (name.isNotBlank()) onCreate(name.trim()) })
+            SongbirdButton("Anlegen", onClick = { if (name.isNotBlank()) onCreate(name.trim()) }, kind = SongbirdButtonKind.Primary)
         },
-        dismissButton = { SongbirdButton("Abbrechen", SongbirdButtonKind.Ghost, onDismiss) },
+        dismissButton = { SongbirdButton("Abbrechen", onClick = onDismiss, kind = SongbirdButtonKind.Ghost) },
         containerColor = songbird.aiBubble,
         titleContentColor = songbird.bone,
     )
