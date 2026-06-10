@@ -98,8 +98,14 @@ Diese Vereinbarungen wurden in Sitzungen mit Christopher getroffen und sind **bi
 - **Keyboard-Spacing-Fix endgültig** *(2026-06-08)*
 - **Begrüßungs-Feature mit 3-Mode-Toggle** *(2026-06-08)*
 
-### Keyboard
-- **Tastatur überlappt Chat, kein Layout-Hochschieben** *(2026-06-09)* — `adjustNothing` im Manifest. Composer liegt immer am Bildschirmrand. Tastatur schiebt sich über den Chat-Bereich. User scrollt hoch für ältere Nachrichten.
+### In-App Fehler- und Warning-System
+- **Chat-Banner für alle Systemfehler** *(2026-06-10)* — jede fehlgeschlagene Aktion (Embedder nicht bereit, Download gescheitert, Speicher voll, Recall-Fehler) erscheint als anklickbarer Banner im Chat. Kein stiller Fehlschlag mehr. Banner öffnet Popup im Songbird-Stil mit Erklärung + konkreter Handlungsempfehlung (z.B. "Gedächtnis-Modell herunterladen → Settings öffnen").
+- **Kein Chat ohne vollständiges Setup** *(2026-06-10)* — Erststart-Screen (FirstLaunchScreen) blockiert Chat bis: LLM installiert + Embedder installiert. Erst wenn beide grün sind, wird der Chat freigeschaltet. LLM-Only-Modus (kein Recall) optional über expliziten Button "Ohne Gedächtnis starten".
+
+### Erinnerungen / RAG
+- **Fakt-Text-Normalisierung** *(2026-06-10)* — "Merke Dir, dass ich Christopher heiße" → gespeichert als "Ich heiße Christopher" statt rohem Textrest. NLP-Normalisierung: führendes "dass", "weil", "ich" beibehalten aber Satzkonstruktion glätten.
+- **M8 — Recall ist höchste Priorität** *(2026-06-10)* — ohne Recall ist der gesamte Erinnerungsstack nutzlos für den Chat. So-Mi muss bei jeder Antwort-Generation die top-K Fakten aus ObjectBox abrufen und als Kontext einfügen.
+
 
 ### Downloads & Modelle
 - **Wi-Fi-Toggle muss zurück in die Downloads-Sektion** *(2026-06-09)* — war in v0.14.x; in v0.15.0 versehentlich entfernt. Steuert ALLE großen Downloads (LLM + Embedder). Default: WLAN. Ohne Toggle: Soft-Lock wenn kein WLAN.

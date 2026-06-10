@@ -7,12 +7,15 @@ import io.somi.rag.memory.MemoryStore
 import io.somi.rag.memory.MemoryTopic
 import io.somi.rag.trigger.TriggerDetector
 import io.somi.rag.trigger.TriggerMatch
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * v0.14.0 M6 — orchestrates the trigger → embed → save → mirror
- * pipeline.
+ * v0.14.0 M6 — orchestrates the trigger → embed → save → mirror pipeline.
+ * v0.18.5 M8 — adds recall: recallForPrompt() reads the .md files and
+ * injects the most relevant facts as context before LLM generation.
+ */
  *
  * Public surface used by ChatViewModel:
  *  - [maybeSaveOnSubmit] — called pre-LLM with the user's message;
@@ -56,10 +59,11 @@ class RagOrchestrator @Inject constructor(
         return try {
             val topic = MemoryTopic.NOTES
             val now = System.currentTimeMillis()
+            val normalizedFact = normalizeFact(match.factText)
 
             // Save to .md mirror unconditionally — this is the user-visible
             // persistence layer. It works without the embedder.
-            memoryFiles.append(match.factText, topic, now)
+            memoryFiles.append(normalizedFact, topic, now)
 
             // Save to ObjectBox with embedding only if embedder is ready.
             // If not, we store a zero-vector placeholder so the row exists
@@ -70,7 +74,7 @@ class RagOrchestrator @Inject constructor(
             } else null
 
             memoryStore.save(
-                fact = match.factText,
+                fact = normalizedFact,
                 topic = topic,
                 embedding = embedding ?: FloatArray(384) { 0f },
                 confidence = if (embedding != null) 1.0f else 0f,
@@ -78,10 +82,10 @@ class RagOrchestrator @Inject constructor(
                 now = now,
             )
 
-            Log.i(TAG, "saved: '${match.factText.take(60)}' topic=${topic.id} hasEmbedding=${embedding != null}")
+            Log.i(TAG, "saved: '${normalizedFact.take(60)}' topic=${topic.id} hasEmbedding=${embedding != null}")
             SaveOutcome.Saved(
                 triggerPhrase = match.triggerPhrase,
-                factText = match.factText,
+                factText = normalizedFact,
                 topic = topic,
             )
         } catch (t: Throwable) {
@@ -94,8 +98,68 @@ class RagOrchestrator @Inject constructor(
         }
     }
 
+    /**
+     * v0.18.5 M8 — Recall: reads all saved facts from the .md mirror
+     * and formats them as a compact context block for injection into
+     * the LLM prompt before generation.
+     *
+     * Uses the .md files (not ObjectBox) because many facts were saved
+     * before the embedder was available and have a zero-vector. Full
+     * HNSW vector search comes in a later version once all facts have
+     * real embeddings. For now: return ALL non-empty facts (capped at
+     * MAX_RECALL_FACTS) so the context stays within KV-cache budget.
+     *
+     * @return formatted context string, or null if no facts exist.
+     */
+    fun recallForPrompt(): String? {
+        val allFacts = MemoryTopic.entries.flatMap { topic ->
+            val file = File(memoryFiles.rootDir, "${topic.id}.md")
+            if (!file.exists()) return@flatMap emptyList()
+            file.readLines()
+                .filter { it.trimStart().startsWith("- ") }
+                .mapNotNull { line ->
+                    line.trimStart()
+                        .removePrefix("- ")
+                        .replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "")
+                        .trim()
+                        .takeIf { it.isNotBlank() }
+                }
+        }.take(MAX_RECALL_FACTS)
+
+        if (allFacts.isEmpty()) return null
+
+        return buildString {
+            append("[Bekannte Fakten über den Nutzer]\n")
+            allFacts.forEach { append("- $it\n") }
+            append("[Ende der Fakten]\n")
+        }
+    }
+
+    /**
+     * Normalize the raw fact text extracted after stripping the trigger phrase.
+     * Removes leading subordinating conjunctions so "dass ich Christopher heiße"
+     * becomes "ich heiße Christopher".
+     */
+    private fun normalizeFact(raw: String): String {
+        val lower = raw.trimStart()
+        // Strip leading subordinating conjunctions (dass, weil, ob, damit, etc.)
+        val withoutConj = LEADING_CONJUNCTIONS.fold(lower) { acc, conj ->
+            if (acc.startsWith(conj, ignoreCase = true))
+                acc.substring(conj.length).trimStart()
+            else acc
+        }
+        // Capitalize first letter
+        return withoutConj.replaceFirstChar { it.uppercaseChar() }
+    }
+
     private companion object {
         const val TAG = "RagOrchestrator"
+        const val MAX_RECALL_FACTS = 20
+
+        private val LEADING_CONJUNCTIONS = listOf(
+            "dass ", "das ", "weil ", "ob ", "damit ", "obwohl ", "obgleich ",
+            "that ", "because ", "since ", "although ",
+        )
     }
 }
 
