@@ -469,9 +469,9 @@ class ChatViewModel @Inject constructor(
             is io.somi.rag.SaveOutcome.SaveFailed -> {
                 val msg = when (outcome.reason) {
                     io.somi.rag.SaveFailureReason.EMBEDDER_NOT_READY ->
-                        "Erinnerungs-Modell lädt noch — bei nächster Antwort merk ich's mir."
+                        "Gespeichert — aber ohne Vektorindex. Semantisches Erinnern kommt wenn das Gedächtnis-Modell geladen ist."
                     io.somi.rag.SaveFailureReason.IO ->
-                        "Hab das gerade nicht weggeschrieben gekriegt. Sag's gleich nochmal."
+                        "Speicherfehler — konnte Erinnerung nicht auf Disk schreiben. Prüf den freien Speicher."
                 }
                 surfaceError(msg, retryable = false, cause = outcome.cause)
             }
@@ -939,6 +939,18 @@ class ChatViewModel @Inject constructor(
         val partial = StringBuilder()
         var completed = false
 
+        // v0.18.5 M8 — Recall: inject known facts before each generation.
+        // Reads from the .md mirror (no HNSW yet). If no facts saved, no
+        // prefix added. This runs on Dispatchers.IO (file read is fast).
+        val recallContext = withContext(Dispatchers.IO) {
+            runCatching { ragOrchestrator.recallForPrompt() }.getOrNull()
+        }
+        val promptWithContext = if (recallContext != null) {
+            "$recallContext\n$userText"
+        } else {
+            userText
+        }
+
         try {
             // v0.11.4: read max-tokens from the persisted SamplerParams
             // each turn so the user-facing slider in Settings actually
@@ -947,7 +959,7 @@ class ChatViewModel @Inject constructor(
             // load — same behavior as v0.11.3's hardcoded MAX_TOKENS.
             val maxTokens = samplerSettings.params.value.maxTokens
             withContext(llamaDispatcher) {
-                llama.generate(userText, maxTokens = maxTokens)
+                llama.generate(promptWithContext, maxTokens = maxTokens)
                     .cancellable()
                     .collect { chunk ->
                         partial.append(chunk)
