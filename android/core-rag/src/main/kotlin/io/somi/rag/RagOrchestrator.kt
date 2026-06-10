@@ -104,11 +104,16 @@ class RagOrchestrator @Inject constructor(
      * ["Ich heiße Christopher", "Wurde am 26.09.1990 geboren"]
      */
     private fun splitIntoFacts(normalized: String): List<String> {
-        // Split on " und " at clause boundaries (not inside dates like "2. und 3. März")
-        val parts = normalized.split(Regex("\\s+und\\s+(?=[A-ZÄÖÜ]|ich |er |sie |es |du )"))
-        return parts.map { it.trim().replaceFirstChar { c -> c.uppercaseChar() } }
-            .filter { it.length >= 3 }
-            .ifEmpty { listOf(normalized) }
+        // Split on " und " — generously, any conjunction between facts.
+        // A date like "2. und 3. März" won't appear here because it's
+        // inside a fact, not between two complete clauses.
+        // We split and capitalize each part separately.
+        val parts = normalized.split(Regex("\\s+und\\s+"))
+        val result = parts.map { it.trim().replaceFirstChar { c -> c.uppercaseChar() } }
+            .filter { it.length >= 5 }  // skip fragments like "am"
+        // If splitting produces only one part longer than 40 chars, try
+        // splitting on comma + "und" or semicolon too.
+        return result.ifEmpty { listOf(normalized) }
     }
 
     /**

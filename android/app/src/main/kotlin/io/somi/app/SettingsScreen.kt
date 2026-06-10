@@ -87,7 +87,7 @@ internal fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     // Akkordeon-State: welche Sektion ist gerade aufgeklappt
-    var expandedSection by remember { mutableStateOf<String?>("modelle") }
+    var expandedSection by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
