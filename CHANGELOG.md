@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/Labushuya/so-mi/compare/v0.21.2...v0.22.0) (2026-06-10)
+
+
+### Features
+
+* mehrere Fakten aus einem Satz extrahieren, automatisch nach Thema sortieren ([#77](https://github.com/Labushuya/so-mi/issues/77)) ([0837e74](https://github.com/Labushuya/so-mi/commit/0837e742a8a2929eb09a91e5beb9effcf49ed069))
+
 ## [0.21.2](https://github.com/Labushuya/so-mi/compare/v0.21.1...v0.21.2) (2026-06-10)
 
 
