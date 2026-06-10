@@ -323,30 +323,16 @@ private fun ChatShellScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            // v0.13.0: only the top status-bar inset is owned at this
-            // level. The bottom inset is delegated to the Composer so
-            // the keyboard-up case (imePadding) doesn't double-count
-            // with navigationBarsPadding. The .background() above the
-            // padding still paints obsidian behind both bars.
-            //
-            // v0.14.3: also consumed the IME inset at this level — but
-            // that fix solved the wrong problem. The visible "leerraum"
-            // wasn't the keyboard distance, it was unused vertical
-            // space inside the LazyColumn between the last bubble and
-            // the Composer when the message list is shorter than the
-            // viewport.
-            //
-            // v0.15.0 reverts the IME consumption here; the Composer
-            // alone owns its IME inset. The actual fix is below:
-            // LazyColumn now uses Arrangement.Bottom so messages stack
-            // upward from just-above the Composer, eliminating the
-            // empty area that triggered the user's complaint.
-            //
-            // Top inset is union(systemBars.Top, displayCutout) so the
-            // chat doesn't get clipped under the punch-hole/notch.
+            // Top: status bar + notch. Bottom: IME (keyboard) — when the
+            // keyboard opens, this Column shrinks and the Composer stays
+            // visible just above the keyboard. navigationBars inset is
+            // included via the union so the composer never hides behind
+            // nav buttons when keyboard is closed.
             .windowInsetsPadding(
                 WindowInsets.systemBars.only(WindowInsetsSides.Top)
-                    .union(WindowInsets.displayCutout),
+                    .union(WindowInsets.displayCutout)
+                    .union(WindowInsets.ime)
+                    .union(WindowInsets.navigationBars),
             ),
     ) {
         ChatTopBar(
