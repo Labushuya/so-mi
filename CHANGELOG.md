@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/Labushuya/so-mi/compare/v0.18.5...v0.19.0) (2026-06-10)
+
+
+### Features
+
+* So-Mi erinnert sich — Fakten werden bei jeder Antwort als Kontext mitgegeben ([#65](https://github.com/Labushuya/so-mi/issues/65)) ([723c77a](https://github.com/Labushuya/so-mi/commit/723c77a6ec7fabbdf59d6cf953801ee9ef42f47e))
+
 ## [0.18.5](https://github.com/Labushuya/so-mi/compare/v0.18.4...v0.18.5) (2026-06-10)
 
 
