@@ -74,10 +74,11 @@ val TIER_SPECS: List<TierSpec> = listOf(
     ),
     TierSpec(
         tier = Tier.XLARGE,
-        // 14B Q4_K_M needs ~9 GB process RAM. On Magic V2 (16 GB total,
-        // budget = 7.2 GB) this exceeds GREEN (6.5) but fits YELLOW (×1.15 = 8.28).
-        // Q3_K_M needs ~7.3 GB — also YELLOW on Magic V2.
-        ramMinGB = 8.5,
+        // Magic V2 budget = 7.2 GB. ramMinGB=7.5 gives:
+        //   ramTight  = 7.5 <= 7.2 * 1.15 = 8.28  → true  (not RED)
+        //   ramOk     = 7.5 <= 7.2         → false (not GREEN → YELLOW)
+        // Q3_K_M needs ~7.3 GB, Q4_K_M needs ~9 GB — both YELLOW on 16 GB.
+        ramMinGB = 7.5,
         storageMinGB = 10.0,
         exampleModel = "Qwen2.5 14B Q4_K_M",
         expectedTokPerSec = "2–3",
