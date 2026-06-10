@@ -56,36 +56,37 @@ class RagOrchestrator @Inject constructor(
             ?: return SaveOutcome.NotTriggered
 
         return try {
-            val topic = MemoryTopic.NOTES
             val now = System.currentTimeMillis()
-            val normalizedFact = normalizeFact(match.factText)
 
-            // Save to .md mirror unconditionally — this is the user-visible
-            // persistence layer. It works without the embedder.
-            memoryFiles.append(normalizedFact, topic, now)
+            // v0.22.0 M9 — Multi-fact extraction + TopicClassifier.
+            // Split the fact text into individual facts (by "und" conjunctions)
+            // and classify each into the best-matching topic.
+            val rawFacts = splitIntoFacts(normalizeFact(match.factText))
+            val classified = rawFacts.map { fact -> fact to classifyFact(fact) }
 
-            // Save to ObjectBox with embedding only if embedder is ready.
-            // If not, we store a zero-vector placeholder so the row exists
-            // in the DB and can be re-embedded later when M8 ships.
             val embedderReady = runCatching { embedder.isAvailable() }.getOrDefault(false)
-            val embedding = if (embedderReady) {
-                runCatching { embedder.embed(match.factText) }.getOrNull()
-            } else null
 
-            memoryStore.save(
-                fact = normalizedFact,
-                topic = topic,
-                embedding = embedding ?: FloatArray(384) { 0f },
-                confidence = if (embedding != null) 1.0f else 0f,
-                supersedesId = 0,
-                now = now,
-            )
+            classified.forEach { (fact, topic) ->
+                memoryFiles.append(fact, topic, now)
+                val embedding = if (embedderReady) {
+                    runCatching { embedder.embed(fact) }.getOrNull()
+                } else null
+                memoryStore.save(
+                    fact = fact,
+                    topic = topic,
+                    embedding = embedding ?: FloatArray(384) { 0f },
+                    confidence = if (embedding != null) 1.0f else 0f,
+                    supersedesId = 0,
+                    now = now,
+                )
+                Log.i(TAG, "saved: '$fact' → ${topic.id}")
+            }
 
-            Log.i(TAG, "saved: '${normalizedFact.take(60)}' topic=${topic.id} hasEmbedding=${embedding != null}")
+            val savedText = classified.joinToString(", ") { (f, _) -> f }
             SaveOutcome.Saved(
                 triggerPhrase = match.triggerPhrase,
-                factText = normalizedFact,
-                topic = topic,
+                factText = savedText,
+                topic = classified.firstOrNull()?.second ?: MemoryTopic.NOTES,
             )
         } catch (t: Throwable) {
             Log.e(TAG, "save pipeline failed", t)
@@ -94,6 +95,43 @@ class RagOrchestrator @Inject constructor(
                 reason = SaveFailureReason.IO,
                 cause = t,
             )
+        }
+    }
+
+    /**
+     * v0.22.0 M9 — split a normalized fact string into individual facts.
+     * "Ich heiße Christopher und wurde am 26.09.1990 geboren" →
+     * ["Ich heiße Christopher", "Wurde am 26.09.1990 geboren"]
+     */
+    private fun splitIntoFacts(normalized: String): List<String> {
+        // Split on " und " at clause boundaries (not inside dates like "2. und 3. März")
+        val parts = normalized.split(Regex("\\s+und\\s+(?=[A-ZÄÖÜ]|ich |er |sie |es |du )"))
+        return parts.map { it.trim().replaceFirstChar { c -> c.uppercaseChar() } }
+            .filter { it.length >= 3 }
+            .ifEmpty { listOf(normalized) }
+    }
+
+    /**
+     * v0.22.0 M9 — classify a single fact into a MemoryTopic using
+     * keyword heuristics. LLM-based classification comes in v0.22.1.
+     */
+    private fun classifyFact(fact: String): MemoryTopic {
+        val lower = fact.lowercase()
+        return when {
+            // Dates: numbers with dots/slashes, month names, year patterns
+            lower.contains(Regex("\\d{1,2}[./]\\d{1,2}[./]\\d{2,4}")) -> MemoryTopic.DATES
+            lower.contains(Regex("\\b(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember|january|february|march|april|may|june|july|august|september|october|november|december)\\b")) -> MemoryTopic.DATES
+            lower.contains(Regex("\\b(geboren|geburtstag|birthday|geb\\.|am \\d+\\.)")) -> MemoryTopic.DATES
+            lower.contains(Regex("\\b(termin|meeting|treffen|uhr|morgen|übermorgen|nächste woche)\\b")) -> MemoryTopic.DATES
+            // Persons: name, identity, relationships
+            lower.contains(Regex("\\b(heiße|name ist|bin .{1,30} jahre|mein name|ich heiße|ich bin .{1,20}|meine (frau|mann|schwester|bruder|mutter|vater|kind|freundin|freund))\\b")) -> MemoryTopic.PERSONS
+            lower.contains(Regex("\\b(wohne in|lebe in|komme aus|wohnung|adresse)\\b")) -> MemoryTopic.PERSONS
+            // Preferences
+            lower.contains(Regex("\\b(mag|liebe|esse gern|trinke gern|höre gern|schaue gern|spiele gern|interessiere mich|hobby|lieblings|am liebsten|gefällt mir|lieber|bevorzuge)\\b")) -> MemoryTopic.PREFERENCES
+            // Technical
+            lower.contains(Regex("\\b(nutze|benutze|habe .{1,20} gerät|mein (computer|laptop|handy|telefon|auto|fahrrad)|software|app|modell|version|passwort|server|api|code)\\b")) -> MemoryTopic.TECHNICAL
+            // Default
+            else -> MemoryTopic.NOTES
         }
     }
 
