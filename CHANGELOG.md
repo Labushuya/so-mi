@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/Labushuya/so-mi/compare/v0.23.0...v0.23.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* build — SongbirdButton mit benannten Argumenten ([#81](https://github.com/Labushuya/so-mi/issues/81)) ([f3f622b](https://github.com/Labushuya/so-mi/commit/f3f622b16025378c31297c8943db02bc2a06a5c7))
+
 ## [0.23.0](https://github.com/Labushuya/so-mi/compare/v0.22.0...v0.23.0) (2026-06-10)
 
 
