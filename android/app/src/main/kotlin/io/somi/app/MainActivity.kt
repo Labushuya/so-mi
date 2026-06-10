@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -323,17 +324,17 @@ private fun ChatShellScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(songbird.obsidian)
-            // Top: status bar + notch. Bottom: IME (keyboard) — when the
-            // keyboard opens, this Column shrinks and the Composer stays
-            // visible just above the keyboard. navigationBars inset is
-            // included via the union so the composer never hides behind
-            // nav buttons when keyboard is closed.
+            // Top inset: status bar + notch.
+            // imePadding() handles the keyboard — it's a dedicated
+            // Modifier that listens to IME WindowInsetsAnimation and
+            // animates the padding as the keyboard slides in/out.
+            // Using windowInsetsPadding(WindowInsets.ime) is static;
+            // imePadding() is dynamic and works with enableEdgeToEdge.
             .windowInsetsPadding(
                 WindowInsets.systemBars.only(WindowInsetsSides.Top)
-                    .union(WindowInsets.displayCutout)
-                    .union(WindowInsets.ime)
-                    .union(WindowInsets.navigationBars),
-            ),
+                    .union(WindowInsets.displayCutout),
+            )
+            .imePadding(),
     ) {
         ChatTopBar(
             versionName = versionName,
