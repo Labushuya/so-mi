@@ -90,9 +90,8 @@ Neue Reihenfolge der Akkordeon-Sektionen:
 ### Navigation *(2026-06-10)*
 - **Hardware-Back-Button** navigiert intern (wie ← oben links), schließt die App nicht; nur auf dem Root-Screen (Chat) schließt Back die App
 
-### Modell-Ampel *(2026-06-10)*
-- **StorageRedline-Formel korrigieren** — `storageMinGB * 1.5` zu konservativ; stattdessen `storageMinGB * 1.1` (10% Puffer reicht)
-- **Beide 14B zeigen rot** trotz 281 GB frei — Bug in StatFs-Abfrage; `getExternalFilesDir` gibt Quota zurück, nicht Gerät-Gesamtspeicher
+### Modell-Ampel *(aufgeschoben — kein Blocker)*
+- **StorageRedline-Formel und StatFs-Quelle** — mehrfach angepasst, 14B zeigt weiterhin rot. Root-Cause unklar ohne Device-Debug-Build. Da die 14B-Modelle trotz roter Ampel funktionieren und auswählbar sind, ist das ein kosmetisches Problem. Aufgeschoben auf v0.23.x wenn ein Debug-Build mit Logcat-Zugriff möglich ist.
 
 ### Modell-Auswahl
 - **7B Q4_K_M Default** *(CLAUDE.md)*
