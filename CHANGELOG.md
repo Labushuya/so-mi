@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.4](https://github.com/Labushuya/so-mi/compare/v0.18.3...v0.18.4) (2026-06-10)
+
+
+### Bug Fixes
+
+* Tastatur-Gap, Erinnerungen werden persistent gespeichert, mehr Triggerwörter ([#61](https://github.com/Labushuya/so-mi/issues/61)) ([3c41a08](https://github.com/Labushuya/so-mi/commit/3c41a087bc4e09a9d1a01c659d8fd4af120afa0b))
+
 ## [0.18.3](https://github.com/Labushuya/so-mi/compare/v0.18.2...v0.18.3) (2026-06-10)
 
 
