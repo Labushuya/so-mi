@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -276,40 +277,34 @@ private fun MoveDialog(
     onDismiss: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    androidx.compose.material3.BasicAlertDialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(songbird.aiBubble)
-                .padding(20.dp),
-        ) {
-            Text(
-                text = "Wohin verschieben?",
-                color = songbird.bone,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "\"$factText\"",
-                color = songbird.glass,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Spacer(Modifier.height(16.dp))
-            targets.forEach { topic ->
-                Text(
-                    text = topic.displayName,
-                    color = songbird.crimson,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onMove(topic) }
-                        .padding(vertical = 10.dp),
-                )
-                HorizontalDivider(color = songbird.bubbleBorder)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Wohin verschieben?", color = songbird.bone, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column {
+                Text("\"$factText\"", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(12.dp))
+                targets.forEach { topic ->
+                    Text(
+                        text = topic.displayName,
+                        color = songbird.crimson,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onMove(topic) }
+                            .padding(vertical = 10.dp),
+                    )
+                    HorizontalDivider(color = songbird.bubbleBorder)
+                }
             }
-            Spacer(Modifier.height(8.dp))
+        },
+        confirmButton = {},
+        dismissButton = {
             SongbirdButton(label = "Abbrechen", kind = SongbirdButtonKind.Ghost, onClick = onDismiss)
-        }
-    }
+        },
+        containerColor = songbird.aiBubble,
+        titleContentColor = songbird.bone,
+    )
 }
