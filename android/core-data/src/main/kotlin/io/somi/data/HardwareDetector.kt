@@ -109,8 +109,6 @@ class HardwareDetector @Inject constructor(
     }
 
     /**
-     * Free space on the volume we'll write models to (`getExternalFilesDir`).
-    /**
      * Free storage in GB — reads the physical device storage, not the
      * app's quota'd allocation. On Android 11+ StatFs on getExternalFilesDir
      * returns the allocatable quota (can be much smaller than physical free),
