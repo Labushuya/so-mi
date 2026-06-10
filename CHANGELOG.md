@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.3](https://github.com/Labushuya/so-mi/compare/v0.18.2...v0.18.3) (2026-06-10)
+
+
+### Bug Fixes
+
+* Tastatur-Layout, Erinnerungen-Browser zeigt gespeicherte Fakten ([#59](https://github.com/Labushuya/so-mi/issues/59)) ([a90bbab](https://github.com/Labushuya/so-mi/commit/a90bbab02f3d059273039f719764c6f18c5c8c48))
+
 ## [0.18.2](https://github.com/Labushuya/so-mi/compare/v0.18.1...v0.18.2) (2026-06-10)
 
 
