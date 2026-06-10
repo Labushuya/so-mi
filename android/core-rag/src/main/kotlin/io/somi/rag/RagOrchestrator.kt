@@ -53,37 +53,32 @@ class RagOrchestrator @Inject constructor(
         val match: TriggerMatch = triggerDetector.detect(userText)
             ?: return SaveOutcome.NotTriggered
 
-        // Embedder availability guard — if the bge-mini-LM model
-        // isn't on disk yet (first launch, download in flight), we
-        // tell the UI explicitly. ChatViewModel can either show a
-        // banner ("Erinnerungs-Modell lädt noch…") or just proceed
-        // with the LLM.
-        val embedderReady = runCatching { embedder.isAvailable() }
-            .getOrDefault(false)
-        if (!embedderReady) {
-            Log.i(TAG, "trigger fired but embedder not ready — skipping save")
-            return SaveOutcome.SaveFailed(
-                triggerPhrase = match.triggerPhrase,
-                reason = SaveFailureReason.EMBEDDER_NOT_READY,
-            )
-        }
-
         return try {
-            val embedding = embedder.embed(match.factText)
-            // M6 hardcoded topic per plan. M9 replaces this with
-            // TopicClassifier output + disambiguation chat-bubble.
             val topic = MemoryTopic.NOTES
             val now = System.currentTimeMillis()
+
+            // Save to .md mirror unconditionally — this is the user-visible
+            // persistence layer. It works without the embedder.
+            memoryFiles.append(match.factText, topic, now)
+
+            // Save to ObjectBox with embedding only if embedder is ready.
+            // If not, we store a zero-vector placeholder so the row exists
+            // in the DB and can be re-embedded later when M8 ships.
+            val embedderReady = runCatching { embedder.isAvailable() }.getOrDefault(false)
+            val embedding = if (embedderReady) {
+                runCatching { embedder.embed(match.factText) }.getOrNull()
+            } else null
+
             memoryStore.save(
                 fact = match.factText,
                 topic = topic,
-                embedding = embedding,
-                confidence = 1.0f,
+                embedding = embedding ?: FloatArray(384) { 0f },
+                confidence = if (embedding != null) 1.0f else 0f,
                 supersedesId = 0,
                 now = now,
             )
-            memoryFiles.append(match.factText, topic, now)
-            Log.i(TAG, "saved: '${match.factText.take(60)}…' topic=${topic.id}")
+
+            Log.i(TAG, "saved: '${match.factText.take(60)}' topic=${topic.id} hasEmbedding=${embedding != null}")
             SaveOutcome.Saved(
                 triggerPhrase = match.triggerPhrase,
                 factText = match.factText,

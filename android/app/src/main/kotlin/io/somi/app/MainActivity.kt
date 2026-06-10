@@ -109,6 +109,16 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(SONGBIRD_OBSIDIAN_ARGB),
         )
 
+        // v0.18.4: MagicOS overrides windowSoftInputMode to ADJUST_PAN
+        // (confirmed via `dumpsys input_method`). ADJUST_PAN shifts the
+        // entire window up leaving a black gap at the bottom. Setting
+        // SOFT_INPUT_ADJUST_RESIZE programmatically overrides the OEM
+        // behaviour so the layout shrinks instead of panning.
+        @Suppress("DEPRECATION")
+        window.setSoftInputMode(
+            android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        )
+
         // v0.15.0: true fullscreen / immersive mode. User explicitly
         // asked for status bar + nav bar HIDDEN, drawing the chat to
         // every pixel. Toggle persisted in UiSettingsRepository;
