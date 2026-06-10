@@ -15,7 +15,6 @@ import javax.inject.Singleton
  * v0.14.0 M6 — orchestrates the trigger → embed → save → mirror pipeline.
  * v0.18.5 M8 — adds recall: recallForPrompt() reads the .md files and
  * injects the most relevant facts as context before LLM generation.
- */
  *
  * Public surface used by ChatViewModel:
  *  - [maybeSaveOnSubmit] — called pre-LLM with the user's message;
