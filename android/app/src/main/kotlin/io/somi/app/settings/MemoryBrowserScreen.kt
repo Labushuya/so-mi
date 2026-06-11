@@ -355,7 +355,6 @@ private fun FactAccordion(
 }
 
 @Composable
-@Composable
 private fun TextInputDialog(
     title: String,
     initial: String,
