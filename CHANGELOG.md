@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/Labushuya/so-mi/compare/v0.27.0...v0.28.0) (2026-06-11)
+
+
+### Features
+
+* Keywords editieren und verschieben, deutlich getrennte UI-Sektionen ([#99](https://github.com/Labushuya/so-mi/issues/99)) ([f637a9f](https://github.com/Labushuya/so-mi/commit/f637a9f69870ccb354e6c9587fd6e154f50125d1))
+
 ## [0.27.0](https://github.com/Labushuya/so-mi/compare/v0.26.0...v0.27.0) (2026-06-11)
 
 
