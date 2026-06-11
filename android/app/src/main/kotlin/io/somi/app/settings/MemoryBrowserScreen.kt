@@ -1,6 +1,7 @@
 package io.somi.app.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -167,7 +168,12 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
 
     fun createCategory(name: String) {
         scope.launch(Dispatchers.IO) {
-            val id = name.lowercase().replace(" ", "_").replace(Regex("[^a-z0-9_äöü]"), "")
+            val id = name.lowercase()
+                .replace("&", "_und_")
+                .replace(" ", "_")
+                .replace(Regex("[^a-z0-9_äöüß]"), "")
+                .replace(Regex("_+"), "_")  // collapse multiple underscores
+                .trim('_')
             if (id.isBlank()) return@launch
             val file = File(StorageRoots.memory(context), "$id.md")
             if (!file.exists()) {
@@ -349,6 +355,7 @@ private fun FactAccordion(
 }
 
 @Composable
+@Composable
 private fun TextInputDialog(
     title: String,
     initial: String,
@@ -362,13 +369,38 @@ private fun TextInputDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, color = songbird.bone, fontWeight = FontWeight.Bold) },
         text = {
-            BasicTextField(
-                value = text,
-                onValueChange = { text = it },
-                textStyle = LocalTextStyle.current.copy(color = songbird.bone, fontSize = MaterialTheme.typography.bodyMedium.fontSize),
-                cursorBrush = SolidColor(songbird.crimson),
-                modifier = Modifier.fillMaxWidth().background(songbird.obsidian).padding(10.dp),
-            )
+            Column {
+                Text(
+                    text = if (initial.isEmpty()) "Text eingeben:" else "Text bearbeiten:",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Spacer(Modifier.height(6.dp))
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    textStyle = LocalTextStyle.current.copy(
+                        color = songbird.bone,
+                        fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    ),
+                    cursorBrush = SolidColor(songbird.crimson),
+                    decorationBox = { inner ->
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(songbird.obsidian)
+                                .border(1.dp, songbird.crimson, androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                                .padding(10.dp),
+                        ) {
+                            if (text.isEmpty()) {
+                                Text("Hier tippen…", color = songbird.glass, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            inner()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
         confirmButton = {
             SongbirdButton(confirmLabel, onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }, kind = SongbirdButtonKind.Primary)
