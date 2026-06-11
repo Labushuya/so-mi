@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/Labushuya/so-mi/compare/v0.29.0...v0.29.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* build — WindowInsets.ime.getBottom statt asPaddingValues ([#103](https://github.com/Labushuya/so-mi/issues/103)) ([f5b3dfc](https://github.com/Labushuya/so-mi/commit/f5b3dfc419d1766a6582eacc7ee3b612101b487b))
+
 ## [0.29.0](https://github.com/Labushuya/so-mi/compare/v0.28.0...v0.29.0) (2026-06-11)
 
 
