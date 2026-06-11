@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/Labushuya/so-mi/compare/v0.23.2...v0.24.0) (2026-06-11)
+
+
+### Features
+
+* Erinnerungen editieren und manuell anlegen ([#85](https://github.com/Labushuya/so-mi/issues/85)) ([7382044](https://github.com/Labushuya/so-mi/commit/73820444c7a70b88e04c608b9d6642ca2dbea1b5))
+
 ## [0.23.2](https://github.com/Labushuya/so-mi/compare/v0.23.1...v0.23.2) (2026-06-11)
 
 
