@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/Labushuya/so-mi/compare/v0.24.0...v0.24.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* So-Mi erinnert sich auch an eigene Kategorien, Textfeld sichtbar, & in Kategoriename erlaubt ([#87](https://github.com/Labushuya/so-mi/issues/87)) ([4be10dd](https://github.com/Labushuya/so-mi/commit/4be10dd5202bcc34c22d0e8d93d62dae57f1b1f0))
+
 ## [0.24.0](https://github.com/Labushuya/so-mi/compare/v0.23.2...v0.24.0) (2026-06-11)
 
 
