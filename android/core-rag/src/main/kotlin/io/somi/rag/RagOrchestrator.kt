@@ -159,9 +159,11 @@ class RagOrchestrator @Inject constructor(
      * @return formatted context string, or null if no facts exist.
      */
     fun recallForPrompt(): String? {
-        val allFacts = MemoryTopic.entries.flatMap { topic ->
-            val file = File(memoryFiles.rootDir, "${topic.id}.md")
-            if (!file.exists()) return@flatMap emptyList()
+        // Read ALL .md files in the memory directory — including custom categories
+        // created by the user (e.g. "Beruf & Job" → "beruf_und_job.md").
+        val root = memoryFiles.rootDir
+        val mdFiles = root.listFiles()?.filter { it.extension == "md" } ?: emptyList()
+        val allFacts = mdFiles.flatMap { file ->
             file.readLines()
                 .filter { it.trimStart().startsWith("- ") }
                 .mapNotNull { line ->
