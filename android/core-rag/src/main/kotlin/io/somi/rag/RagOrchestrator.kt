@@ -10,6 +10,8 @@ import io.somi.rag.trigger.TriggerMatch
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * v0.14.0 M6 — orchestrates the trigger → embed → save → mirror pipeline.
@@ -52,6 +54,37 @@ class RagOrchestrator @Inject constructor(
      * routing.
      */
     suspend fun maybeSaveOnSubmit(userText: String): SaveOutcome {
+        // v0.26.0 — check for keyword management commands FIRST.
+        // These don't need a trigger phrase — they're direct commands.
+        val kwCmd = io.somi.rag.trigger.KeywordCommandDetector.detect(userText)
+        if (kwCmd != null) {
+            val root = memoryFiles.rootDir
+            val knownIds = root.listFiles()
+                ?.filter { it.extension == "md" }
+                ?.filter { f -> MemoryTopic.entries.none { it.id == f.nameWithoutExtension } }
+                ?.map { it.nameWithoutExtension }
+                ?: emptyList()
+            val resolvedId = io.somi.rag.trigger.KeywordCommandDetector.resolveCategory(kwCmd.categoryHint, knownIds)
+            return when (kwCmd.action) {
+                io.somi.rag.trigger.KeywordCommandDetector.Action.ADD -> {
+                    if (resolvedId != null) {
+                        withContext(kotlinx.coroutines.Dispatchers.IO) { addKeyword(resolvedId, kwCmd.keyword) }
+                        SaveOutcome.KeywordAdded(kwCmd.keyword, resolvedId)
+                    } else SaveOutcome.NotTriggered
+                }
+                io.somi.rag.trigger.KeywordCommandDetector.Action.REMOVE -> {
+                    if (resolvedId != null) {
+                        withContext(kotlinx.coroutines.Dispatchers.IO) { removeKeyword(resolvedId, kwCmd.keyword) }
+                        SaveOutcome.KeywordRemoved(kwCmd.keyword, resolvedId)
+                    } else SaveOutcome.NotTriggered
+                }
+                io.somi.rag.trigger.KeywordCommandDetector.Action.SHOW -> {
+                    val keywords = if (resolvedId != null) getKeywordsForCategory(resolvedId) else emptyList()
+                    SaveOutcome.KeywordsShown(resolvedId ?: kwCmd.categoryHint, keywords)
+                }
+            }
+        }
+
         val match: TriggerMatch = triggerDetector.detect(userText)
             ?: return SaveOutcome.NotTriggered
 
@@ -182,33 +215,78 @@ class RagOrchestrator @Inject constructor(
             ?.filter { f -> MemoryTopic.entries.none { it.id == f.nameWithoutExtension } }
             ?: return null
 
+        // Load user-defined keywords from .keywords.json
+        val userKeywords = loadUserKeywords(root)
+
         return customFiles.firstOrNull { file ->
             val id = file.nameWithoutExtension
-            // Keywords from the filename (e.g. "beruf_und_job" → ["beruf", "job"])
-            val filenameKeywords = id.split("_")
-                .filter { it.length >= 4 && it != "und" }
-            // Also read category header for display name keywords
-            val headerKeywords = file.readLines()
-                .firstOrNull { it.startsWith("# ") }
-                ?.removePrefix("# ")
-                ?.lowercase()
-                ?.split(" ", "&", "/", "-", ",")
-                ?.filter { it.length >= 4 }
-                ?: emptyList()
-            // Semantic synonyms for common category concepts
-            val synonymMap = mapOf(
-                "beruf" to listOf("arbeite", "arbeit", "job", "stelle", "position", "engineer", "ingenieur", "entwickler", "manager", "designer", "arzt", "anwalt", "lehrer", "student", "studiere", "auszubildend"),
-                "job" to listOf("arbeite", "arbeit", "beruf", "stelle", "position", "engineer", "ingenieur"),
-                "familie" to listOf("frau", "mann", "kind", "bruder", "schwester", "mutter", "vater", "eltern", "geschwister"),
-                "sport" to listOf("laufe", "schwimme", "trainiere", "fitnessstudio", "gym", "fußball", "tennis"),
-                "gesundheit" to listOf("krank", "arzt", "medikament", "allergie", "operation"),
-                "finanzen" to listOf("gehalt", "verdiene", "bank", "kredit", "sparrate", "budget"),
-            )
-            val allKeywords = (filenameKeywords + headerKeywords).toSet()
-            val allMatchers = allKeywords + allKeywords.flatMap { k -> synonymMap[k] ?: emptyList() }
-
-            allMatchers.any { keyword -> lower.contains(keyword) }
+            // Keywords from filename (e.g. "beruf_und_job" → ["beruf", "job"])
+            val filenameKeywords = id.split("_").filter { it.length >= 4 && it != "und" }
+            // User-defined keywords for this category
+            val customKeywords = userKeywords[id] ?: emptyList()
+            val allKeywords = (filenameKeywords + customKeywords).toSet()
+            allKeywords.any { keyword -> lower.contains(keyword) }
         }?.nameWithoutExtension
+    }
+
+    /**
+     * Loads user-defined category keywords from SoMi/memory/.keywords.json.
+     * Format: {"beruf_und_job": ["engineer", "sre", "ingenieur"], ...}
+     */
+    private fun loadUserKeywords(root: java.io.File): Map<String, List<String>> {
+        val file = java.io.File(root, ".keywords.json")
+        if (!file.exists()) return emptyMap()
+        return try {
+            val json = org.json.JSONObject(file.readText())
+            json.keys().asSequence().associate { key ->
+                val arr = json.getJSONArray(key)
+                key to (0 until arr.length()).map { arr.getString(it) }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "failed to load keywords.json", t)
+            emptyMap()
+        }
+    }
+
+    /**
+     * v0.26.0 — Adds a keyword for a custom category. Called when the user
+     * says "Füge 'X' als Keyword für Y hinzu" or via the Settings UI.
+     */
+    fun addKeyword(categoryId: String, keyword: String) {
+        val root = memoryFiles.rootDir
+        val file = java.io.File(root, ".keywords.json")
+        val current = loadUserKeywords(root).toMutableMap()
+        val existing = current[categoryId]?.toMutableList() ?: mutableListOf()
+        if (!existing.contains(keyword.lowercase())) {
+            existing.add(keyword.lowercase())
+        }
+        current[categoryId] = existing
+        val json = org.json.JSONObject()
+        current.forEach { (k, v) ->
+            val arr = org.json.JSONArray()
+            v.forEach { arr.put(it) }
+            json.put(k, arr)
+        }
+        file.writeText(json.toString(2))
+        Log.i(TAG, "keyword added: '$keyword' → $categoryId")
+    }
+
+    fun removeKeyword(categoryId: String, keyword: String) {
+        val root = memoryFiles.rootDir
+        val file = java.io.File(root, ".keywords.json")
+        val current = loadUserKeywords(root).toMutableMap()
+        current[categoryId] = (current[categoryId] ?: emptyList()).filter { it != keyword.lowercase() }
+        val json = org.json.JSONObject()
+        current.forEach { (k, v) ->
+            val arr = org.json.JSONArray()
+            v.forEach { arr.put(it) }
+            json.put(k, arr)
+        }
+        file.writeText(json.toString(2))
+    }
+
+    fun getKeywordsForCategory(categoryId: String): List<String> {
+        return loadUserKeywords(memoryFiles.rootDir)[categoryId] ?: emptyList()
     }
 
     /**
@@ -305,6 +383,11 @@ sealed interface SaveOutcome {
         val reason: SaveFailureReason,
         val cause: Throwable? = null,
     ) : SaveOutcome
+
+    /** v0.26.0 — keyword management outcomes */
+    data class KeywordAdded(val keyword: String, val categoryId: String) : SaveOutcome
+    data class KeywordRemoved(val keyword: String, val categoryId: String) : SaveOutcome
+    data class KeywordsShown(val categoryId: String, val keywords: List<String>) : SaveOutcome
 }
 
 enum class SaveFailureReason {
