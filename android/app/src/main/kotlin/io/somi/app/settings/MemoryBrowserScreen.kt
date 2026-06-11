@@ -50,13 +50,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
- * v0.22.1 — Memory-Browser mit CRUD + eigenen Kategorien.
- *
- * Liest ALLE .md-Dateien aus SoMi/memory/ — nicht nur Enum-Topics.
- * Damit können User eigene Kategorien anlegen (z.B. "Arbeit", "Sport").
- * Die .md-Datei selbst ist die Persistenz der Kategorie.
+ * v0.24.0 — Memory-Browser mit vollem CRUD:
+ * - Fakten lesen, löschen, verschieben (v0.21.2)
+ * - Fakten editieren (✎ pro Zeile)
+ * - Fakten manuell anlegen (+ pro Kategorie)
+ * - Eigene Kategorien anlegen (v0.23.1)
  */
 @Composable
 fun MemoryBrowserScreen(onBack: () -> Unit) {
@@ -64,13 +67,17 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    data class Category(val id: String, val displayName: String, val isCustom: Boolean)
+    data class Category(val id: String, val displayName: String)
 
     var allCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var categoryLines by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var expandedCategory by remember { mutableStateOf<String?>(null) }
+
+    // Dialog states
     var deleteTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     var moveTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var editTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) } // (categoryId, rawLine, displayText)
+    var addTarget by remember { mutableStateOf<String?>(null) } // categoryId to add fact to
     var showNewCategoryDialog by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableStateOf(0) }
 
@@ -78,19 +85,15 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         withContext(Dispatchers.IO) {
             val root = StorageRoots.memory(context)
             root.mkdirs()
-            // Enum topics first (fixed order), then any custom .md files
-            val enumTopics = MemoryTopic.entries.map { t ->
-                Category(t.id, t.displayName, isCustom = false)
-            }
+            val enumTopics = MemoryTopic.entries.map { t -> Category(t.id, t.displayName) }
             val customIds = root.listFiles()
                 ?.filter { it.extension == "md" }
                 ?.map { it.nameWithoutExtension }
                 ?.filter { id -> MemoryTopic.entries.none { it.id == id } }
                 ?.sorted()
-                ?.map { id -> Category(id, id.replaceFirstChar { it.uppercaseChar() }, isCustom = true) }
+                ?.map { id -> Category(id, id.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")) }
                 .orEmpty()
             allCategories = enumTopics + customIds
-
             val lines = (enumTopics + customIds).associate { cat ->
                 val file = File(root, "${cat.id}.md")
                 cat.id to (if (!file.exists()) emptyList()
@@ -107,6 +110,36 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
             val lines = file.readLines().toMutableList()
             lines.removeAll { it.trimStart() == rawLine.trimStart() }
             file.writeText(lines.joinToString("\n") + "\n")
+            refreshKey++
+        }
+    }
+
+    fun editFact(categoryId: String, rawLine: String, newText: String) {
+        scope.launch(Dispatchers.IO) {
+            val file = File(StorageRoots.memory(context), "$categoryId.md")
+            if (!file.exists()) return@launch
+            val ts = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.GERMAN).format(Date())
+            val newLine = "- ${newText.trim()}  _(gespeichert: $ts)_"
+            val lines = file.readLines().toMutableList()
+            val idx = lines.indexOfFirst { it.trimStart() == rawLine.trimStart() }
+            if (idx >= 0) lines[idx] = newLine
+            else lines.add(newLine)
+            file.writeText(lines.joinToString("\n") + "\n")
+            refreshKey++
+        }
+    }
+
+    fun addFact(categoryId: String, text: String) {
+        scope.launch(Dispatchers.IO) {
+            val root = StorageRoots.memory(context)
+            val file = File(root, "$categoryId.md")
+            file.parentFile?.mkdirs()
+            val ts = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.GERMAN).format(Date())
+            if (!file.exists()) {
+                val displayName = allCategories.firstOrNull { it.id == categoryId }?.displayName ?: categoryId
+                file.writeText("# $displayName\n\n<!-- Auto-generiert von So-Mi -->\n\n")
+            }
+            file.appendText("- ${text.trim()}  _(gespeichert: $ts)_\n")
             refreshKey++
         }
     }
@@ -139,7 +172,7 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
             val file = File(StorageRoots.memory(context), "$id.md")
             if (!file.exists()) {
                 file.parentFile?.mkdirs()
-                file.writeText("# $name\n\n<!-- Eigene Kategorie, erstellt von Dir -->\n\n")
+                file.writeText("# $name\n\n<!-- Eigene Kategorie -->\n\n")
             }
             refreshKey++
         }
@@ -162,17 +195,11 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (totalCount == 0) "Noch nichts gespeichert."
-                       else "$totalCount Fakten",
+                text = if (totalCount == 0) "Noch nichts gespeichert." else "$totalCount Fakten",
                 color = songbird.glass,
                 style = MaterialTheme.typography.bodySmall,
             )
-            SongbirdButton(
-                label = "+ Kategorie",
-                kind = SongbirdButtonKind.Secondary,
-                onClick = { showNewCategoryDialog = true },
-                minHeight = 32.dp,
-            )
+            SongbirdButton("+ Kategorie", onClick = { showNewCategoryDialog = true }, kind = SongbirdButtonKind.Secondary, minHeight = 32.dp)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -189,12 +216,18 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                     expanded = expandedCategory == cat.id,
                     onToggle = { expandedCategory = if (expandedCategory == cat.id) null else cat.id },
                     onDelete = { line -> deleteTarget = cat.id to line },
+                    onEdit = { line ->
+                        val display = line.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
+                        editTarget = Triple(cat.id, line, display)
+                    },
                     onMove = { line -> moveTarget = cat.id to line },
+                    onAdd = { addTarget = cat.id },
                 )
             }
         }
     }
 
+    // Delete dialog
     deleteTarget?.let { (catId, line) ->
         val text = line.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
         SongbirdDialog(
@@ -207,6 +240,30 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         )
     }
 
+    // Edit dialog
+    editTarget?.let { (catId, rawLine, displayText) ->
+        TextInputDialog(
+            title = "Erinnerung bearbeiten",
+            initial = displayText,
+            confirmLabel = "Speichern",
+            onConfirm = { newText -> editFact(catId, rawLine, newText); editTarget = null },
+            onDismiss = { editTarget = null },
+        )
+    }
+
+    // Add dialog
+    addTarget?.let { catId ->
+        val catName = allCategories.firstOrNull { it.id == catId }?.displayName ?: catId
+        TextInputDialog(
+            title = "Neue Erinnerung in \"$catName\"",
+            initial = "",
+            confirmLabel = "Hinzufügen",
+            onConfirm = { text -> addFact(catId, text); addTarget = null },
+            onDismiss = { addTarget = null },
+        )
+    }
+
+    // Move dialog
     moveTarget?.let { (fromId, line) ->
         val text = line.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
         val targets = allCategories.filter { it.id != fromId }
@@ -218,9 +275,13 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         )
     }
 
+    // New category dialog
     if (showNewCategoryDialog) {
-        NewCategoryDialog(
-            onCreate = { name -> createCategory(name); showNewCategoryDialog = false },
+        TextInputDialog(
+            title = "Neue Kategorie",
+            initial = "",
+            confirmLabel = "Anlegen",
+            onConfirm = { name -> createCategory(name); showNewCategoryDialog = false },
             onDismiss = { showNewCategoryDialog = false },
         )
     }
@@ -234,7 +295,9 @@ private fun FactAccordion(
     expanded: Boolean,
     onToggle: () -> Unit,
     onDelete: (String) -> Unit,
+    onEdit: (String) -> Unit,
     onMove: (String) -> Unit,
+    onAdd: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     Column(modifier = Modifier.fillMaxWidth().background(songbird.aiBubble)) {
@@ -249,8 +312,14 @@ private fun FactAccordion(
         if (expanded) {
             HorizontalDivider(color = songbird.bubbleBorder)
             if (rawLines.isEmpty()) {
-                Text("Leer.", color = songbird.glass, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Leer.", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                    SongbirdButton("+", onClick = onAdd, kind = SongbirdButtonKind.Ghost, minHeight = 28.dp)
+                }
             } else {
                 rawLines.forEach { rawLine ->
                     val display = rawLine.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
@@ -260,17 +329,54 @@ private fun FactAccordion(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text("· $display", color = songbird.bone, style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f).padding(end = 8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            SongbirdButton("↗", onClick = { onMove(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 28.dp)
-                            SongbirdButton("✕", onClick = { onDelete(rawLine) }, kind = SongbirdButtonKind.Destructive, minHeight = 28.dp)
+                            modifier = Modifier.weight(1f).padding(end = 4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            SongbirdButton("✎", onClick = { onEdit(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 26.dp)
+                            SongbirdButton("↗", onClick = { onMove(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 26.dp)
+                            SongbirdButton("✕", onClick = { onDelete(rawLine) }, kind = SongbirdButtonKind.Destructive, minHeight = 26.dp)
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    SongbirdButton("+ Hinzufügen", onClick = onAdd, kind = SongbirdButtonKind.Ghost, minHeight = 28.dp)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun TextInputDialog(
+    title: String,
+    initial: String,
+    confirmLabel: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, color = songbird.bone, fontWeight = FontWeight.Bold) },
+        text = {
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                textStyle = LocalTextStyle.current.copy(color = songbird.bone, fontSize = MaterialTheme.typography.bodyMedium.fontSize),
+                cursorBrush = SolidColor(songbird.crimson),
+                modifier = Modifier.fillMaxWidth().background(songbird.obsidian).padding(10.dp),
+            )
+        },
+        confirmButton = {
+            SongbirdButton(confirmLabel, onClick = { if (text.isNotBlank()) onConfirm(text.trim()) }, kind = SongbirdButtonKind.Primary)
+        },
+        dismissButton = { SongbirdButton("Abbrechen", onClick = onDismiss, kind = SongbirdButtonKind.Ghost) },
+        containerColor = songbird.aiBubble,
+        titleContentColor = songbird.bone,
+    )
 }
 
 @Composable
@@ -296,38 +402,6 @@ private fun MoveDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { SongbirdButton("Abbrechen", onClick = onDismiss, kind = SongbirdButtonKind.Ghost) },
-        containerColor = songbird.aiBubble,
-        titleContentColor = songbird.bone,
-    )
-}
-
-@Composable
-private fun NewCategoryDialog(
-    onCreate: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val songbird = LocalSongbirdColors.current
-    var name by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Neue Kategorie", color = songbird.bone, fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                Text("Name der neuen Kategorie:", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(8.dp))
-                BasicTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    textStyle = LocalTextStyle.current.copy(color = songbird.bone),
-                    cursorBrush = SolidColor(songbird.crimson),
-                    modifier = Modifier.fillMaxWidth().background(songbird.obsidian).padding(8.dp),
-                )
-            }
-        },
-        confirmButton = {
-            SongbirdButton("Anlegen", onClick = { if (name.isNotBlank()) onCreate(name.trim()) }, kind = SongbirdButtonKind.Primary)
-        },
         dismissButton = { SongbirdButton("Abbrechen", onClick = onDismiss, kind = SongbirdButtonKind.Ghost) },
         containerColor = songbird.aiBubble,
         titleContentColor = songbird.bone,
