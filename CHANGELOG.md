@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/Labushuya/so-mi/compare/v0.25.1...v0.26.0) (2026-06-11)
+
+
+### Features
+
+* Keywords für eigene Kategorien selbst festlegen — per Ansage oder Settings ([#95](https://github.com/Labushuya/so-mi/issues/95)) ([20fb25b](https://github.com/Labushuya/so-mi/commit/20fb25be49af01169360b31293b40b9d8076c34c))
+
 ## [0.25.1](https://github.com/Labushuya/so-mi/compare/v0.25.0...v0.25.1) (2026-06-11)
 
 
