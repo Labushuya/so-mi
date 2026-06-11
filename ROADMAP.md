@@ -67,15 +67,18 @@ Nicht angefangen.
 ### Erinnerungen / RAG
 - **Recall aktiv** *(v0.19.1)* — top-20 Fakten aus .md als Kontext vor jeder Generation
 - **Fakt-Normalisierung** *(v0.19.1)* — führende Konjunktionen gestrippt, erste Letter groß
-- **Multi-Fakt-Extraktion** *(2026-06-10)* — "Ich heiße X und wurde am Y geboren. Wie alt bin ich?" → LLM extrahiert mehrere Fakten: Name: X, Geburtstag: Y, Alter: Z. Richtig kategorisiert (PERSONS/DATES statt nur NOTES). Kommt mit M9 TopicClassifier.
+- **Multi-Fakt-Extraktion** *(v0.23.2)* — "und"-Sätze werden gesplittet, per Regex in PERSONS/DATES/PREFERENCES/TECHNICAL/NOTES klassifiziert
 - **Erinnerungen speichern ohne Embedder** *(v0.18.5)* — .md immer beschrieben; ObjectBox mit Null-Vektor bis Embedder verfügbar
 - **Save-Bestätigung** *(v0.14.0)* — kurze in-character Chat-Bubble ("Hab ich.")
+- **⚠️ TO BE IMPROVED — Komplexe Fakt-Extraktion** *(2026-06-11)* — Regex-Heuristik versagt bei komplexen Sätzen mit mehreren Fakten. Geplante Lösung: LLM-Pass für Extraktion (M9.1). Aufgeschoben nach v0.25.0.
+- **⚠️ TO BE IMPROVED — Recall-Qualität** *(2026-06-11)* — Alle top-20 Fakten werden pauschal injiziert ohne semantische Sortierung. Verbessert sich wenn Embedder-Modell geladen (HNSW-Suche wird dann aktiv).
 
-### Memory-Browser CRUD *(2026-06-10)*
-- **Kategorien anlegen/umbenennen/löschen** — benutzerdefinierte Buckets zusätzlich zu PERSONS/PREFERENCES/DATES/TECHNICAL/NOTES
-- **Erinnerungen editieren** — Text direkt änderbar
-- **Erinnerungen verschieben** — zwischen Kategorien, Reihenfolge per Drag
-- **Kategorien verschieben** — Reihenfolge änderbar
+### Memory-Browser CRUD *(2026-06-10 teilweise, v0.24.0 rest)*
+- **Kategorien anlegen** *(v0.23.1)* — benutzerdefinierte .md-Dateien
+- **Fakten löschen** *(v0.21.2)* — mit Bestätigung
+- **Fakten verschieben** *(v0.21.2)* — zwischen Kategorien
+- **Fakten editieren** — Text direkt änderbar → **v0.24.0**
+- **Fakten manuell anlegen** — ohne Trigger-Phrase → **v0.24.0**
 
 ### Settings-Struktur *(2026-06-10)*
 Neue Reihenfolge der Akkordeon-Sektionen:
