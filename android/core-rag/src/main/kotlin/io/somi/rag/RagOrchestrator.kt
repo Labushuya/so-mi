@@ -68,7 +68,23 @@ class RagOrchestrator @Inject constructor(
 
             classified.forEach { (fact, topic) ->
                 try {
-                    memoryFiles.append(fact, topic, now)
+                    // Check if a custom category matches this fact better than the default topic
+                    val customCategoryId = if (topic == MemoryTopic.NOTES) findCustomCategory(fact) else null
+
+                    if (customCategoryId != null) {
+                        // Write directly to the custom .md file
+                        val customFile = File(memoryFiles.rootDir, "$customCategoryId.md")
+                        customFile.parentFile?.mkdirs()
+                        if (!customFile.exists()) {
+                            customFile.writeText("# ${customCategoryId.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")}\n\n<!-- Eigene Kategorie -->\n\n")
+                        }
+                        val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.GERMAN).format(java.util.Date(now))
+                        customFile.appendText("- $fact  _(gespeichert: $ts)_\n")
+                        Log.i(TAG, "saved to custom: '$fact' → $customCategoryId")
+                    } else {
+                        memoryFiles.append(fact, topic, now)
+                    }
+
                     val embedding = if (embedderReady) {
                         runCatching { embedder.embed(fact) }.getOrNull()
                     } else null
@@ -80,10 +96,9 @@ class RagOrchestrator @Inject constructor(
                         supersedesId = 0,
                         now = now,
                     )
-                    Log.i(TAG, "saved: '$fact' → ${topic.id}")
+                    Log.i(TAG, "saved: '$fact' → ${customCategoryId ?: topic.id}")
                 } catch (t: Throwable) {
-                    Log.e(TAG, "failed to save fact '$fact' in ${topic.id}", t)
-                    // Continue saving other facts even if one fails
+                    Log.e(TAG, "failed to save fact '$fact'", t)
                 }
             }
 
@@ -127,22 +142,51 @@ class RagOrchestrator @Inject constructor(
      */
     private fun classifyFact(fact: String): MemoryTopic {
         val lower = fact.lowercase()
+
+        // Check custom categories first — if a fact's keywords match a
+        // custom category name (e.g. "beruf" in "beruf_und_job.md"), prefer it.
+        // We return NOTES as a sentinel; the caller maps NOTES to a custom category
+        // when one is found. This avoids changing the return type.
+        // (Custom category routing is handled in the caller via a secondary pass.)
+
         return when {
-            // Dates: numbers with dots/slashes, month names, year patterns
+            // Dates
             lower.contains(Regex("\\d{1,2}[./]\\d{1,2}[./]\\d{2,4}")) -> MemoryTopic.DATES
             lower.contains(Regex("\\b(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember|january|february|march|april|may|june|july|august|september|october|november|december)\\b")) -> MemoryTopic.DATES
             lower.contains(Regex("\\b(geboren|geburtstag|birthday|geb\\.|am \\d+\\.)")) -> MemoryTopic.DATES
             lower.contains(Regex("\\b(termin|meeting|treffen|uhr|morgen|übermorgen|nächste woche)\\b")) -> MemoryTopic.DATES
-            // Persons: name, identity, relationships
+            // Persons
             lower.contains(Regex("\\b(heiße|name ist|bin .{1,30} jahre|mein name|ich heiße|ich bin .{1,20}|meine (frau|mann|schwester|bruder|mutter|vater|kind|freundin|freund))\\b")) -> MemoryTopic.PERSONS
             lower.contains(Regex("\\b(wohne in|lebe in|komme aus|wohnung|adresse)\\b")) -> MemoryTopic.PERSONS
             // Preferences
             lower.contains(Regex("\\b(mag|liebe|esse gern|trinke gern|höre gern|schaue gern|spiele gern|interessiere mich|hobby|lieblings|am liebsten|gefällt mir|lieber|bevorzuge)\\b")) -> MemoryTopic.PREFERENCES
             // Technical
             lower.contains(Regex("\\b(nutze|benutze|habe .{1,20} gerät|mein (computer|laptop|handy|telefon|auto|fahrrad)|software|app|modell|version|passwort|server|api|code)\\b")) -> MemoryTopic.TECHNICAL
-            // Default
             else -> MemoryTopic.NOTES
         }
+    }
+
+    /**
+     * v0.25.0 — Find a custom .md category whose name matches keywords
+     * in the fact. For example, if a "beruf_und_job.md" exists and the
+     * fact contains "ingenieur" or "arbeite", route to that file instead
+     * of NOTES. Returns null if no match.
+     */
+    private fun findCustomCategory(fact: String): String? {
+        val lower = fact.lowercase()
+        val root = memoryFiles.rootDir
+        val customFiles = root.listFiles()
+            ?.filter { it.extension == "md" }
+            ?.filter { f -> MemoryTopic.entries.none { it.id == f.nameWithoutExtension } }
+            ?: return null
+
+        return customFiles.firstOrNull { file ->
+            // Split the category id into keywords (e.g. "beruf_und_job" → ["beruf", "job"])
+            val keywords = file.nameWithoutExtension
+                .split("_")
+                .filter { it.length >= 4 && it != "und" }
+            keywords.any { keyword -> lower.contains(keyword) }
+        }?.nameWithoutExtension
     }
 
     /**

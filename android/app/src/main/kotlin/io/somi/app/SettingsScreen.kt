@@ -893,6 +893,10 @@ private fun GreetingRadioRow(
 @Composable
 private fun DataSection(onOpenDataBrowser: () -> Unit) {
     val songbird = LocalSongbirdColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var backupStatus by remember { mutableStateOf("") }
+
     SectionCard(title = "Daten") {
         Text(
             text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter \"SoMi/\".",
@@ -905,5 +909,41 @@ private fun DataSection(onOpenDataBrowser: () -> Unit) {
             kind = SongbirdButtonKind.Secondary,
             onClick = onOpenDataBrowser,
         )
+        Spacer(Modifier.height(8.dp))
+        SongbirdButton(
+            label = "Backup erstellen",
+            kind = SongbirdButtonKind.Ghost,
+            onClick = {
+                scope.launch {
+                    backupStatus = "Erstelle Backup…"
+                    try {
+                        val zipFile = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            io.somi.data.BackupManager(context).createBackup()
+                        }
+                        backupStatus = "Backup gespeichert: ${zipFile.name}"
+                        // Share via FileProvider
+                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                            context,
+                            context.packageName + ".fileprovider",
+                            zipFile,
+                        )
+                        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "application/zip"
+                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(android.content.Intent.createChooser(intent, "Backup teilen").apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                    } catch (t: Throwable) {
+                        backupStatus = "Fehler: ${t.message}"
+                    }
+                }
+            },
+        )
+        if (backupStatus.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(backupStatus, color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
