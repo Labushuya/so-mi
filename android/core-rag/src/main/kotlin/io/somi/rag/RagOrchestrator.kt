@@ -67,19 +67,24 @@ class RagOrchestrator @Inject constructor(
             val embedderReady = runCatching { embedder.isAvailable() }.getOrDefault(false)
 
             classified.forEach { (fact, topic) ->
-                memoryFiles.append(fact, topic, now)
-                val embedding = if (embedderReady) {
-                    runCatching { embedder.embed(fact) }.getOrNull()
-                } else null
-                memoryStore.save(
-                    fact = fact,
-                    topic = topic,
-                    embedding = embedding ?: FloatArray(384) { 0f },
-                    confidence = if (embedding != null) 1.0f else 0f,
-                    supersedesId = 0,
-                    now = now,
-                )
-                Log.i(TAG, "saved: '$fact' → ${topic.id}")
+                try {
+                    memoryFiles.append(fact, topic, now)
+                    val embedding = if (embedderReady) {
+                        runCatching { embedder.embed(fact) }.getOrNull()
+                    } else null
+                    memoryStore.save(
+                        fact = fact,
+                        topic = topic,
+                        embedding = embedding ?: FloatArray(384) { 0f },
+                        confidence = if (embedding != null) 1.0f else 0f,
+                        supersedesId = 0,
+                        now = now,
+                    )
+                    Log.i(TAG, "saved: '$fact' → ${topic.id}")
+                } catch (t: Throwable) {
+                    Log.e(TAG, "failed to save fact '$fact' in ${topic.id}", t)
+                    // Continue saving other facts even if one fails
+                }
             }
 
             val savedText = classified.joinToString(", ") { (f, _) -> f }
