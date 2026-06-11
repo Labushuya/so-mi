@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/Labushuya/so-mi/compare/v0.26.0...v0.27.0) (2026-06-11)
+
+
+### Features
+
+* Keywords für Kategorien direkt in den Erinnerungen pflegen ([#97](https://github.com/Labushuya/so-mi/issues/97)) ([35e6b33](https://github.com/Labushuya/so-mi/commit/35e6b3393e2773398d3024c18f0c567d28044808))
+
 ## [0.26.0](https://github.com/Labushuya/so-mi/compare/v0.25.1...v0.26.0) (2026-06-11)
 
 
