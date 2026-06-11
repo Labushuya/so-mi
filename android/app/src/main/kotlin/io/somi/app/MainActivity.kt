@@ -382,10 +382,9 @@ private fun ChatShellScreen(
             if (target > 0) listState.animateScrollToItem(target - 1)
         }
         // Scroll to bottom when keyboard opens — but ONLY if already at bottom.
-        // If the user has scrolled up to read older messages, don't interrupt.
-        val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime
-            .asPaddingValues()
-            .calculateBottomPadding() > 0.dp
+        val imeBottom = androidx.compose.foundation.layout.WindowInsets.ime
+            .getBottom(androidx.compose.ui.platform.LocalDensity.current)
+        val imeVisible = imeBottom > 0
         LaunchedEffect(imeVisible) {
             if (!imeVisible) return@LaunchedEffect
             val lastIndex = messages.size + (if (isGenerating) 1 else 0) - 1
@@ -393,7 +392,6 @@ private fun ChatShellScreen(
             val layoutInfo = listState.layoutInfo
             val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
             val totalItems = layoutInfo.totalItemsCount
-            // Only scroll if we're already near the bottom (within 2 items)
             if (lastVisible >= totalItems - 2) {
                 listState.animateScrollToItem(lastIndex)
             }
