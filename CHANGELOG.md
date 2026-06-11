@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/Labushuya/so-mi/compare/v0.28.0...v0.29.0) (2026-06-11)
+
+
+### Features
+
+* Emojis in Kategorienamen, Scroll-bei-Tastatur, Duplikat-Erkennung ([#101](https://github.com/Labushuya/so-mi/issues/101)) ([b3c4dd4](https://github.com/Labushuya/so-mi/commit/b3c4dd4c9ae4e3d07136c22f62929e5e23775617))
+
 ## [0.28.0](https://github.com/Labushuya/so-mi/compare/v0.27.0...v0.28.0) (2026-06-11)
 
 
