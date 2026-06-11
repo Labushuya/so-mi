@@ -73,6 +73,7 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
 
     var allCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var categoryLines by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+    var categoryKeywords by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var expandedCategory by remember { mutableStateOf<String?>(null) }
 
     // Fact dialog states
@@ -80,6 +81,7 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
     var moveTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     var editTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var addTarget by remember { mutableStateOf<String?>(null) }
+    var addKeywordTarget by remember { mutableStateOf<String?>(null) }
     // Category dialog states
     var renameCategoryTarget by remember { mutableStateOf<Category?>(null) }
     var deleteCategoryTarget by remember { mutableStateOf<Category?>(null) }
@@ -112,6 +114,17 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                            else file.readLines().filter { it.trimStart().startsWith("- ") })
             }
             categoryLines = lines
+
+            // Load keywords from .keywords.json
+            val kwFile = java.io.File(root, ".keywords.json")
+            categoryKeywords = if (!kwFile.exists()) emptyMap()
+            else try {
+                val json = org.json.JSONObject(kwFile.readText())
+                json.keys().asSequence().associate { key ->
+                    val arr = json.getJSONArray(key)
+                    key to (0 until arr.length()).map { arr.getString(it) }
+                }
+            } catch (t: Throwable) { emptyMap() }
         }
     }
 
@@ -173,6 +186,35 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                 dstFile.writeText("# $displayName\n\n<!-- Auto-generiert von So-Mi -->\n\n")
             }
             dstFile.appendText("- $fact\n")
+            refreshKey++
+        }
+    }
+
+    fun modifyKeywords(categoryId: String, add: String? = null, remove: String? = null) {
+        scope.launch(Dispatchers.IO) {
+            val file = java.io.File(StorageRoots.memory(context), ".keywords.json")
+            val current = if (!file.exists()) mutableMapOf()
+            else try {
+                val json = org.json.JSONObject(file.readText())
+                json.keys().asSequence().associate { key ->
+                    val arr = json.getJSONArray(key)
+                    key to (0 until arr.length()).map { arr.getString(it) }.toMutableList()
+                }.toMutableMap()
+            } catch (t: Throwable) { mutableMapOf() }
+
+            val list = current.getOrPut(categoryId) { mutableListOf() } as? MutableList ?: mutableListOf<String>().also { current[categoryId] = it }
+            if (add != null && !list.contains(add.lowercase())) list.add(add.lowercase())
+            if (remove != null) list.remove(remove.lowercase())
+            current[categoryId] = list
+
+            val json = org.json.JSONObject()
+            current.forEach { (k, v) ->
+                val arr = org.json.JSONArray()
+                v.forEach { arr.put(it) }
+                json.put(k, arr)
+            }
+            file.parentFile?.mkdirs()
+            file.writeText(json.toString(2))
             refreshKey++
         }
     }
@@ -256,11 +298,13 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         ) {
             items(allCategories, key = { it.id }) { cat ->
                 val lines = categoryLines[cat.id].orEmpty()
+                val kws = categoryKeywords[cat.id].orEmpty()
                 FactAccordion(
                     categoryId = cat.id,
                     displayName = cat.displayName,
                     isCustom = cat.isCustom,
                     rawLines = lines,
+                    keywords = kws,
                     expanded = expandedCategory == cat.id,
                     onToggle = { expandedCategory = if (expandedCategory == cat.id) null else cat.id },
                     onDelete = { line -> deleteTarget = cat.id to line },
@@ -272,6 +316,8 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                     onAdd = { addTarget = cat.id },
                     onRenameCategory = { renameCategoryTarget = cat },
                     onDeleteCategory = { deleteCategoryTarget = cat },
+                    onAddKeyword = { addKeywordTarget = cat.id },
+                    onDeleteKeyword = { kw -> modifyKeywords(cat.id, remove = kw) },
                 )
             }
         }
@@ -336,6 +382,18 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         )
     }
 
+    // Add keyword dialog
+    addKeywordTarget?.let { catId ->
+        val catName = allCategories.firstOrNull { it.id == catId }?.displayName ?: catId
+        TextInputDialog(
+            title = "Keyword für \"$catName\"",
+            initial = "",
+            confirmLabel = "Hinzufügen",
+            onConfirm = { kw -> modifyKeywords(catId, add = kw); addKeywordTarget = null },
+            onDismiss = { addKeywordTarget = null },
+        )
+    }
+
     // Rename category dialog
     renameCategoryTarget?.let { cat ->
         TextInputDialog(
@@ -385,6 +443,7 @@ private fun FactAccordion(
     isCustom: Boolean,
     rawLines: List<String>,
     expanded: Boolean,
+    keywords: List<String>,
     onToggle: () -> Unit,
     onDelete: (String) -> Unit,
     onEdit: (String) -> Unit,
@@ -392,6 +451,8 @@ private fun FactAccordion(
     onAdd: () -> Unit,
     onRenameCategory: () -> Unit,
     onDeleteCategory: () -> Unit,
+    onAddKeyword: () -> Unit,
+    onDeleteKeyword: (String) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     Column(modifier = Modifier.fillMaxWidth().background(songbird.aiBubble)) {
@@ -417,6 +478,47 @@ private fun FactAccordion(
         }
         if (expanded) {
             HorizontalDivider(color = songbird.bubbleBorder)
+
+            // Keywords section — only for custom categories
+            if (isCustom) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "Erkennungs-Keywords",
+                            color = songbird.glass,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        SongbirdButton("+ Keyword", onClick = onAddKeyword, kind = SongbirdButtonKind.Ghost, minHeight = 24.dp)
+                    }
+                    if (keywords.isEmpty()) {
+                        Text(
+                            "Noch keine Keywords — Fakten landen in dieser Kategorie wenn das Wort im Kategorienamen vorkommt.",
+                            color = songbird.glass,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    } else {
+                        Spacer(Modifier.height(4.dp))
+                        keywords.forEach { kw ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text("· $kw", color = songbird.bone, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                SongbirdButton("✕", onClick = { onDeleteKeyword(kw) }, kind = SongbirdButtonKind.Destructive, minHeight = 22.dp)
+                            }
+                        }
+                    }
+                }
+                HorizontalDivider(color = songbird.bubbleBorder)
+            }
+
             if (rawLines.isEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
