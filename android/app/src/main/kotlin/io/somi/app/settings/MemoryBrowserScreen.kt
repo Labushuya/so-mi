@@ -82,6 +82,8 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
     var editTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var addTarget by remember { mutableStateOf<String?>(null) }
     var addKeywordTarget by remember { mutableStateOf<String?>(null) }
+    var editKeywordTarget by remember { mutableStateOf<Pair<String, String>?>(null) } // (catId, keyword)
+    var moveKeywordTarget by remember { mutableStateOf<Pair<String, String>?>(null) } // (catId, keyword)
     // Category dialog states
     var renameCategoryTarget by remember { mutableStateOf<Category?>(null) }
     var deleteCategoryTarget by remember { mutableStateOf<Category?>(null) }
@@ -318,6 +320,8 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                     onDeleteCategory = { deleteCategoryTarget = cat },
                     onAddKeyword = { addKeywordTarget = cat.id },
                     onDeleteKeyword = { kw -> modifyKeywords(cat.id, remove = kw) },
+                    onEditKeyword = { kw -> editKeywordTarget = cat.id to kw },
+                    onMoveKeyword = { kw -> moveKeywordTarget = cat.id to kw },
                 )
             }
         }
@@ -394,6 +398,36 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         )
     }
 
+    // Edit keyword dialog
+    editKeywordTarget?.let { (catId, oldKw) ->
+        TextInputDialog(
+            title = "Keyword bearbeiten",
+            initial = oldKw,
+            confirmLabel = "Speichern",
+            onConfirm = { newKw ->
+                modifyKeywords(catId, remove = oldKw)
+                modifyKeywords(catId, add = newKw)
+                editKeywordTarget = null
+            },
+            onDismiss = { editKeywordTarget = null },
+        )
+    }
+
+    // Move keyword dialog — move to another category
+    moveKeywordTarget?.let { (fromId, kw) ->
+        val targets = allCategories.filter { it.isCustom && it.id != fromId }
+        MoveDialog(
+            factText = "Keyword: $kw",
+            targets = targets.map { it.id to it.displayName },
+            onMove = { toId ->
+                modifyKeywords(fromId, remove = kw)
+                modifyKeywords(toId, add = kw)
+                moveKeywordTarget = null
+            },
+            onDismiss = { moveKeywordTarget = null },
+        )
+    }
+
     // Rename category dialog
     renameCategoryTarget?.let { cat ->
         TextInputDialog(
@@ -453,19 +487,26 @@ private fun FactAccordion(
     onDeleteCategory: () -> Unit,
     onAddKeyword: () -> Unit,
     onDeleteKeyword: (String) -> Unit,
+    onEditKeyword: (String) -> Unit,
+    onMoveKeyword: (String) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    Column(modifier = Modifier.fillMaxWidth().background(songbird.aiBubble)) {
+
+    // Outer card with rounded corners and border
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(songbird.aiBubble, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .border(1.dp, songbird.bubbleBorder, androidx.compose.foundation.shape.RoundedCornerShape(10.dp)),
+    ) {
+        // ── Category header ──
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().clickable { onToggle() }.padding(horizontal = 14.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
-                modifier = Modifier.weight(1f).clickable { onToggle() },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(displayName, color = songbird.bone, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(displayName, color = songbird.bone, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text("${rawLines.size} ${if (expanded) "▲" else "▼"}", color = songbird.glass, style = MaterialTheme.typography.labelSmall)
             }
@@ -476,80 +517,114 @@ private fun FactAccordion(
                 }
             }
         }
-        if (expanded) {
-            HorizontalDivider(color = songbird.bubbleBorder)
 
-            // Keywords section — only for custom categories
+        if (expanded) {
+            // ── Keywords sub-section (custom categories only) ──
             if (isCustom) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
+                // Visually distinct: darker background, top border
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(songbird.obsidian.copy(alpha = 0.6f))
+                        .border(
+                            width = 0.dp,
+                            color = androidx.compose.ui.graphics.Color.Transparent,
+                        ),
+                ) {
+                    // Section label bar
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(songbird.bubbleBorder.copy(alpha = 0.3f))
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Erkennungs-Keywords",
+                            "🏷 Erkennungs-Keywords",
                             color = songbird.glass,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                         )
-                        SongbirdButton("+ Keyword", onClick = onAddKeyword, kind = SongbirdButtonKind.Ghost, minHeight = 24.dp)
+                        SongbirdButton("+ Keyword", onClick = onAddKeyword, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
                     }
                     if (keywords.isEmpty()) {
                         Text(
-                            "Noch keine Keywords — Fakten landen in dieser Kategorie wenn das Wort im Kategorienamen vorkommt.",
+                            "Kein Keyword — Fakten landen hier wenn ein Wort aus dem Kategorienamen erkannt wird. Eigene Keywords hinzufügen für präzisere Erkennung.",
                             color = songbird.glass,
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(top = 2.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         )
                     } else {
-                        Spacer(Modifier.height(4.dp))
                         keywords.forEach { kw ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text("· $kw", color = songbird.bone, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                                SongbirdButton("✕", onClick = { onDeleteKeyword(kw) }, kind = SongbirdButtonKind.Destructive, minHeight = 22.dp)
+                                Text(kw, color = songbird.bone, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    SongbirdButton("✎", onClick = { onEditKeyword(kw) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
+                                    SongbirdButton("↗", onClick = { onMoveKeyword(kw) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
+                                    SongbirdButton("✕", onClick = { onDeleteKeyword(kw) }, kind = SongbirdButtonKind.Destructive, minHeight = 22.dp)
+                                }
                             }
                         }
+                        Spacer(Modifier.height(6.dp))
                     }
                 }
-                HorizontalDivider(color = songbird.bubbleBorder)
             }
 
-            if (rawLines.isEmpty()) {
+            // ── Facts sub-section ──
+            HorizontalDivider(color = songbird.bubbleBorder, thickness = 2.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(songbird.aiBubble),
+            ) {
+                // Section label bar
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(songbird.bubbleBorder.copy(alpha = 0.15f))
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Leer.", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
-                    SongbirdButton("+", onClick = onAdd, kind = SongbirdButtonKind.Ghost, minHeight = 28.dp)
+                    Text(
+                        "📝 Gespeicherte Fakten",
+                        color = songbird.glass,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    SongbirdButton("+ Hinzufügen", onClick = onAdd, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
                 }
-            } else {
-                rawLines.forEach { rawLine ->
-                    val display = rawLine.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("· $display", color = songbird.bone, style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f).padding(end = 4.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            SongbirdButton("✎", onClick = { onEdit(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 26.dp)
-                            SongbirdButton("↗", onClick = { onMove(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 26.dp)
-                            SongbirdButton("✕", onClick = { onDelete(rawLine) }, kind = SongbirdButtonKind.Destructive, minHeight = 26.dp)
+                if (rawLines.isEmpty()) {
+                    Text(
+                        "Noch keine Fakten in dieser Kategorie.",
+                        color = songbird.glass,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                } else {
+                    rawLines.forEach { rawLine ->
+                        val display = rawLine.trimStart().removePrefix("- ")
+                            .replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("· $display", color = songbird.bone, style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f).padding(end = 4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                SongbirdButton("✎", onClick = { onEdit(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
+                                SongbirdButton("↗", onClick = { onMove(rawLine) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
+                                SongbirdButton("✕", onClick = { onDelete(rawLine) }, kind = SongbirdButtonKind.Destructive, minHeight = 22.dp)
+                            }
                         }
                     }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    SongbirdButton("+ Hinzufügen", onClick = onAdd, kind = SongbirdButtonKind.Ghost, minHeight = 28.dp)
+                    Spacer(Modifier.height(6.dp))
                 }
             }
         }
