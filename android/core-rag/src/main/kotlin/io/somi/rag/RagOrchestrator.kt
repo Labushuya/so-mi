@@ -68,8 +68,10 @@ class RagOrchestrator @Inject constructor(
 
             classified.forEach { (fact, topic) ->
                 try {
-                    // Check if a custom category matches this fact better than the default topic
-                    val customCategoryId = if (topic == MemoryTopic.NOTES) findCustomCategory(fact) else null
+                    // Custom categories take priority over enum classification.
+                    // A user who created "Beruf & Job" clearly wants job-related
+                    // facts there — even if classifyFact() picked PERSONS first.
+                    val customCategoryId = findCustomCategory(fact)
 
                     if (customCategoryId != null) {
                         // Write directly to the custom .md file
@@ -181,11 +183,31 @@ class RagOrchestrator @Inject constructor(
             ?: return null
 
         return customFiles.firstOrNull { file ->
-            // Split the category id into keywords (e.g. "beruf_und_job" → ["beruf", "job"])
-            val keywords = file.nameWithoutExtension
-                .split("_")
+            val id = file.nameWithoutExtension
+            // Keywords from the filename (e.g. "beruf_und_job" → ["beruf", "job"])
+            val filenameKeywords = id.split("_")
                 .filter { it.length >= 4 && it != "und" }
-            keywords.any { keyword -> lower.contains(keyword) }
+            // Also read category header for display name keywords
+            val headerKeywords = file.readLines()
+                .firstOrNull { it.startsWith("# ") }
+                ?.removePrefix("# ")
+                ?.lowercase()
+                ?.split(" ", "&", "/", "-", ",")
+                ?.filter { it.length >= 4 }
+                ?: emptyList()
+            // Semantic synonyms for common category concepts
+            val synonymMap = mapOf(
+                "beruf" to listOf("arbeite", "arbeit", "job", "stelle", "position", "engineer", "ingenieur", "entwickler", "manager", "designer", "arzt", "anwalt", "lehrer", "student", "studiere", "auszubildend"),
+                "job" to listOf("arbeite", "arbeit", "beruf", "stelle", "position", "engineer", "ingenieur"),
+                "familie" to listOf("frau", "mann", "kind", "bruder", "schwester", "mutter", "vater", "eltern", "geschwister"),
+                "sport" to listOf("laufe", "schwimme", "trainiere", "fitnessstudio", "gym", "fußball", "tennis"),
+                "gesundheit" to listOf("krank", "arzt", "medikament", "allergie", "operation"),
+                "finanzen" to listOf("gehalt", "verdiene", "bank", "kredit", "sparrate", "budget"),
+            )
+            val allKeywords = (filenameKeywords + headerKeywords).toSet()
+            val allMatchers = allKeywords + allKeywords.flatMap { k -> synonymMap[k] ?: emptyList() }
+
+            allMatchers.any { keyword -> lower.contains(keyword) }
         }?.nameWithoutExtension
     }
 
