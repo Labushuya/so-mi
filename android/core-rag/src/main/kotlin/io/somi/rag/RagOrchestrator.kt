@@ -107,15 +107,23 @@ class RagOrchestrator @Inject constructor(
                     val customCategoryId = findCustomCategory(fact)
 
                     if (customCategoryId != null) {
-                        // Write directly to the custom .md file
+                        // Write directly to the custom .md file with dedup
                         val customFile = File(memoryFiles.rootDir, "$customCategoryId.md")
                         customFile.parentFile?.mkdirs()
                         if (!customFile.exists()) {
                             customFile.writeText("# ${customCategoryId.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")}\n\n<!-- Eigene Kategorie -->\n\n")
                         }
-                        val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.GERMAN).format(java.util.Date(now))
-                        customFile.appendText("- $fact  _(gespeichert: $ts)_\n")
-                        Log.i(TAG, "saved to custom: '$fact' → $customCategoryId")
+                        val alreadyExists = customFile.readLines()
+                            .filter { it.trimStart().startsWith("- ") }
+                            .map { it.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim().lowercase() }
+                            .any { it == fact.lowercase() }
+                        if (!alreadyExists) {
+                            val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.GERMAN).format(java.util.Date(now))
+                            customFile.appendText("- $fact  _(gespeichert: $ts)_\n")
+                            Log.i(TAG, "saved to custom: '$fact' → $customCategoryId")
+                        } else {
+                            Log.i(TAG, "skipped duplicate in custom: '$fact'")
+                        }
                     } else {
                         memoryFiles.append(fact, topic, now)
                     }
