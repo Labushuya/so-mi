@@ -75,15 +75,45 @@ class MemoryFileRepository @Inject constructor(
     ) = withContext(Dispatchers.IO) {
         mutex.withLock {
             val file = fileFor(topic)
-            // Ensure directory exists — mkdirs() is idempotent.
-            // Without this, writeHeader() + appendText() both fail
-            // silently with FileNotFoundException when SoMi/memory/
-            // hasn't been created yet (fresh install, first save).
             file.parentFile?.mkdirs()
             if (!file.exists()) writeHeader(file, topic)
-            file.appendText(formatBullet(fact, createdAt))
-            Log.i(TAG, "appended to ${file.absolutePath}: $fact")
+            // Deduplicate: skip if a very similar fact already exists
+            if (!isDuplicate(fact, file)) {
+                file.appendText(formatBullet(fact, createdAt))
+                Log.i(TAG, "appended: $fact")
+            } else {
+                Log.i(TAG, "skipped duplicate: $fact")
+            }
         }
+    }
+
+    /**
+     * v0.29.0 — Duplikat-Erkennung. Gibt true zurück wenn [newFact] bereits
+     * in [file] enthalten ist (exakt oder fast gleich — normalisierter Text
+     * mit Levenshtein-Distanz ≤ 2 bei Fakten bis 30 Zeichen).
+     */
+    private fun isDuplicate(newFact: String, file: File): Boolean {
+        if (!file.exists()) return false
+        val normalized = newFact.trim().lowercase()
+        val existing = file.readLines()
+            .filter { it.trimStart().startsWith("- ") }
+            .map { it.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim().lowercase() }
+        return existing.any { ex ->
+            ex == normalized || levenshtein(ex, normalized) <= 2
+        }
+    }
+
+    private fun levenshtein(a: String, b: String): Int {
+        if (a == b) return 0
+        val m = a.length; val n = b.length
+        val dp = Array(m + 1) { IntArray(n + 1) { 0 } }
+        for (i in 0..m) dp[i][0] = i
+        for (j in 0..n) dp[0][j] = j
+        for (i in 1..m) for (j in 1..n) {
+            dp[i][j] = if (a[i - 1] == b[j - 1]) dp[i - 1][j - 1]
+                       else 1 + minOf(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        }
+        return dp[m][n]
     }
 
     /**

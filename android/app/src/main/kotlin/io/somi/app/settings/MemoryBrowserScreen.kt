@@ -166,7 +166,15 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                 val displayName = allCategories.firstOrNull { it.id == categoryId }?.displayName ?: categoryId
                 file.writeText("# $displayName\n\n<!-- Auto-generiert von So-Mi -->\n\n")
             }
-            file.appendText("- ${text.trim()}  _(gespeichert: $ts)_\n")
+            // Dedup: don't add if exact match already exists
+            val normalized = text.trim().lowercase()
+            val alreadyExists = file.readLines()
+                .filter { it.trimStart().startsWith("- ") }
+                .map { it.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim().lowercase() }
+                .any { it == normalized }
+            if (!alreadyExists) {
+                file.appendText("- ${text.trim()}  _(gespeichert: $ts)_\n")
+            }
             refreshKey++
         }
     }
@@ -223,8 +231,12 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
 
     fun createCategory(name: String) {
         scope.launch(Dispatchers.IO) {
-            val id = name.lowercase()
+            // ID: strip emojis + special chars — Android filenames must be ASCII-safe.
+            // Display name (in .md header) keeps the full name including emojis.
+            val id = name
                 .replace("&", "_und_")
+                .replace(Regex("[\\p{So}\\p{Cs}\\p{Co}]"), "") // strip emojis
+                .lowercase()
                 .replace(" ", "_")
                 .replace(Regex("[^a-z0-9_äöüß]"), "")
                 .replace(Regex("_+"), "_")
@@ -233,6 +245,7 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
             val file = File(StorageRoots.memory(context), "$id.md")
             if (!file.exists()) {
                 file.parentFile?.mkdirs()
+                // Store original name (with emojis) in header
                 file.writeText("# $name\n\n<!-- Eigene Kategorie -->\n\n")
             }
             refreshKey++

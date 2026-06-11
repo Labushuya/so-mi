@@ -376,10 +376,27 @@ private fun ChatShellScreen(
 
         // Message history + live-typing bubble for in-flight generation.
         val listState = rememberLazyListState()
-        // Scroll to bottom whenever messages or partial text changes.
+        // Scroll to bottom when messages change or partial text grows.
         LaunchedEffect(messages.size, partial.length, isGenerating) {
             val target = messages.size + if (isGenerating) 1 else 0
             if (target > 0) listState.animateScrollToItem(target - 1)
+        }
+        // Scroll to bottom when keyboard opens — but ONLY if already at bottom.
+        // If the user has scrolled up to read older messages, don't interrupt.
+        val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime
+            .asPaddingValues()
+            .calculateBottomPadding() > 0.dp
+        LaunchedEffect(imeVisible) {
+            if (!imeVisible) return@LaunchedEffect
+            val lastIndex = messages.size + (if (isGenerating) 1 else 0) - 1
+            if (lastIndex < 0) return@LaunchedEffect
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val totalItems = layoutInfo.totalItemsCount
+            // Only scroll if we're already near the bottom (within 2 items)
+            if (lastVisible >= totalItems - 2) {
+                listState.animateScrollToItem(lastIndex)
+            }
         }
 
         LazyColumn(
