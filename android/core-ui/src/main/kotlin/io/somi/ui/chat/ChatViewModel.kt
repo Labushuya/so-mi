@@ -436,16 +436,23 @@ class ChatViewModel @Inject constructor(
         generationJob = viewModelScope.launch {
             val promptId = chatRepository.appendUser(text)
             val ragOutcome = handleRagTrigger(text)
-            // If the trigger fired AND we successfully saved, the LLM
-            // sees a stripped query (no "merk dir, " prefix) so it
-            // doesn't echo the trigger phrase back at the user. On
-            // EMBEDDER_NOT_READY / NotTriggered we pass the original
-            // text through.
-            val llmInput = when (ragOutcome) {
-                is io.somi.rag.SaveOutcome.Saved -> ragOutcome.factText
-                else -> text
+            when (ragOutcome) {
+                // Keyword commands are handled entirely by handleRagTrigger —
+                // the ack bubble is already appended, no LLM generation needed.
+                is io.somi.rag.SaveOutcome.KeywordAdded,
+                is io.somi.rag.SaveOutcome.KeywordRemoved,
+                is io.somi.rag.SaveOutcome.KeywordsShown -> {
+                    generationJob = null
+                    return@launch
+                }
+                else -> {
+                    val llmInput = when (ragOutcome) {
+                        is io.somi.rag.SaveOutcome.Saved -> ragOutcome.factText
+                        else -> text
+                    }
+                    runGeneration(promptId, llmInput)
+                }
             }
-            runGeneration(promptId, llmInput)
         }
     }
 
@@ -461,9 +468,6 @@ class ChatViewModel @Inject constructor(
         when (outcome) {
             is io.somi.rag.SaveOutcome.NotTriggered -> Unit
             is io.somi.rag.SaveOutcome.Saved -> {
-                // Render an in-character ack as a fresh assistant
-                // bubble. Persisted in Room so it survives process
-                // recreation and shows up like any other message.
                 chatRepository.appendAssistant(SAVE_ACK_TEXT)
             }
             is io.somi.rag.SaveOutcome.SaveFailed -> {
@@ -474,6 +478,17 @@ class ChatViewModel @Inject constructor(
                         "Speicherfehler — konnte Erinnerung nicht auf Disk schreiben. Prüf den freien Speicher."
                 }
                 surfaceError(msg, retryable = false, cause = outcome.cause)
+            }
+            is io.somi.rag.SaveOutcome.KeywordAdded -> {
+                chatRepository.appendAssistant("Hab's. \"${outcome.keyword}\" ist jetzt ein Keyword für ${outcome.categoryId.replace("_", " ")}.")
+            }
+            is io.somi.rag.SaveOutcome.KeywordRemoved -> {
+                chatRepository.appendAssistant("Entfernt. \"${outcome.keyword}\" gilt nicht mehr für ${outcome.categoryId.replace("_", " ")}.")
+            }
+            is io.somi.rag.SaveOutcome.KeywordsShown -> {
+                val kwText = if (outcome.keywords.isEmpty()) "Keine Keywords definiert."
+                             else "Keywords für ${outcome.categoryId.replace("_", " ")}: ${outcome.keywords.joinToString(", ")}"
+                chatRepository.appendAssistant(kwText)
             }
         }
         return outcome
