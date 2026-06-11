@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.2](https://github.com/Labushuya/so-mi/compare/v0.23.1...v0.23.2) (2026-06-11)
+
+
+### Bug Fixes
+
+* alle Fakten einzeln absichern, zweiten Fakt nicht durch ersten Fehler verlieren ([#83](https://github.com/Labushuya/so-mi/issues/83)) ([f9686d3](https://github.com/Labushuya/so-mi/commit/f9686d3a1a7ec11b17ae088fdba85dd517c091f5))
+
 ## [0.23.1](https://github.com/Labushuya/so-mi/compare/v0.23.0...v0.23.1) (2026-06-10)
 
 
