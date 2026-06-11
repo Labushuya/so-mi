@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/Labushuya/so-mi/compare/v0.25.0...v0.25.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* eigene Kategorien haben Vorrang, Synonym-Erkennung für Beruf und mehr ([#93](https://github.com/Labushuya/so-mi/issues/93)) ([202e488](https://github.com/Labushuya/so-mi/commit/202e4887e80c41cfe0d251b6e5592aa4505e0452))
+
 ## [0.25.0](https://github.com/Labushuya/so-mi/compare/v0.24.2...v0.25.0) (2026-06-11)
 
 
