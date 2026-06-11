@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/Labushuya/so-mi/compare/v0.24.1...v0.24.2) (2026-06-11)
+
+
+### Bug Fixes
+
+* build — doppeltes @Composable in TextInputDialog ([#89](https://github.com/Labushuya/so-mi/issues/89)) ([99eb19e](https://github.com/Labushuya/so-mi/commit/99eb19ebfa0fbaa694394d0edd255a76b58c9f4e))
+
 ## [0.24.1](https://github.com/Labushuya/so-mi/compare/v0.24.0...v0.24.1) (2026-06-11)
 
 
