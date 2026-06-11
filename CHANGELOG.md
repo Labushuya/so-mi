@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/Labushuya/so-mi/compare/v0.24.2...v0.25.0) (2026-06-11)
+
+
+### Features
+
+* Kategorien umbenennen und löschen, eigene Kategorien bei Trigger erkannt, Backup erstellen ([#91](https://github.com/Labushuya/so-mi/issues/91)) ([948cb59](https://github.com/Labushuya/so-mi/commit/948cb597955b64f3cd8bb3908661574fea74bad7))
+
 ## [0.24.2](https://github.com/Labushuya/so-mi/compare/v0.24.1...v0.24.2) (2026-06-11)
 
 
