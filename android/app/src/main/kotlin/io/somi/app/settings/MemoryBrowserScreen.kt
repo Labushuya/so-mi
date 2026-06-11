@@ -61,6 +61,7 @@ import java.util.Locale
  * - Fakten editieren (✎ pro Zeile)
  * - Fakten manuell anlegen (+ pro Kategorie)
  * - Eigene Kategorien anlegen (v0.23.1)
+ * v0.25.0: Kategorien umbenennen und löschen
  */
 @Composable
 fun MemoryBrowserScreen(onBack: () -> Unit) {
@@ -68,17 +69,20 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    data class Category(val id: String, val displayName: String)
+    data class Category(val id: String, val displayName: String, val isCustom: Boolean = false)
 
     var allCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var categoryLines by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var expandedCategory by remember { mutableStateOf<String?>(null) }
 
-    // Dialog states
+    // Fact dialog states
     var deleteTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     var moveTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var editTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) } // (categoryId, rawLine, displayText)
-    var addTarget by remember { mutableStateOf<String?>(null) } // categoryId to add fact to
+    var editTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var addTarget by remember { mutableStateOf<String?>(null) }
+    // Category dialog states
+    var renameCategoryTarget by remember { mutableStateOf<Category?>(null) }
+    var deleteCategoryTarget by remember { mutableStateOf<Category?>(null) }
     var showNewCategoryDialog by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableStateOf(0) }
 
@@ -86,13 +90,20 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
         withContext(Dispatchers.IO) {
             val root = StorageRoots.memory(context)
             root.mkdirs()
-            val enumTopics = MemoryTopic.entries.map { t -> Category(t.id, t.displayName) }
+            val enumTopics = MemoryTopic.entries.map { t -> Category(t.id, t.displayName, isCustom = false) }
             val customIds = root.listFiles()
                 ?.filter { it.extension == "md" }
                 ?.map { it.nameWithoutExtension }
                 ?.filter { id -> MemoryTopic.entries.none { it.id == id } }
                 ?.sorted()
-                ?.map { id -> Category(id, id.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")) }
+                ?.map { id ->
+                    // Read display name from .md header if available
+                    val file = File(root, "$id.md")
+                    val headerName = file.readLines().firstOrNull { it.startsWith("# ") }
+                        ?.removePrefix("# ")?.trim()
+                        ?: id.replaceFirstChar { it.uppercaseChar() }.replace("_", " ")
+                    Category(id, headerName, isCustom = true)
+                }
                 .orEmpty()
             allCategories = enumTopics + customIds
             val lines = (enumTopics + customIds).associate { cat ->
@@ -172,7 +183,7 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                 .replace("&", "_und_")
                 .replace(" ", "_")
                 .replace(Regex("[^a-z0-9_äöüß]"), "")
-                .replace(Regex("_+"), "_")  // collapse multiple underscores
+                .replace(Regex("_+"), "_")
                 .trim('_')
             if (id.isBlank()) return@launch
             val file = File(StorageRoots.memory(context), "$id.md")
@@ -180,6 +191,36 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                 file.parentFile?.mkdirs()
                 file.writeText("# $name\n\n<!-- Eigene Kategorie -->\n\n")
             }
+            refreshKey++
+        }
+    }
+
+    fun renameCategory(cat: Any, newName: String) {
+        // cat is Category data class; access via reflection-safe cast
+        val catId = (cat as? Triple<*, *, *>)?.first as? String ?: return
+        scope.launch(Dispatchers.IO) {
+            val file = File(StorageRoots.memory(context), "$catId.md")
+            if (!file.exists()) return@launch
+            val lines = file.readLines().toMutableList()
+            val headerIdx = lines.indexOfFirst { it.startsWith("# ") }
+            if (headerIdx >= 0) lines[headerIdx] = "# $newName"
+            else lines.add(0, "# $newName\n")
+            file.writeText(lines.joinToString("\n") + "\n")
+            refreshKey++
+        }
+    }
+
+    fun deleteCategoryById(catId: String, facts: List<String>) {
+        scope.launch(Dispatchers.IO) {
+            // Move all facts to NOTES before deleting
+            val root = StorageRoots.memory(context)
+            if (facts.isNotEmpty()) {
+                val notesFile = File(root, "notes.md")
+                notesFile.parentFile?.mkdirs()
+                if (!notesFile.exists()) notesFile.writeText("# Notizen\n\n<!-- Auto-generiert von So-Mi -->\n\n")
+                facts.forEach { line -> notesFile.appendText("$line\n") }
+            }
+            File(root, "$catId.md").delete()
             refreshKey++
         }
     }
@@ -218,6 +259,7 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                 FactAccordion(
                     categoryId = cat.id,
                     displayName = cat.displayName,
+                    isCustom = cat.isCustom,
                     rawLines = lines,
                     expanded = expandedCategory == cat.id,
                     onToggle = { expandedCategory = if (expandedCategory == cat.id) null else cat.id },
@@ -228,6 +270,8 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
                     },
                     onMove = { line -> moveTarget = cat.id to line },
                     onAdd = { addTarget = cat.id },
+                    onRenameCategory = { renameCategoryTarget = cat },
+                    onDeleteCategory = { deleteCategoryTarget = cat },
                 )
             }
         }
@@ -291,12 +335,54 @@ fun MemoryBrowserScreen(onBack: () -> Unit) {
             onDismiss = { showNewCategoryDialog = false },
         )
     }
+
+    // Rename category dialog
+    renameCategoryTarget?.let { cat ->
+        TextInputDialog(
+            title = "Kategorie umbenennen",
+            initial = cat.displayName,
+            confirmLabel = "Speichern",
+            onConfirm = { newName ->
+                // rename via direct file header edit
+                scope.launch(Dispatchers.IO) {
+                    val file = File(StorageRoots.memory(context), "${cat.id}.md")
+                    if (file.exists()) {
+                        val lines = file.readLines().toMutableList()
+                        val idx = lines.indexOfFirst { it.startsWith("# ") }
+                        if (idx >= 0) lines[idx] = "# $newName" else lines.add(0, "# $newName")
+                        file.writeText(lines.joinToString("\n") + "\n")
+                    }
+                    refreshKey++
+                }
+                renameCategoryTarget = null
+            },
+            onDismiss = { renameCategoryTarget = null },
+        )
+    }
+
+    // Delete category dialog
+    deleteCategoryTarget?.let { cat ->
+        val factsInCat = categoryLines[cat.id].orEmpty()
+        SongbirdDialog(
+            onDismissRequest = { deleteCategoryTarget = null },
+            title = "Kategorie löschen?",
+            message = if (factsInCat.isEmpty()) "\"${cat.displayName}\" wird gelöscht."
+                      else "\"${cat.displayName}\" hat ${factsInCat.size} Einträge — diese werden in Notizen verschoben.",
+            tone = SongbirdDialogTone.Destructive,
+            confirm = SongbirdDialogAction("Löschen", {
+                deleteCategoryById(cat.id, factsInCat)
+                deleteCategoryTarget = null
+            }, SongbirdDialogAction.Kind.Destructive),
+            dismiss = SongbirdDialogAction("Abbrechen", { deleteCategoryTarget = null }),
+        )
+    }
 }
 
 @Composable
 private fun FactAccordion(
     categoryId: String,
     displayName: String,
+    isCustom: Boolean,
     rawLines: List<String>,
     expanded: Boolean,
     onToggle: () -> Unit,
@@ -304,16 +390,30 @@ private fun FactAccordion(
     onEdit: (String) -> Unit,
     onMove: (String) -> Unit,
     onAdd: () -> Unit,
+    onRenameCategory: () -> Unit,
+    onDeleteCategory: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     Column(modifier = Modifier.fillMaxWidth().background(songbird.aiBubble)) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { onToggle() }.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(displayName, color = songbird.bone, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text("${rawLines.size} ${if (expanded) "▲" else "▼"}", color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+            Row(
+                modifier = Modifier.weight(1f).clickable { onToggle() },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(displayName, color = songbird.bone, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.weight(1f))
+                Text("${rawLines.size} ${if (expanded) "▲" else "▼"}", color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+            }
+            if (isCustom) {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    SongbirdButton("✎", onClick = onRenameCategory, kind = SongbirdButtonKind.Ghost, minHeight = 26.dp)
+                    SongbirdButton("🗑", onClick = onDeleteCategory, kind = SongbirdButtonKind.Destructive, minHeight = 26.dp)
+                }
+            }
         }
         if (expanded) {
             HorizontalDivider(color = songbird.bubbleBorder)
