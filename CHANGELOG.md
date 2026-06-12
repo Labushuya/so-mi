@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/Labushuya/so-mi/compare/v0.34.0...v0.35.0) (2026-06-12)
+
+
+### Features
+
+* FAQ mit Suche, Embedder-Status-Fix nach Löschen ([#127](https://github.com/Labushuya/so-mi/issues/127)) ([d17488a](https://github.com/Labushuya/so-mi/commit/d17488a7649ec6be5adb52f5ffb1761b00e287a6))
+
 ## [0.34.0](https://github.com/Labushuya/so-mi/compare/v0.33.0...v0.34.0) (2026-06-12)
 
 
