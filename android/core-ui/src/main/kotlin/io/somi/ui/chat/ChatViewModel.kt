@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -157,7 +158,11 @@ class ChatViewModel @Inject constructor(
      * shared so the first frame after process recreate sees the
      * already-loaded list rather than `emptyList()`.
      */
-    val messages: StateFlow<List<Message>> = chatRepository.observeMessages()
+    // v0.37.0 — active conversation ID as observable state so messages re-subscribes on switch
+    private val _activeConversationId = MutableStateFlow(1L)
+
+    val messages: StateFlow<List<Message>> = _activeConversationId
+        .flatMapLatest { id -> chatRepository.observeMessagesForConversation(id) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
@@ -169,17 +174,15 @@ class ChatViewModel @Inject constructor(
         conversationRepository.observeAll()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val currentConversationId: Long get() = chatRepository.currentConversationId
+    val currentConversationId: Long get() = _activeConversationId.value
 
-    /** Switch to an existing conversation. Resets the LLM lifecycle. */
+    /** Switch to an existing conversation — messages Flow re-subscribes automatically. */
     fun switchConversation(id: Long) {
         viewModelScope.launch {
             generationJob?.cancel()
             _generation.value = null
+            _activeConversationId.value = id
             chatRepository.setConversation(id)
-            // Re-init messages flow is automatic — messages is a cold Flow that
-            // re-subscribes when the ViewModel restarts, but here we need to
-            // force a re-emit. Simplest: set a flag the UI observes.
             _lifecycle.value = Lifecycle.Ready
         }
     }
@@ -189,6 +192,7 @@ class ChatViewModel @Inject constructor(
         val id = conversationRepository.create(title)
         generationJob?.cancel()
         _generation.value = null
+        _activeConversationId.value = id
         chatRepository.setConversation(id)
         return id
     }
@@ -203,15 +207,29 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             if (id == chatRepository.currentConversationId) {
                 // Switch to another before deleting
-                val others = conversationRepository.observeAll()
                 val remaining = conversations.value.filter { it.id != id }
                 val next = remaining.firstOrNull()?.id
                     ?: conversationRepository.create("Neue Session")
+                _activeConversationId.value = next
                 chatRepository.setConversation(next)
             }
-            chatRepository.clearCurrentConversation()
+            // Delete messages for this conversation then the conversation itself
+            val wasActive = _activeConversationId.value == id
+            if (!wasActive) {
+                // Delete non-active conversation's messages directly
+                dao_deleteByConversation(id)
+            }
             conversationRepository.delete(id)
         }
+    }
+
+    private suspend fun dao_deleteByConversation(id: Long) {
+        // We can't inject MessageDao directly here; use chatRepository trick
+        val tmp = chatRepository.currentConversationId
+        chatRepository.setConversation(id)
+        chatRepository.clearCurrentConversation()
+        chatRepository.setConversation(tmp)
+        _activeConversationId.value = tmp
     }
 
 
