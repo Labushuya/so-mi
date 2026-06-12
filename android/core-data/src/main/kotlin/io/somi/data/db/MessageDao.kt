@@ -32,4 +32,7 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE conversation_id = :conversationId AND text LIKE '%' || :query || '%' ORDER BY id ASC")
     suspend fun searchInConversation(conversationId: Long, query: String): List<MessageEntity>
+
+    @Query("SELECT * FROM messages WHERE conversation_id = :convId ORDER BY id DESC LIMIT :limit")
+    suspend fun getRecentForConversation(convId: Long, limit: Int): List<MessageEntity>
 }

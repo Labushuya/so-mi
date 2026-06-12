@@ -1,6 +1,7 @@
 package io.somi.rag
 
 import android.util.Log
+import io.somi.llm.LlamaContext
 import io.somi.rag.embed.Embedder
 import io.somi.rag.memory.MemoryFileRepository
 import io.somi.rag.memory.MemoryStore
@@ -11,7 +12,9 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * v0.14.0 M6 — orchestrates the trigger → embed → save → mirror pipeline.
@@ -38,6 +41,7 @@ class RagOrchestrator @Inject constructor(
     private val embedder: Embedder,
     private val memoryStore: MemoryStore,
     private val memoryFiles: MemoryFileRepository,
+    private val llama: LlamaContext,
 ) {
 
     /**
@@ -95,7 +99,7 @@ class RagOrchestrator @Inject constructor(
             // Split the fact text into individual facts (by "und" conjunctions)
             // and classify each into the best-matching topic.
             val rawFacts = splitIntoFacts(normalizeFact(match.factText))
-            val classified = rawFacts.map { fact -> fact to classifyFact(fact) }
+            val classified = rawFacts.map { fact -> fact to (runCatching { classifyFactWithLlm(fact) }.getOrElse { classifyFact(fact) }) }
 
             val embedderReady = runCatching { embedder.isAvailable() }.getOrDefault(false)
 
@@ -177,6 +181,35 @@ class RagOrchestrator @Inject constructor(
         // If splitting produces only one part longer than 40 chars, try
         // splitting on comma + "und" or semicolon too.
         return result.ifEmpty { listOf(normalized) }
+    }
+
+    /**
+     * v0.22.1 — LLM-based fact classifier. Asks the already-loaded LLM to
+     * classify [fact] into a [MemoryTopic] category key. Falls back to the
+     * regex-based [classifyFact] on timeout, error, or unrecognised output.
+     *
+     * LlamaContext.generate() handles its own dispatcher switching internally;
+     * no additional withContext() wrapper is needed here.
+     */
+    private suspend fun classifyFactWithLlm(fact: String): MemoryTopic {
+        val prompt = """Klassifiziere diesen Fakt in genau eine Kategorie. Antworte NUR mit dem Kategorie-Schlüssel, nichts sonst.
+
+Kategorien:
+- persons (Personen, Namen, Orte, Familie)
+- preferences (Vorlieben, Hobbys, Geschmack)
+- dates (Termine, Geburtstage, Zeitangaben)
+- technical (Technik, Software, Geräte)
+- notes (alles andere)
+
+Fakt: $fact
+
+Kategorie:"""
+        val result = withTimeoutOrNull(3000L) {
+            llama.generate(prompt, maxTokens = 8)
+                .fold("") { acc, chunk -> acc + chunk }
+        } ?: return classifyFact(fact)
+        val key = result.trim().lowercase().split(Regex("\\s+")).firstOrNull() ?: ""
+        return MemoryTopic.entries.firstOrNull { it.id == key } ?: classifyFact(fact)
     }
 
     /**
