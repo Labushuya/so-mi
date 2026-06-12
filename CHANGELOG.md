@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/Labushuya/so-mi/compare/v0.33.0...v0.34.0) (2026-06-12)
+
+
+### Features
+
+* Backup-Import, Setup-Guard-Banner wenn Embedder fehlt, ROADMAP aktualisiert ([#125](https://github.com/Labushuya/so-mi/issues/125)) ([3241e5d](https://github.com/Labushuya/so-mi/commit/3241e5d2483a754baae64e23203d32bbba1a086b))
+
 ## [0.33.0](https://github.com/Labushuya/so-mi/compare/v0.32.1...v0.33.0) (2026-06-12)
 
 
