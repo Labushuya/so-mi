@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.1](https://github.com/Labushuya/so-mi/compare/v0.39.0...v0.39.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — verwaiste Zeilen in ChatViewModel.submit entfernt ([#148](https://github.com/Labushuya/so-mi/issues/148)) ([0d8a677](https://github.com/Labushuya/so-mi/commit/0d8a677225e5d9e1460005c5735118fa14df7bf4))
+
 ## [0.39.0](https://github.com/Labushuya/so-mi/compare/v0.38.1...v0.39.0) (2026-06-12)
 
 
