@@ -527,7 +527,6 @@ private fun ChatTopBar(
 }
 
 @Composable
-@Composable
 private fun ErrorBanner(message: String, onRetry: (() -> Unit)?) {
     val songbird = LocalSongbirdColors.current
     // WhatsApp-style system band: centered, pill-shaped, subtle
