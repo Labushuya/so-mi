@@ -576,13 +576,17 @@ private fun FactAccordion(
                                 cursorBrush = SolidColor(songbird.crimson),
                                 decorationBox = { inner ->
                                     androidx.compose.foundation.layout.Box(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(songbird.obsidian)
+                                            .border(1.dp, songbird.bubbleBorder, androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 12.dp, vertical = 6.dp),
                                     ) {
                                         if (kwSearch.isEmpty()) Text("Keyword suchen…", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
                                         inner()
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
                             )
                         }
                         if (filtered.isEmpty() && keywords.isNotEmpty()) {
