@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/Labushuya/so-mi/compare/v0.29.3...v0.30.0) (2026-06-12)
+
+
+### Features
+
+* nur eine Antwort nach Trigger, Scroll-Fix mit snapshotFlow, Keywords ein-/ausklappbar mit Suche ([#109](https://github.com/Labushuya/so-mi/issues/109)) ([d5646c6](https://github.com/Labushuya/so-mi/commit/d5646c6d66257dfe3df81577c47caa9836379197))
+
 ## [0.29.3](https://github.com/Labushuya/so-mi/compare/v0.29.2...v0.29.3) (2026-06-12)
 
 
