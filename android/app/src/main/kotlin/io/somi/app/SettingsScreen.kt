@@ -173,7 +173,7 @@ internal fun SettingsScreen(
                         },
                     )
                     Spacer(Modifier.height(16.dp))
-                    DataSection(onOpenDataBrowser = onOpenDataBrowser, onOpenFaq = onOpenFaq)
+                    DataSection(viewModel = viewModel, onOpenDataBrowser = onOpenDataBrowser, onOpenFaq = onOpenFaq)
                 }
             }
         }
@@ -899,7 +899,7 @@ private fun GreetingRadioRow(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun DataSection(onOpenDataBrowser: () -> Unit, onOpenFaq: () -> Unit) {
+private fun DataSection(viewModel: ChatViewModel, onOpenDataBrowser: () -> Unit, onOpenFaq: () -> Unit) {
     val songbird = LocalSongbirdColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -965,7 +965,7 @@ private fun DataSection(onOpenDataBrowser: () -> Unit, onOpenFaq: () -> Unit) {
                         backupStatus = "Erstelle Backup…"
                         try {
                             val zipFile = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                io.somi.data.BackupManager(context).createBackup()
+                                io.somi.data.BackupManager(context, viewModel.databaseOpenHelper).createBackup()
                             }
                             backupStatus = "Backup: ${zipFile.name}"
                             val uri = androidx.core.content.FileProvider.getUriForFile(
