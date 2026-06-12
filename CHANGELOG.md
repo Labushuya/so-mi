@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/Labushuya/so-mi/compare/v0.30.0...v0.30.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — snapshotFlow Import und expliziter Typ ([#111](https://github.com/Labushuya/so-mi/issues/111)) ([2504c16](https://github.com/Labushuya/so-mi/commit/2504c161d20f32f05cbdbe6a59c73314e23fcb0d))
+
 ## [0.30.0](https://github.com/Labushuya/so-mi/compare/v0.29.3...v0.30.0) (2026-06-12)
 
 
