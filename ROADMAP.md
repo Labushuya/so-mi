@@ -12,6 +12,9 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.39.2 | ✅ live | Fix: somi.db im Backup — WAL-Checkpoint + SoMiDatabase-Injection |
+| v0.39.1 | ✅ live | Build-Fix: verwaiste Zeilen ChatViewModel |
+| v0.39.0 | ✅ live | Backup mit Chat-Verlauf, Import-Bestätigung, /search /clear /rename /archive |
 | v0.38.1 | ✅ stable | Chat-Suche, OOM-Crash-Banner, Empty-State-Fix |
 | v0.37.2 | ✅ stable | Multi-Chat Nachrichten-Isolation, letzter Chat löschbar |
 | v0.37.1 | ✅ live | Multi-Chat Bug-Fix Room.databaseBuilder |
