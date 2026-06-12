@@ -330,9 +330,11 @@ class RagOrchestrator @Inject constructor(
         if (allFacts.isEmpty()) return null
 
         return buildString {
-            append("[Bekannte Fakten über den Nutzer]\n")
+            // Natural-language framing so So-Mi integrates the facts into her
+            // responses smoothly rather than parroting them mechanically.
+            append("Was du über deinen Nutzer weißt (diese Fakten kennt der Nutzer — nutze sie natürlich im Gespräch, wiederhole sie nicht einfach):\n")
             allFacts.forEach { append("- $it\n") }
-            append("[Ende der Fakten]\n")
+            append("\n")
         }
     }
 
