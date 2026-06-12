@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/Labushuya/so-mi/compare/v0.36.2...v0.37.0) (2026-06-12)
+
+
+### Features
+
+* Multi-Chat — Gespräche anlegen, wechseln, löschen, umbenennen ([#136](https://github.com/Labushuya/so-mi/issues/136)) ([82fe024](https://github.com/Labushuya/so-mi/commit/82fe024440ea669d98621e5a96a641aa03fbf551))
+
 ## [0.36.2](https://github.com/Labushuya/so-mi/compare/v0.36.1...v0.36.2) (2026-06-12)
 
 
