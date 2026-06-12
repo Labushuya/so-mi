@@ -77,6 +77,7 @@ internal fun SettingsScreen(
     onOpenMemoryBrowser: () -> Unit,
     onOpenModelCatalog: () -> Unit,
     onOpenDataBrowser: () -> Unit,
+    onOpenFaq: () -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     val instances by viewModel.instances.collectAsStateWithLifecycle()
@@ -171,7 +172,7 @@ internal fun SettingsScreen(
                         },
                     )
                     Spacer(Modifier.height(16.dp))
-                    DataSection(onOpenDataBrowser = onOpenDataBrowser)
+                    DataSection(onOpenDataBrowser = onOpenDataBrowser, onOpenFaq = onOpenFaq)
                 }
             }
         }
@@ -891,7 +892,7 @@ private fun GreetingRadioRow(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun DataSection(onOpenDataBrowser: () -> Unit) {
+private fun DataSection(onOpenDataBrowser: () -> Unit, onOpenFaq: () -> Unit) {
     val songbird = LocalSongbirdColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -971,5 +972,11 @@ private fun DataSection(onOpenDataBrowser: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             Text(backupStatus, color = songbird.glass, style = MaterialTheme.typography.labelSmall)
         }
+        Spacer(Modifier.height(12.dp))
+        SongbirdButton(
+            label = "❓ Häufige Fragen (FAQ)",
+            kind = SongbirdButtonKind.Ghost,
+            onClick = onOpenFaq,
+        )
     }
 }
