@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/Labushuya/so-mi/compare/v0.37.0...v0.37.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — doppelter Room.databaseBuilder entfernt ([#138](https://github.com/Labushuya/so-mi/issues/138)) ([c4275fb](https://github.com/Labushuya/so-mi/commit/c4275fb604fb9b83921eb8309f17e519fa3c2449))
+
 ## [0.37.0](https://github.com/Labushuya/so-mi/compare/v0.36.2...v0.37.0) (2026-06-12)
 
 
