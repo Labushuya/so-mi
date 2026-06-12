@@ -368,9 +368,16 @@ private fun ChatShellScreen(
         // whatever lifecycle is rendering — Idle, Generating, anything.
         val bannerOverlay = state.banner()
         if (bannerOverlay != null) {
+            val kind = when {
+                bannerOverlay.message.contains("✅") || bannerOverlay.message.lowercase().contains("erfolgreich") -> BannerKind.Success
+                bannerOverlay.message.contains("⚠️") || bannerOverlay.message.lowercase().contains("warnung") -> BannerKind.Warning
+                bannerOverlay.message.contains("ℹ️") || bannerOverlay.message.lowercase().contains("hinweis") -> BannerKind.Info
+                else -> BannerKind.Error
+            }
             ErrorBanner(
                 message = bannerOverlay.message,
                 onRetry = if (bannerOverlay.retryable) onRetry else null,
+                kind = kind,
             )
         }
 
@@ -526,9 +533,18 @@ private fun ChatTopBar(
 }
 
 @Composable
-private fun ErrorBanner(message: String, onRetry: (() -> Unit)?) {
+// Band types: visual differentiation for system messages
+enum class BannerKind { Error, Warning, Success, Info }
+
+@Composable
+private fun ErrorBanner(message: String, onRetry: (() -> Unit)?, kind: BannerKind = BannerKind.Error) {
     val songbird = LocalSongbirdColors.current
-    // WhatsApp-style system band: centered, pill-shaped, subtle
+    val (bg, fg) = when (kind) {
+        BannerKind.Error   -> songbird.signal.copy(alpha = 0.18f) to songbird.roseDust
+        BannerKind.Warning -> androidx.compose.ui.graphics.Color(0xFFFFCC00).copy(alpha = 0.22f) to androidx.compose.ui.graphics.Color(0xFFFFCC00)
+        BannerKind.Success -> androidx.compose.ui.graphics.Color(0xFF4CAF50).copy(alpha = 0.22f) to androidx.compose.ui.graphics.Color(0xFF4CAF50)
+        BannerKind.Info    -> songbird.glass.copy(alpha = 0.22f) to songbird.glass
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -539,14 +555,14 @@ private fun ErrorBanner(message: String, onRetry: (() -> Unit)?) {
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(songbird.signal.copy(alpha = 0.18f))
+                .background(bg)
                 .padding(horizontal = 14.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = message,
-                color = songbird.roseDust,
+                color = fg,
                 style = MaterialTheme.typography.labelSmall,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
@@ -554,7 +570,7 @@ private fun ErrorBanner(message: String, onRetry: (() -> Unit)?) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(songbird.signal.copy(alpha = 0.3f))
+                        .background(fg.copy(alpha = 0.3f))
                         .clickable { onRetry() }
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 ) {

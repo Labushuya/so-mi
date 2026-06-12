@@ -64,7 +64,11 @@ Nicht angefangen.
 
 ## User-Vereinbarungen (bindend wie SPEC)
 
-### Erinnerungen / RAG
+### Anzeige & UX
+- **⚠️ TO BE IMPROVED — Scroll-to-Bottom bei Tastatur** *(2026-06-12)* — Tastatur öffnen scrollt den Chat nicht automatisch nach unten. Mehrere Ansätze versucht (ViewCompat-Listener → Crash, snapshotFlow viewportEndOffset → keine Reaktion, WindowInsets.ime.getBottom → reagiert nicht auf MagicOS). Ursache unklar ohne Debug-Build. Aufgeschoben bis ein Debug-APK mit Logcat-Zugriff möglich ist.
+- **⚠️ TO BE IMPROVED — 14B-Modelle auf Magic V2 (16GB)** *(2026-06-12)* — 14B Q4_K_M (~9GB) + KV-Cache überschreitet 16GB. Candidate: Qwen2.5-12B-Q3_K_M (~5.8GB) als Zwischenschritt. OOM-Fallback auf vorheriges LLM noch nicht implementiert.
+
+
 - **Recall aktiv** *(v0.19.1)* — top-20 Fakten aus .md als Kontext vor jeder Generation
 - **Fakt-Normalisierung** *(v0.19.1)* — führende Konjunktionen gestrippt, erste Letter groß
 - **Multi-Fakt-Extraktion** *(v0.23.2)* — "und"-Sätze werden gesplittet, per Regex in PERSONS/DATES/PREFERENCES/TECHNICAL/NOTES klassifiziert
