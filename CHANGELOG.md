@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.3](https://github.com/Labushuya/so-mi/compare/v0.29.2...v0.29.3) (2026-06-12)
+
+
+### Bug Fixes
+
+* App-Crash — ViewCompat-Listener entfernt, Viewport-Änderung steuert Scroll ([#107](https://github.com/Labushuya/so-mi/issues/107)) ([d2d7515](https://github.com/Labushuya/so-mi/commit/d2d75155cd38a41f3b2c06dba84f0399a18928d2))
+
 ## [0.29.2](https://github.com/Labushuya/so-mi/compare/v0.29.1...v0.29.2) (2026-06-12)
 
 
