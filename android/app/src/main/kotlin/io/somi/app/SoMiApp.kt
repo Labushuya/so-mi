@@ -76,6 +76,10 @@ class SoMiApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
+        // v0.38.0: check for LLM crash flag written by LlamaSessionService
+        // when the process was killed during model loading (OOM/freeze).
+        checkAndClearCrashFlag()
+
         // v0.15.0: storage migration to SoMi/-Wurzel. Runs BEFORE the
         // first Hilt-injected repository read so the new paths are in
         // place before ModelStorage etc. consult them. StorageMigrator
@@ -130,7 +134,22 @@ class SoMiApp : Application(), Configuration.Provider {
         }
     }
 
+    private fun checkAndClearCrashFlag() {
+        val flag = java.io.File(io.somi.data.StorageRoots.settings(this), CRASH_FLAG_FILE)
+        if (flag.exists()) {
+            val modelId = runCatching { flag.readText().trim() }.getOrDefault("unbekannt")
+            flag.delete()
+            // Store crash info for ChatViewModel to surface as a banner on next launch
+            getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                .edit().putString(PREF_LAST_CRASH_MODEL, modelId).apply()
+            Log.w(TAG, "crash flag found for model: $modelId — cleared")
+        }
+    }
+
     private companion object {
         const val TAG = "SoMiApp"
+        const val CRASH_FLAG_FILE = "llm_crash.flag"
+        const val PREFS_NAME = "somi_crash"
+        const val PREF_LAST_CRASH_MODEL = "last_crash_model"
     }
 }
