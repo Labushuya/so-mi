@@ -68,4 +68,10 @@ class ChatRepository @Inject constructor(
     suspend fun clearAll() {
         dao.deleteAll()
     }
+
+    /** Returns the [limit] most-recent messages for the current conversation, oldest first. */
+    suspend fun getRecentMessages(limit: Int): List<Message> =
+        dao.getRecentForConversation(_currentConversationId, limit)
+            .reversed()
+            .map(MessageEntity::toDomain)
 }
