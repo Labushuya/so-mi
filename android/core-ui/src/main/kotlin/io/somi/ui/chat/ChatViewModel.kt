@@ -423,6 +423,22 @@ class ChatViewModel @Inject constructor(
         val text = userText.trim()
         if (text.isEmpty()) return
 
+        // v0.31.2 — test commands for band UI testing
+        val testBanners = mapOf(
+            "/trigger_error" to "Fehler: Dies ist ein Test-Fehlermeldungs-Band.",
+            "/trigger_warning" to "⚠️ Warnung: Dies ist ein Test-Warnungs-Band.",
+            "/trigger_success" to "✅ Erfolgreich: Dies ist ein Test-Erfolgs-Band.",
+            "/trigger_info" to "ℹ️ Hinweis: Dies ist ein Test-Informations-Band.",
+            "/trigger_chatband" to "System: Dies ist ein Test-Systemband.",
+        )
+        testBanners[text.lowercase()]?.let { msg ->
+            viewModelScope.launch {
+                chatRepository.appendUser(text)
+                surfaceError(msg, retryable = false)
+            }
+            return
+        }
+
         // Tapping send dismisses any leftover banner.
         _errorBanner.value = null
 
