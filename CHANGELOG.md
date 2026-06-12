@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.2](https://github.com/Labushuya/so-mi/compare/v0.36.1...v0.36.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* Pausieren-Button-Layout, Embedder löschen ohne Re-Download, klarere Button-Labels ([#133](https://github.com/Labushuya/so-mi/issues/133)) ([6f07320](https://github.com/Labushuya/so-mi/commit/6f0732072856200e9a45e9cd52886e7fa6559930))
+
 ## [0.36.1](https://github.com/Labushuya/so-mi/compare/v0.36.0...v0.36.1) (2026-06-12)
 
 
