@@ -582,13 +582,6 @@ class ChatViewModel @Inject constructor(
             return
         }
 
-
-                chatRepository.appendUser(text)
-                surfaceError(msg, retryable = false)
-            }
-            return
-        }
-
         // Tapping send dismisses any leftover banner.
         _errorBanner.value = null
 
