@@ -3,14 +3,13 @@ package io.somi.data
 /**
  * Model size tier per SPEC §7.
  *
- * Ordered ascending: TINY < SMALL < MEDIUM < LARGE < XLARGE. The picker
- * auto-selects the LARGEST tier whose ramp-light is GREEN — that ordering
- * is load-bearing for [recommendModelTier].
+ * Ordered ascending: TINY < SMALL < MEDIUM < LARGE < LARGE_PLUS < XLARGE.
+ * The picker auto-selects the LARGEST tier whose ramp-light is GREEN.
  *
- * XLARGE = 14B+ models. Separate tier so 14B gets YELLOW on Magic V2 (16 GB)
- * while 7B stays GREEN. Both map to Tier.LARGE previously — this splits them.
+ * LARGE_PLUS = 10-13B models (Mistral-Nemo 12B etc.) — GREEN on 16 GB.
+ * XLARGE = 14B+ models — YELLOW on 16 GB (Magic V2).
  */
-enum class Tier { TINY, SMALL, MEDIUM, LARGE, XLARGE }
+enum class Tier { TINY, SMALL, MEDIUM, LARGE, LARGE_PLUS, XLARGE }
 
 /**
  * Hardware-Ampel verdict for a given tier on a given device.
@@ -71,6 +70,15 @@ val TIER_SPECS: List<TierSpec> = listOf(
         storageMinGB = 7.0,
         exampleModel = "Qwen2.5 7B Q4_K_M",
         expectedTokPerSec = "4–6",
+    ),
+    TierSpec(
+        // 12B models (Mistral-Nemo 12B Q3_K_M ~6.1 GB, Q4_K_M ~7.5 GB).
+        // On Magic V2 (budget 7.2 GB): ramOk = 6.8 <= 7.2 → GREEN for Q3.
+        tier = Tier.LARGE_PLUS,
+        ramMinGB = 6.8,
+        storageMinGB = 8.0,
+        exampleModel = "Mistral-Nemo 12B Q3_K_M",
+        expectedTokPerSec = "3–5",
     ),
     TierSpec(
         tier = Tier.XLARGE,

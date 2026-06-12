@@ -167,16 +167,58 @@ object ModelCatalog {
         QWEN25_15B,
         QWEN25_3B,
         QWEN25_7B,
+        MISTRAL_NEMO_12B_Q3,
+        MISTRAL_NEMO_12B_Q4,
         QWEN25_14B_Q3,
         QWEN25_14B_Q4,
     )
 
     /**
-     * v0.32.0 — Qwen2.5-12B-Instruct as middle tier between 7B and 14B.
-     * SHAs PENDING VERIFICATION — HF API auth required.
-     * Expected: Q3_K_M ~5.8GB (GREEN on Magic V2), Q4_K_M ~7.8GB (YELLOW).
-     * Move to ALL after SHA verification.
+     * v0.36.0 — Mistral-Nemo 12B as LARGE_PLUS tier between 7B and 14B.
+     *
+     * Qwen2.5-12B is HF-gated (401 without auth token) — not suitable for
+     * offline-first distribution. Mistral-Nemo-Instruct-2407 is ungated,
+     * Apache 2.0, ~6-7.5 GB, GREEN on Magic V2 (16 GB).
+     *
+     * SHA-256 values verified via curl X-Linked-ETag on 2026-06-12.
+     * bartowski/Mistral-Nemo-Instruct-2407-GGUF is a well-maintained
+     * community conversion repo.
      */
+    val MISTRAL_NEMO_12B_Q3 = ModelManifest(
+        id = "mistral-nemo-instruct-2407-q3_k_m",
+        tier = Tier.LARGE_PLUS,
+        displayName = "Mistral Nemo 12B · Q3_K_M",
+        license = "apache-2.0",
+        parts = listOf(
+            ModelPart(
+                filename = "Mistral-Nemo-Instruct-2407-Q3_K_M.gguf",
+                url = "https://huggingface.co/bartowski/Mistral-Nemo-Instruct-2407-GGUF/resolve/main/Mistral-Nemo-Instruct-2407-Q3_K_M.gguf",
+                sizeBytes = 6_083_093_632L,
+                sha256 = "42a78c7db9dc76c049c985eca8b3a0a7c218607e226e132168728a53f5104cc9",
+            ),
+        ),
+    )
+
+    val MISTRAL_NEMO_12B_Q4 = ModelManifest(
+        id = "mistral-nemo-instruct-2407-q4_k_m",
+        tier = Tier.LARGE_PLUS,
+        displayName = "Mistral Nemo 12B · Q4_K_M",
+        license = "apache-2.0",
+        parts = listOf(
+            ModelPart(
+                filename = "Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
+                url = "https://huggingface.co/bartowski/Mistral-Nemo-Instruct-2407-GGUF/resolve/main/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
+                sizeBytes = 7_477_208_192L,
+                sha256 = "7c1a10d202d8788dbe5628dc962254d10654c853cae6aaeca0618f05490d4a46",
+            ),
+        ),
+    )
+
+    /**
+     * Staging area for models whose download URLs are pending verification.
+     * Qwen2.5-12B is HF-gated — cannot be downloaded without auth token.
+     */
+    val PENDING_VERIFICATION: List<ModelManifest> = listOf()
     val QWEN25_12B_Q3 = ModelManifest(
         id = "qwen2.5-12b-instruct-q3_k_m",
         tier = Tier.LARGE,
@@ -197,9 +239,6 @@ object ModelCatalog {
             ),
         ),
     )
-
-    /** Staging area for models whose SHAs have not yet been verified. */
-    val PENDING_VERIFICATION: List<ModelManifest> = listOf(QWEN25_12B_Q3)
 
     /** Lookup by id; null if unknown. */
     fun byId(id: String): ModelManifest? = ALL.firstOrNull { it.id == id }

@@ -389,14 +389,28 @@ private fun ChatShellScreen(
                 kind = kind,
             )
         }
-        // Setup-Guard: inform user when embedder is missing (non-blocking)
-        if (embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.NotPresent ||
-            embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.Failed) {
-            ErrorBanner(
-                message = "⚠️ Gedächtnis-Modell fehlt — So-Mi kann sich noch nichts merken. Einstellungen → Modelle & Abhängigkeiten zum Download.",
-                onRetry = null,
-                kind = BannerKind.Warning,
-            )
+        // Setup-Guard: inform user about embedder status (non-blocking)
+        when (embedderStatus) {
+            io.somi.ui.chat.ChatViewModel.EmbedderStatus.NotPresent,
+            io.somi.ui.chat.ChatViewModel.EmbedderStatus.Failed ->
+                ErrorBanner(
+                    message = "⚠️ Gedächtnis-Modell fehlt — So-Mi kann sich nichts merken. Einstellungen → Modelle & Abhängigkeiten → Erneut laden.",
+                    onRetry = null,
+                    kind = BannerKind.Warning,
+                )
+            io.somi.ui.chat.ChatViewModel.EmbedderStatus.Enqueued ->
+                ErrorBanner(
+                    message = "ℹ️ Gedächtnis-Modell wartet auf WLAN-Verbindung.",
+                    onRetry = null,
+                    kind = BannerKind.Info,
+                )
+            io.somi.ui.chat.ChatViewModel.EmbedderStatus.Running ->
+                ErrorBanner(
+                    message = "ℹ️ Gedächtnis-Modell wird heruntergeladen…",
+                    onRetry = null,
+                    kind = BannerKind.Info,
+                )
+            io.somi.ui.chat.ChatViewModel.EmbedderStatus.Installed -> Unit // no banner needed
         }
 
         // Message history + live-typing bubble for in-flight generation.
