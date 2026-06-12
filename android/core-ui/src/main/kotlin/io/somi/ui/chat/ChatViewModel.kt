@@ -446,11 +446,11 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
                 else -> {
-                    val llmInput = when (ragOutcome) {
-                        is io.somi.rag.SaveOutcome.Saved -> ragOutcome.factText
-                        else -> text
-                    }
-                    runGeneration(promptId, llmInput)
+                    // After a trigger-save, pass the original text to the LLM
+                    // (not just the stripped fact). So-Mi can then respond
+                    // naturally to the full message instead of parroting the fact back.
+                    // The trigger prefix ("Merke dir, ") is harmless context for the LLM.
+                    runGeneration(promptId, text)
                 }
             }
         }
