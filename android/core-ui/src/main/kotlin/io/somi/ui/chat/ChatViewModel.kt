@@ -21,6 +21,7 @@ import io.somi.data.Recommendation
 import io.somi.data.recommendModelTier
 import io.somi.llm.LlamaContext
 import io.somi.llm.SoulPromptLoader
+import io.somi.data.db.SoMiDatabase
 import io.somi.rag.RagBootstrap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -93,9 +94,12 @@ class ChatViewModel @Inject constructor(
     private val ragOrchestrator: io.somi.rag.RagOrchestrator,
     val uiSettings: io.somi.data.settings.UiSettingsRepository,
     private val ragBootstrap: RagBootstrap,
+    private val soMiDatabase: SoMiDatabase,
     @ApplicationContext private val appContext: Context,
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
+
+    val databaseOpenHelper get() = soMiDatabase.openHelper
 
     // --- Orthogonal state axes (private) --------------------------------
 
