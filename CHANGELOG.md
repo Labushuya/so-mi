@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.2](https://github.com/Labushuya/so-mi/compare/v0.39.1...v0.39.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* Backup enthält somi.db — WAL-Checkpoint vor Kopieren, SoMiDatabase injiziert ([#150](https://github.com/Labushuya/so-mi/issues/150)) ([95fdcd2](https://github.com/Labushuya/so-mi/commit/95fdcd2a1682276b188559ad94cd2497d58a2916))
+
 ## [0.39.1](https://github.com/Labushuya/so-mi/compare/v0.39.0...v0.39.1) (2026-06-12)
 
 
