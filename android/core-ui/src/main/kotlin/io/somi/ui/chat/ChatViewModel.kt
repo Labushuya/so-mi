@@ -679,19 +679,18 @@ class ChatViewModel @Inject constructor(
                 wm.getWorkInfosForUniqueWorkFlow(
                     ragBootstrap.embedderWorkName,
                 ).collectLatest { infos ->
+                    // Always check disk truth — never trust WorkManager SUCCEEDED
+                    // if the file was deleted (reinstallEmbedder clears the disk).
                     val installed = ragBootstrap.isEmbedderInstalled()
-                    if (installed) {
-                        _embedderStatus.value = EmbedderStatus.Installed
-                        return@collectLatest
-                    }
                     val info = infos.firstOrNull()
-                    _embedderStatus.value = when (info?.state) {
-                        androidx.work.WorkInfo.State.RUNNING -> EmbedderStatus.Running
-                        androidx.work.WorkInfo.State.ENQUEUED,
-                        androidx.work.WorkInfo.State.BLOCKED -> EmbedderStatus.Enqueued
-                        androidx.work.WorkInfo.State.FAILED,
-                        androidx.work.WorkInfo.State.CANCELLED -> EmbedderStatus.Failed
-                        androidx.work.WorkInfo.State.SUCCEEDED -> EmbedderStatus.Installed
+                    _embedderStatus.value = when {
+                        installed && info?.state != androidx.work.WorkInfo.State.RUNNING -> EmbedderStatus.Installed
+                        info?.state == androidx.work.WorkInfo.State.RUNNING -> EmbedderStatus.Running
+                        info?.state == androidx.work.WorkInfo.State.ENQUEUED ||
+                        info?.state == androidx.work.WorkInfo.State.BLOCKED -> EmbedderStatus.Enqueued
+                        info?.state == androidx.work.WorkInfo.State.FAILED ||
+                        info?.state == androidx.work.WorkInfo.State.CANCELLED -> EmbedderStatus.Failed
+                        installed -> EmbedderStatus.Installed
                         else -> EmbedderStatus.NotPresent
                     }
                 }
@@ -720,17 +719,20 @@ class ChatViewModel @Inject constructor(
      */
     fun reinstallEmbedder() {
         viewModelScope.launch {
-            // Cancel any RUNNING/ENQUEUED worker first; await the
-            // operation so we don't race the file delete.
             try {
                 val wm = androidx.work.WorkManager.getInstance(appContext)
-                wm.cancelUniqueWork(ragBootstrap.embedderWorkName)
-                    .result.get()
+                wm.cancelUniqueWork(ragBootstrap.embedderWorkName).result.get()
             } catch (t: Throwable) {
-                Log.w(TAG, "cancelUniqueWork before reinstall failed (continuing anyway)", t)
+                Log.w(TAG, "cancelUniqueWork before reinstall failed", t)
             }
             ragBootstrap.deleteEmbedder()
+            // Set NotPresent immediately and hold it — the WorkManager observer
+            // may fire a stale SUCCEEDED emission before the new worker starts.
+            // We force NotPresent here; the observer will correct to Running/Enqueued
+            // once the new worker actually starts and emits a fresh state.
             _embedderStatus.value = EmbedderStatus.NotPresent
+            kotlinx.coroutines.delay(300L) // let disk delete complete before observer re-fires
+            _embedderStatus.value = EmbedderStatus.NotPresent // re-assert in case observer fired
             ragBootstrap.forceEnqueueEmbedderDownload(appContext)
         }
     }

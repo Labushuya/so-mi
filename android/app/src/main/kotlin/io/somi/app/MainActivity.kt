@@ -251,6 +251,7 @@ private fun SoMiAppRoot() {
                 onOpenMemoryBrowser = { settingsRoute = SettingsRoute.MemoryBrowser },
                 onOpenModelCatalog = { settingsRoute = SettingsRoute.ModelCatalog },
                 onOpenDataBrowser = { settingsRoute = SettingsRoute.DataBrowser },
+                onOpenFaq = { settingsRoute = SettingsRoute.Faq },
             )
             return
         }
@@ -278,6 +279,12 @@ private fun SoMiAppRoot() {
         }
         SettingsRoute.DataBrowser -> {
             io.somi.app.settings.DataBrowserScreen(
+                onBack = { settingsRoute = SettingsRoute.Root },
+            )
+            return
+        }
+        SettingsRoute.Faq -> {
+            io.somi.app.settings.FaqScreen(
                 onBack = { settingsRoute = SettingsRoute.Root },
             )
             return
@@ -927,4 +934,4 @@ private fun chatStateLabel(state: ChatState): String {
  * v0.11.4 — Settings sub-routes. We don't pull in nav-compose for
  * three destinations; an enum + LaunchedEffect-aware boolean is enough.
  */
-internal enum class SettingsRoute { Hidden, Root, SoulEditor, MemoryBrowser, ModelCatalog, DataBrowser }
+internal enum class SettingsRoute { Hidden, Root, SoulEditor, MemoryBrowser, ModelCatalog, DataBrowser, Faq }
