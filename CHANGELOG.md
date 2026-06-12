@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.1](https://github.com/Labushuya/so-mi/compare/v0.32.0...v0.32.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — @Composable auf enum class entfernt ([#121](https://github.com/Labushuya/so-mi/issues/121)) ([cdf248a](https://github.com/Labushuya/so-mi/commit/cdf248a464b2cad7394e078f050d310512e2dde0))
+
 ## [0.32.0](https://github.com/Labushuya/so-mi/compare/v0.31.2...v0.32.0) (2026-06-12)
 
 
