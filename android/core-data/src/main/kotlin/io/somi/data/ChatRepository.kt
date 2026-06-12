@@ -64,6 +64,8 @@ class ChatRepository @Inject constructor(
 
     suspend fun searchInConversation(id: Long, query: String): List<Message> =
         dao.searchInConversation(id, query).map(MessageEntity::toDomain)
+
+    suspend fun clearAll() {
         dao.deleteAll()
     }
 }
