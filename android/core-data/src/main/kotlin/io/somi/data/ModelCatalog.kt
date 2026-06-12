@@ -161,12 +161,7 @@ object ModelCatalog {
         ),
     )
 
-    /** Catalog ordered ascending by size, matching the picker layout.
-     *
-     *  v0.15.1: 14B Q3 + Q4 moved from PENDING_VERIFICATION into ALL.
-     *  SHAs and sizeBytes verified against HF API 2026-06-09 (lfs.oid /
-     *  lfs.size from blobs=true). The Q4 split is confirmed 3-shard.
-     */
+    /** Catalog ordered ascending by size, matching the picker layout. */
     val ALL: List<ModelManifest> = listOf(
         QWEN25_05B,
         QWEN25_15B,
@@ -176,9 +171,35 @@ object ModelCatalog {
         QWEN25_14B_Q4,
     )
 
-    /** Staging area for models whose SHAs have not yet been verified
-     *  against the live HF API. Empty as of v0.15.1. */
-    val PENDING_VERIFICATION: List<ModelManifest> = emptyList()
+    /**
+     * v0.32.0 — Qwen2.5-12B-Instruct as middle tier between 7B and 14B.
+     * SHAs PENDING VERIFICATION — HF API auth required.
+     * Expected: Q3_K_M ~5.8GB (GREEN on Magic V2), Q4_K_M ~7.8GB (YELLOW).
+     * Move to ALL after SHA verification.
+     */
+    val QWEN25_12B_Q3 = ModelManifest(
+        id = "qwen2.5-12b-instruct-q3_k_m",
+        tier = Tier.LARGE,
+        displayName = "Qwen2.5 12B · Q3_K_M",
+        license = "apache-2.0",
+        parts = listOf(
+            ModelPart(
+                filename = "qwen2.5-12b-instruct-q3_k_m-00001-of-00002.gguf",
+                url = "https://huggingface.co/Qwen/Qwen2.5-12B-Instruct-GGUF/resolve/main/qwen2.5-12b-instruct-q3_k_m-00001-of-00002.gguf",
+                sizeBytes = 0L, // PENDING VERIFICATION
+                sha256 = "PENDING",
+            ),
+            ModelPart(
+                filename = "qwen2.5-12b-instruct-q3_k_m-00002-of-00002.gguf",
+                url = "https://huggingface.co/Qwen/Qwen2.5-12B-Instruct-GGUF/resolve/main/qwen2.5-12b-instruct-q3_k_m-00002-of-00002.gguf",
+                sizeBytes = 0L, // PENDING VERIFICATION
+                sha256 = "PENDING",
+            ),
+        ),
+    )
+
+    /** Staging area for models whose SHAs have not yet been verified. */
+    val PENDING_VERIFICATION: List<ModelManifest> = listOf(QWEN25_12B_Q3)
 
     /** Lookup by id; null if unknown. */
     fun byId(id: String): ModelManifest? = ALL.firstOrNull { it.id == id }
