@@ -15,6 +15,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.debounce
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -387,10 +388,10 @@ private fun ChatShellScreen(
         // snapshotFlow on viewportEndOffset fires whenever the viewport size changes
         // (keyboard open/close). We debounce by 150ms to avoid racing with layout.
         LaunchedEffect(listState) {
-            kotlinx.coroutines.flow.snapshotFlow { listState.layoutInfo.viewportEndOffset }
+            snapshotFlow { listState.layoutInfo.viewportEndOffset }
                 .distinctUntilChanged()
                 .debounce(150L)
-                .collect { _ ->
+                .collect {
                     val info = listState.layoutInfo
                     val total = info.totalItemsCount
                     if (total <= 0) return@collect
