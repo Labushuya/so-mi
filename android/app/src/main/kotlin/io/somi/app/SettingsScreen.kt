@@ -154,6 +154,7 @@ internal fun SettingsScreen(
                         onOpenModelCatalog = onOpenModelCatalog,
                         onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
                         onReinstallEmbedder = { viewModel.reinstallEmbedder() },
+                        onDeleteEmbedder = { viewModel.deleteEmbedderOnly() },
                         onDeleteInstance = { viewModel.deleteModelInstance(it) },
                     )
                 }
@@ -262,6 +263,7 @@ private fun ModelStorageSection(
     onOpenModelCatalog: () -> Unit,
     onRetryEmbedder: () -> Unit,
     onReinstallEmbedder: () -> Unit,
+    onDeleteEmbedder: () -> Unit,
     onDeleteInstance: (io.somi.data.ModelStorage.ModelInstance) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
@@ -298,9 +300,14 @@ private fun ModelStorageSection(
     EmbedderStatusBadge(status = embedderStatus)
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SongbirdButton(label = "Erneut laden", kind = SongbirdButtonKind.Secondary, onClick = onRetryEmbedder)
+        // "Download starten" wenn nicht installiert/fehlgeschlagen, sonst "Erneut versuchen"
+        SongbirdButton(
+            label = if (embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.Installed) "Erneut herunterladen" else "Herunterladen",
+            kind = SongbirdButtonKind.Secondary,
+            onClick = onRetryEmbedder,
+        )
         if (embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.Installed) {
-            SongbirdButton(label = "Neu installieren", kind = SongbirdButtonKind.Ghost, onClick = onReinstallEmbedder)
+            SongbirdButton(label = "Löschen", kind = SongbirdButtonKind.Destructive, onClick = onDeleteEmbedder)
         }
     }
 

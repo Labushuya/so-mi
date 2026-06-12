@@ -717,6 +717,22 @@ class ChatViewModel @Inject constructor(
      * crash with ENOENT or leave a half-written file that survives
      * the delete and the next run would SHA-fail on).
      */
+    /** Delete embedder files without re-downloading. */
+    fun deleteEmbedderOnly() {
+        viewModelScope.launch {
+            try {
+                val wm = androidx.work.WorkManager.getInstance(appContext)
+                wm.cancelUniqueWork(ragBootstrap.embedderWorkName).result.get()
+            } catch (t: Throwable) {
+                Log.w(TAG, "cancelUniqueWork before delete failed", t)
+            }
+            ragBootstrap.deleteEmbedder()
+            _embedderStatus.value = EmbedderStatus.NotPresent
+            kotlinx.coroutines.delay(300L)
+            _embedderStatus.value = EmbedderStatus.NotPresent
+        }
+    }
+
     fun reinstallEmbedder() {
         viewModelScope.launch {
             try {
