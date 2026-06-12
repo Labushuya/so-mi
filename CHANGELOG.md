@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/Labushuya/so-mi/compare/v0.39.2...v0.40.0) (2026-06-12)
+
+
+### Features
+
+* LLM-Klassifizierer für Erinnerungen + Gesprächskontext als Sliding-Window ([#152](https://github.com/Labushuya/so-mi/issues/152)) ([d5a643b](https://github.com/Labushuya/so-mi/commit/d5a643b681b3d4f0330bb312c2f5a388c41d7cb3))
+
 ## [0.39.2](https://github.com/Labushuya/so-mi/compare/v0.39.1...v0.39.2) (2026-06-12)
 
 
