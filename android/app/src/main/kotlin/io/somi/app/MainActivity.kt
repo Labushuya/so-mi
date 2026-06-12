@@ -397,7 +397,6 @@ private fun ChatShellScreen(
                 listState.animateScrollToItem(total - 1)
             }
         }
-        }
 
         LazyColumn(
             state = listState,
