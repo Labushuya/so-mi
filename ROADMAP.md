@@ -8,16 +8,19 @@
 
 ---
 
-## Aktueller Stand (2026-06-12)
+## Aktueller Stand (2026-06-13)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.38.1 | ✅ stable | Chat-Suche, OOM-Crash-Banner, Empty-State-Fix |
+| v0.37.2 | ✅ stable | Multi-Chat Nachrichten-Isolation, letzter Chat löschbar |
+| v0.37.1 | ✅ live | Multi-Chat Bug-Fix Room.databaseBuilder |
+| v0.37.0 | ✅ live | Multi-Chat v1: Chat-Liste, Gespräche anlegen/löschen/umbenennen |
 | v0.36.2 | ✅ stable | Pausieren-Button-Fix, Embedder löschen, klarere Labels |
 | v0.36.1 | ✅ live | Mistral-Nemo 12B Q3+Q4 im Katalog (Apache 2.0, ungated) |
-| v0.36.0 | ✅ live | Embedder-Band alle Status-Typen, LARGE_PLUS-Tier |
-| v0.35.0 | ✅ live | FAQ mit Suche (15 Einträge, 5 Kategorien), Embedder-Status-Observer-Fix |
-| v0.34.0 | ✅ live | Backup-Import, Setup-Guard-Banner, ROADMAP-Bereinigung |
-| v0.33.0 | ✅ stable | Slash-Command-Popup + Autocomplete + /-Button, Band auto-dismiss 5s |
+| v0.35.0 | ✅ live | FAQ mit Suche, Embedder-Status-Observer-Fix |
+| v0.34.0 | ✅ live | Backup-Import, Setup-Guard-Banner |
+| v0.33.0 | ✅ stable | Slash-Command-Popup, Band auto-dismiss |
 | v0.32.1 | ✅ live | Test-Commands für Chat-Band (/trigger_error etc.), 4 Band-Typen |
 | v0.31.2 | ✅ live | Keyword-Suche UI, Band-Style WhatsApp |
 | v0.30.1 | ✅ live | Einfache Antwort nach Trigger (kein doppelter LLM-Call) |
@@ -94,34 +97,38 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.37.0 — Multi-Chat
-1. `conversationId`-Spalte in Room + Migration (bestehende Nachrichten bekommen eine Default-ID)
-2. Chat-Liste als App-Einstieg (FAB "Neues Gespräch")
-3. Swipe-to-delete auf Chat-Einträgen
-4. Gespräch umbenennen (Long-Press)
-
-### v0.38.0 — OOM-Fallback + Crash-Transparenz
-1. Crash-Flag-Datei: wenn LLM-Loading den Prozess killt, schreibt `SoMiApp.onCreate` ein `.crash_flag` in `SoMi/settings/`
-2. Beim nächsten Start: Banner "Letztes Modell ist abgestürzt — auf 7B zurückgegangen"
-3. Persistente Modellauswahl in `ui.json`; wird bei Crash-Flag auf empfohlenes Modell zurückgesetzt
-
-### v0.39.0 — Backup vollständig + Chat-Verlauf-Backup
-1. Room-DB (Chat-Verlauf, `somi.db`) in Backup aufnehmen
+### v0.39.0 — Backup vollständig + Chat Phase 2 (unmittelbar)
+1. Room-DB (`somi.db`) ins Backup aufnehmen — Chat-Verlauf exportierbar
 2. Import-Bestätigung wenn vorhandene Daten überschrieben werden
+3. Nachrichten-Suche innerhalb eines Gesprächs (Suchfeld im Chat)
+4. Chat umbenennen direkt aus dem Chat heraus
+5. Chat-Archivierung (ausblenden ohne löschen)
 
 ### v0.40.0 — M9 LLM-Klassifizierer
-1. Nach Trigger-Save: kurzer LLM-Pass (kein neues Modell, das geladene) extrahiert strukturierte Fakten
-2. Erkennt Name, Datum, Präferenz, Beruf aus komplexem Satz
-3. Routing in korrekte Kategorie ohne Regex-Fehler
+1. Kurzer LLM-Pass nach Trigger-Save: strukturierte Fakten-Extraktion
+2. Bessere Kategorisierung ohne Regex-Grenzen
 
-### v0.41.0 — Multi-Chat Phase 2
-1. Chat-Suche
-2. Chat-Archivierung
-3. Kontext-Zusammenfassung bei langen Gesprächen (Sliding-Window)
+### v0.41.0 — Kontext-Qualität
+1. Sliding-Window bei langen Gesprächen (KV-Cache-Schutz)
+2. Besseres Recall-Ranking wenn Embedder aktiv (HNSW)
 
-### v1.0 — Phase-3-Abschluss
-1. KIWIX-AAR + libkiwix (Offline-Lexikon)
-2. Phase-3-Akzeptanztest erfüllt
+### v0.42.0 — Phase 4: Tool-System (Grundlage für Internet + Plugins)
+**Internet-Zugang** *(User-Vereinbarung 2026-06-13)*:
+- `search_web`-Tool: Suchanfragen an ungated API (Brave Search / SearXNG)
+- Ergebnisse als Kontext injiziert; Verarbeitung bleibt lokal
+- Nur bei Bedarf: So-Mi entscheidet ob sie sucht, User kann Tool deaktivieren
+- Datenschutz-Hinweis: Suchanfragen verlassen das Gerät
+
+**Modul/Plugin-System** *(User-Vereinbarung 2026-06-13)*:
+- 12 Tools aus SPEC §9: search_web, search_kiwix, get_weather, read_calendar, write_calendar, send_message, run_shell, + weitere
+- Jedes Tool individuell de-/aktivierbar in Settings → So-Mi → Tools
+- JSON-Schema → GBNF für constrained decoding
+- Erweiterbar durch eigene Tool-Definitionen
+
+### v1.0 — Phase-3/4-Abschluss
+1. KIWIX-Offline-Lexikon
+2. Tool-System vollständig
+3. Phase-3-Akzeptanztest erfüllt
 
 ---
 

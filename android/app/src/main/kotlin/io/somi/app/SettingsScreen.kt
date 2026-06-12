@@ -904,29 +904,45 @@ private fun DataSection(onOpenDataBrowser: () -> Unit, onOpenFaq: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var backupStatus by remember { mutableStateOf("") }
+    var pendingImportUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     // Import launcher — opens file picker for ZIP files
     val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            backupStatus = "Importiere…"
-            try {
-                val count = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val tmpFile = java.io.File(context.cacheDir, "import_backup.zip")
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        tmpFile.outputStream().use { output -> input.copyTo(output) }
-                    }
-                    io.somi.data.BackupManager(context).importBackup(tmpFile)
-                }
-                backupStatus = "Import abgeschlossen: $count Dateien wiederhergestellt."
-            } catch (t: Throwable) {
-                backupStatus = "Import fehlgeschlagen: ${t.message}"
-            }
-        }
+        // Show confirmation before overwriting
+        pendingImportUri = uri
     }
 
+    // Import confirmation dialog
+    pendingImportUri?.let { uri ->
+        SongbirdDialog(
+            onDismissRequest = { pendingImportUri = null },
+            title = "Backup importieren?",
+            message = "Bestehende Daten (Erinnerungen, Persönlichkeit, Chat-Verlauf, Einstellungen) werden überschrieben. Fortfahren?",
+            tone = SongbirdDialogTone.Warning,
+            confirm = SongbirdDialogAction("Importieren", {
+                pendingImportUri = null
+                scope.launch {
+                    backupStatus = "Importiere…"
+                    try {
+                        val count = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            val tmpFile = java.io.File(context.cacheDir, "import_backup.zip")
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                tmpFile.outputStream().use { output -> input.copyTo(output) }
+                            }
+                            io.somi.data.BackupManager(context).importBackup(tmpFile)
+                        }
+                        backupStatus = "Import abgeschlossen: $count Dateien wiederhergestellt."
+                    } catch (t: Throwable) {
+                        backupStatus = "Import fehlgeschlagen: ${t.message}"
+                    }
+                }
+            }),
+            dismiss = SongbirdDialogAction("Abbrechen", { pendingImportUri = null }),
+        )
+    }
     SectionCard(title = "Daten") {
         Text(
             text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter \"SoMi/\".",
