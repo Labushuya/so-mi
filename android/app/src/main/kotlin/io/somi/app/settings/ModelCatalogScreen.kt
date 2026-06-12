@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -200,17 +201,19 @@ private fun ModelActionRow(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Lädt … $pct % (SHA-256 wird nach Download geprüft)",
+                        text = "Lädt … $pct %",
                         color = songbirdColors.glass,
                         style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
                     )
                     OutlinedButton(
                         onClick = onCancel,
+                        modifier = Modifier.widthIn(min = 96.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = songbirdColors.roseDust,
                         ),
                     ) {
-                        Text("Pausieren")  // Cancel = .part bleibt → Resume beim nächsten Download
+                        Text("Pausieren", maxLines = 1)
                     }
                 }
                 Spacer(Modifier.height(4.dp))
