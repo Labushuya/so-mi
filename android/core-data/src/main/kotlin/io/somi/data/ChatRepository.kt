@@ -29,6 +29,10 @@ class ChatRepository @Inject constructor(
         dao.observeByConversation(_currentConversationId)
             .map { rows -> rows.map(MessageEntity::toDomain) }
 
+    /** For flatMapLatest in ChatViewModel — observes a specific conversation. */
+    fun observeMessagesForConversation(id: Long): Flow<List<Message>> =
+        dao.observeByConversation(id).map { rows -> rows.map(MessageEntity::toDomain) }
+
     suspend fun appendUser(text: String): Long {
         val entity = MessageEntity(
             conversationId = _currentConversationId,
