@@ -13,9 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.debounce
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -384,22 +381,22 @@ private fun ChatShellScreen(
             val target = messages.size + if (isGenerating) 1 else 0
             if (target > 0) listState.animateScrollToItem(target - 1)
         }
-        // Scroll to bottom when keyboard shrinks the viewport — only if near bottom.
-        // snapshotFlow on viewportEndOffset fires whenever the viewport size changes
-        // (keyboard open/close). We debounce by 150ms to avoid racing with layout.
-        LaunchedEffect(listState) {
-            snapshotFlow { listState.layoutInfo.viewportEndOffset }
-                .distinctUntilChanged()
-                .debounce(150L)
-                .collect {
-                    val info = listState.layoutInfo
-                    val total = info.totalItemsCount
-                    if (total <= 0) return@collect
-                    val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                    if (lastVisible >= total - 3) {
-                        listState.animateScrollToItem(total - 1)
-                    }
-                }
+        // Scroll to bottom when keyboard opens — only if already near bottom.
+        // Read IME inset height directly as a Compose state so LaunchedEffect
+        // re-triggers whenever the keyboard appears/disappears.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val imeInsetPx = with(density) {
+            androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density)
+        }
+        LaunchedEffect(imeInsetPx) {
+            if (imeInsetPx <= 0) return@LaunchedEffect // keyboard closed
+            val total = listState.layoutInfo.totalItemsCount
+            if (total <= 0) return@LaunchedEffect
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            if (lastVisible >= total - 3) {
+                listState.animateScrollToItem(total - 1)
+            }
+        }
         }
 
         LazyColumn(
@@ -530,36 +527,46 @@ private fun ChatTopBar(
 }
 
 @Composable
+@Composable
 private fun ErrorBanner(message: String, onRetry: (() -> Unit)?) {
     val songbird = LocalSongbirdColors.current
+    // WhatsApp-style system band: centered, pill-shaped, subtle
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(songbird.signal.copy(alpha = 0.15f))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 24.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = message,
-            color = songbird.bone,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        if (onRetry != null) {
-            Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(songbird.signal)
-                    .clickable { onRetry() }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.action_retry),
-                    color = songbird.bone,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(songbird.signal.copy(alpha = 0.18f))
+                .padding(horizontal = 14.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = message,
+                color = songbird.roseDust,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            if (onRetry != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(songbird.signal.copy(alpha = 0.3f))
+                        .clickable { onRetry() }
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_retry),
+                        color = songbird.bone,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
     }
