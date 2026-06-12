@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/Labushuya/so-mi/compare/v0.38.1...v0.39.0) (2026-06-12)
+
+
+### Features
+
+* Backup mit Chat-Verlauf, Import-Bestätigung, Chat-Commands /search /clear /rename /archive ([#146](https://github.com/Labushuya/so-mi/issues/146)) ([f251edc](https://github.com/Labushuya/so-mi/commit/f251edc324a9224f86de7e9d05d9e3f8c7800666))
+
 ## [0.38.1](https://github.com/Labushuya/so-mi/compare/v0.38.0...v0.38.1) (2026-06-12)
 
 
