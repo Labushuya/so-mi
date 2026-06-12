@@ -24,6 +24,8 @@ import androidx.room.PrimaryKey
 data class MessageEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
+    @ColumnInfo(name = "conversation_id", defaultValue = "1", index = true)
+    val conversationId: Long = 1L,
     @ColumnInfo(name = "author")
     val author: String,
     @ColumnInfo(name = "text")

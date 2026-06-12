@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.somi.data.StorageRoots
+import io.somi.data.db.ConversationDao
 import io.somi.data.db.MessageDao
 import io.somi.data.db.SoMiDatabase
 import java.io.File
@@ -38,10 +39,20 @@ internal object DatabaseModule {
             context.applicationContext,
             SoMiDatabase::class.java,
             dbFile.absolutePath,
-        ).build()
+        return Room.databaseBuilder(
+            context.applicationContext,
+            SoMiDatabase::class.java,
+            dbFile.absolutePath,
+        )
+            .addMigrations(SoMiDatabase.MIGRATION_1_2)
+            .build()
     }
 
     @Provides
     @Singleton
     fun provideMessageDao(db: SoMiDatabase): MessageDao = db.messageDao()
+
+    @Provides
+    @Singleton
+    fun provideConversationDao(db: SoMiDatabase): ConversationDao = db.conversationDao()
 }
