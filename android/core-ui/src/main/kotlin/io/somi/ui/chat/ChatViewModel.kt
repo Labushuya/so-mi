@@ -1062,6 +1062,11 @@ class ChatViewModel @Inject constructor(
 
     private fun surfaceError(message: String, retryable: Boolean = true, cause: Throwable? = null) {
         _errorBanner.value = TransientError(message = message, retryable = retryable, cause = cause)
+        // Auto-dismiss after 5 seconds; cleared earlier if user sends a new message.
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(5_000L)
+            if (_errorBanner.value?.message == message) _errorBanner.value = null
+        }
     }
 
     override fun onCleared() {
