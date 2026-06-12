@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/Labushuya/so-mi/compare/v0.35.0...v0.36.0) (2026-06-12)
+
+
+### Features
+
+* Embedder-Band für alle Status, Mistral-Nemo 12B Q3+Q4 im Katalog ([#129](https://github.com/Labushuya/so-mi/issues/129)) ([4926b00](https://github.com/Labushuya/so-mi/commit/4926b00c6271fcbfcdf65dd48eaa0fd8073bce0a))
+
 ## [0.35.0](https://github.com/Labushuya/so-mi/compare/v0.34.0...v0.35.0) (2026-06-12)
 
 
