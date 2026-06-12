@@ -161,28 +161,9 @@ object ModelCatalog {
         ),
     )
 
-    /** Catalog ordered ascending by size, matching the picker layout. */
-    val ALL: List<ModelManifest> = listOf(
-        QWEN25_05B,
-        QWEN25_15B,
-        QWEN25_3B,
-        QWEN25_7B,
-        MISTRAL_NEMO_12B_Q3,
-        MISTRAL_NEMO_12B_Q4,
-        QWEN25_14B_Q3,
-        QWEN25_14B_Q4,
-    )
-
     /**
      * v0.36.0 — Mistral-Nemo 12B as LARGE_PLUS tier between 7B and 14B.
-     *
-     * Qwen2.5-12B is HF-gated (401 without auth token) — not suitable for
-     * offline-first distribution. Mistral-Nemo-Instruct-2407 is ungated,
-     * Apache 2.0, ~6-7.5 GB, GREEN on Magic V2 (16 GB).
-     *
-     * SHA-256 values verified via curl X-Linked-ETag on 2026-06-12.
-     * bartowski/Mistral-Nemo-Instruct-2407-GGUF is a well-maintained
-     * community conversion repo.
+     * SHA-256 verified via curl X-Linked-ETag 2026-06-12. Ungated, Apache 2.0.
      */
     val MISTRAL_NEMO_12B_Q3 = ModelManifest(
         id = "mistral-nemo-instruct-2407-q3_k_m",
@@ -213,6 +194,30 @@ object ModelCatalog {
             ),
         ),
     )
+
+    /** Catalog ordered ascending by size, matching the picker layout. */
+    val ALL: List<ModelManifest> = listOf(
+        QWEN25_05B,
+        QWEN25_15B,
+        QWEN25_3B,
+        QWEN25_7B,
+        MISTRAL_NEMO_12B_Q3,
+        MISTRAL_NEMO_12B_Q4,
+        QWEN25_14B_Q3,
+        QWEN25_14B_Q4,
+    )
+
+    /**
+     * v0.36.0 — Mistral-Nemo 12B as LARGE_PLUS tier between 7B and 14B.
+     *
+     * Qwen2.5-12B is HF-gated (401 without auth token) — not suitable for
+     * offline-first distribution. Mistral-Nemo-Instruct-2407 is ungated,
+     * Apache 2.0, ~6-7.5 GB, GREEN on Magic V2 (16 GB).
+     *
+     * SHA-256 values verified via curl X-Linked-ETag on 2026-06-12.
+     * bartowski/Mistral-Nemo-Instruct-2407-GGUF is a well-maintained
+     * community conversion repo.
+     */
 
     /**
      * Staging area for models whose download URLs are pending verification.
