@@ -532,7 +532,6 @@ private fun ChatTopBar(
     }
 }
 
-@Composable
 // Band types: visual differentiation for system messages
 enum class BannerKind { Error, Warning, Success, Info }
 
