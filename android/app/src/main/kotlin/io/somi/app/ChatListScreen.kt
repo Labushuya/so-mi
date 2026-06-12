@@ -67,6 +67,12 @@ internal fun ChatListScreen(
     val scope = rememberCoroutineScope()
     var deleteTarget by remember { mutableStateOf<ConversationEntity?>(null) }
     var renameTarget by remember { mutableStateOf<ConversationEntity?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredConversations = remember(conversations, searchQuery) {
+        if (searchQuery.isBlank()) conversations
+        else conversations.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    }
 
     Box(
         modifier = Modifier
@@ -99,10 +105,49 @@ internal fun ChatListScreen(
                 }
             }
 
-            if (conversations.isEmpty()) {
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Noch keine Gespräche.", color = songbird.glass, style = MaterialTheme.typography.bodyMedium)
+            // Search bar — only show when there are conversations
+            if (conversations.isNotEmpty()) {
+                androidx.compose.foundation.text.BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = songbird.bone),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(songbird.crimson),
+                    decorationBox = { inner ->
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .background(songbird.aiBubble, RoundedCornerShape(8.dp))
+                                .border(1.dp, songbird.bubbleBorder, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
+                            if (searchQuery.isEmpty()) Text("Gespräch suchen…", color = songbird.glass, style = MaterialTheme.typography.bodyMedium)
+                            inner()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            if (filteredConversations.isEmpty() && conversations.isNotEmpty()) {
+                Box(modifier = Modifier.weight(1f).padding(horizontal = 32.dp), contentAlignment = Alignment.Center) {
+                    Text("Kein Gespräch gefunden.", color = songbird.glass, style = MaterialTheme.typography.bodyMedium)
+                }
+            } else if (conversations.isEmpty()) {
+                Box(
+                    modifier = Modifier.weight(1f).padding(horizontal = 32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            "Noch keine Gespräche.",
+                            color = songbird.glass,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
                         Spacer(Modifier.height(12.dp))
                         SongbirdButton(
                             label = "+ Neues Gespräch",
@@ -122,7 +167,7 @@ internal fun ChatListScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    items(conversations, key = { it.id }) { conv ->
+                    items(filteredConversations, key = { it.id }) { conv ->
                         ConversationRow(
                             conv = conv,
                             isActive = conv.id == viewModel.currentConversationId,

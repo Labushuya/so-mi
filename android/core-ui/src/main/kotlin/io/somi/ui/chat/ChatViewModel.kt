@@ -307,6 +307,21 @@ class ChatViewModel @Inject constructor(
     private var downloadObserveJob: Job? = null
 
     init {
+        // v0.38.0 — show banner if previous session crashed during model load
+        val prefs = appContext.getSharedPreferences("somi_crash", android.content.Context.MODE_PRIVATE)
+        val crashedModel = prefs.getString("last_crash_model", null)
+        if (crashedModel != null) {
+            prefs.edit().remove("last_crash_model").apply()
+            // Surface after a short delay so the boot screen passes first
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(2_000L)
+                surfaceError(
+                    "⚠️ Letztes Modell ($crashedModel) ist beim Laden abgestürzt. App ist automatisch auf das empfohlene Modell zurückgegangen.",
+                    retryable = false,
+                )
+            }
+        }
+
         // v0.15.0 — observe the embedder download for the Settings UI.
         // Cheap (a single Flow collector, no work until WorkManager has
         // something to report). Started here, not lazily, because the
@@ -970,9 +985,23 @@ class ChatViewModel @Inject constructor(
             return
         }
         loadJob = viewModelScope.launch {
+            // v0.38.0 OOM crash detection: write flag before load, clear after success.
+            // If the process is killed mid-load (OOM), the flag persists for SoMiApp to read.
+            val crashFlag = java.io.File(
+                io.somi.data.StorageRoots.settings(appContext),
+                "llm_crash.flag"
+            )
+            try {
+                crashFlag.parentFile?.mkdirs()
+                crashFlag.writeText(manifest.id)
+            } catch (ignored: Throwable) {}
+
             try {
                 loadModel(manifest)
+                // Load succeeded — clear the flag
+                runCatching { crashFlag.delete() }
             } catch (ce: CancellationException) {
+                runCatching { crashFlag.delete() } // cancelled cleanly, not a crash
                 throw ce
             } catch (t: Throwable) {
                 Log.e(TAG, "load failed", t)
