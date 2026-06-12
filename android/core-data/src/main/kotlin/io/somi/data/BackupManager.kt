@@ -2,6 +2,7 @@ package io.somi.data
 
 import android.content.Context
 import android.util.Log
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -17,13 +18,22 @@ import java.util.zip.ZipOutputStream
  *
  * Exportiert: SoMi/memory/, SoMi/soul/, SoMi/settings/
  * Nicht exportiert: SoMi/llm/ (zu groß), SoMi/db/ (ObjectBox-Format)
+ *
+ * openHelper: wenn gesetzt, wird vor dem DB-Kopieren ein WAL-Checkpoint
+ * ausgeführt, damit alle pending WAL-Daten in somi.db geflusht sind.
  */
-class BackupManager(private val context: Context) {
+class BackupManager(
+    private val context: Context,
+    private val openHelper: SupportSQLiteOpenHelper? = null,
+) {
 
     fun createBackup(): File {
         val ts = SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.GERMAN).format(Date())
         val zipFile = File(StorageRoots.root(context), "so-mi-backup-$ts.zip")
         zipFile.parentFile?.mkdirs()
+
+        // Flush pending WAL data into somi.db before copying.
+        openHelper?.writableDatabase?.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
 
         ZipOutputStream(FileOutputStream(zipFile)).use { zip ->
             // User data dirs
@@ -41,7 +51,10 @@ class BackupManager(private val context: Context) {
             val dbDir = StorageRoots.db(context)
             listOf("somi.db", "somi.db-shm", "somi.db-wal").forEach { name ->
                 val f = File(dbDir, name)
-                if (!f.exists() || f.length() == 0L) return@forEach
+                // somi.db must exist and be non-empty; WAL side-files may
+                // legitimately be zero-length after a successful checkpoint.
+                if (name == "somi.db" && (!f.exists() || f.length() == 0L)) return@forEach
+                if (!f.exists()) return@forEach
                 zip.putNextEntry(ZipEntry("db/$name"))
                 f.inputStream().copyTo(zip)
                 zip.closeEntry()
