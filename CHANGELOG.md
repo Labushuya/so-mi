@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.2](https://github.com/Labushuya/so-mi/compare/v0.29.1...v0.29.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* Scroll-bei-Tastatur via ViewCompat, besserer Antwort-Kontext nach Trigger ([#105](https://github.com/Labushuya/so-mi/issues/105)) ([10d73b9](https://github.com/Labushuya/so-mi/commit/10d73b9d1410bf2e4ed98c7c124c07e56e290fa6))
+
 ## [0.29.1](https://github.com/Labushuya/so-mi/compare/v0.29.0...v0.29.1) (2026-06-11)
 
 
