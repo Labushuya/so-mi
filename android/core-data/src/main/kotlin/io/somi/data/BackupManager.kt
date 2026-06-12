@@ -26,6 +26,7 @@ class BackupManager(private val context: Context) {
         zipFile.parentFile?.mkdirs()
 
         ZipOutputStream(FileOutputStream(zipFile)).use { zip ->
+            // User data dirs
             listOf("memory", "soul", "settings").forEach { dirName ->
                 val dir = File(StorageRoots.root(context), dirName)
                 if (!dir.exists()) return@forEach
@@ -35,6 +36,15 @@ class BackupManager(private val context: Context) {
                     file.inputStream().copyTo(zip)
                     zip.closeEntry()
                 }
+            }
+            // v0.39.0: include Room DB (chat history + conversations)
+            val dbDir = StorageRoots.db(context)
+            listOf("somi.db", "somi.db-shm", "somi.db-wal").forEach { name ->
+                val f = File(dbDir, name)
+                if (!f.exists() || f.length() == 0L) return@forEach
+                zip.putNextEntry(ZipEntry("db/$name"))
+                f.inputStream().copyTo(zip)
+                zip.closeEntry()
             }
         }
 
