@@ -689,6 +689,14 @@ private fun Composer(
 ) {
     val songbird = LocalSongbirdColors.current
     var input by remember { mutableStateOf(TextFieldValue("")) }
+    var showCommandPopup by remember { mutableStateOf(false) }
+
+    // Show command popup when user types "/" at the start
+    val suggestions = remember(input.text) {
+        if (input.text.startsWith("/")) io.somi.ui.chat.SlashCommandRegistry.matching(input.text)
+        else emptyList()
+    }
+    val effectiveShowPopup = showCommandPopup || suggestions.isNotEmpty()
 
     Box(
         modifier = Modifier
@@ -696,61 +704,121 @@ private fun Composer(
             .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 0.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 800.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(songbird.composerBg)
-                .border(1.dp, songbird.composerBorder, RoundedCornerShape(16.dp))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            BasicTextField(
-                value = input,
-                // Typing is never blocked. Even when the SendButton is
-                // disabled (loading / generating / banner) the user can
-                // keep drafting their next message — that's the whole
-                // point of the WithBanner refactor (ChatState.kt:36).
-                onValueChange = { input = it },
+        Column(modifier = Modifier.fillMaxWidth().widthIn(max = 800.dp)) {
+            // Slash command popup — floats above composer
+            if (effectiveShowPopup) {
+                val cmds = if (input.text.startsWith("/")) suggestions
+                           else io.somi.ui.chat.SlashCommandRegistry.ALL
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(songbird.aiBubble)
+                        .border(1.dp, songbird.bubbleBorder, RoundedCornerShape(12.dp))
+                        .padding(vertical = 4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Slash-Commands", color = songbird.bone, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier.clickable { showCommandPopup = false; input = TextFieldValue("") }
+                                .padding(4.dp),
+                        ) { Text("✕", color = songbird.glass, style = MaterialTheme.typography.labelSmall) }
+                    }
+                    androidx.compose.material3.HorizontalDivider(color = songbird.bubbleBorder)
+                    cmds.groupBy { it.category }.forEach { (cat, items) ->
+                        Text(cat, color = songbird.glass, style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                        items.forEach { cmd ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        input = TextFieldValue(cmd.command, selection = androidx.compose.ui.text.TextRange(cmd.command.length))
+                                        showCommandPopup = false
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(cmd.command, color = songbird.crimson, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                    Text(cmd.description, color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Text("↵", color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            // Composer input card
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 24.dp, max = 140.dp),
-                textStyle = LocalTextStyle.current.copy(
-                    color = songbird.bone,
-                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                ),
-                cursorBrush = SolidColor(songbird.signal),
-                maxLines = 6,
-                decorationBox = { inner ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (input.text.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.composer_placeholder),
-                                color = songbird.glass.copy(alpha = 0.55f),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
-                        inner()
-                    }
-                },
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(songbird.composerBg)
+                    .border(1.dp, songbird.composerBorder, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (isGenerating) {
-                    StopButton(onClick = onStop)
-                } else {
-                    SendButton(
-                        enabled = enabled && input.text.isNotBlank(),
-                        onClick = {
-                            val text = input.text
-                            input = TextFieldValue("")
-                            onSubmit(text)
-                        },
-                    )
+                BasicTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 24.dp, max = 140.dp),
+                    textStyle = LocalTextStyle.current.copy(
+                        color = songbird.bone,
+                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    ),
+                    cursorBrush = SolidColor(songbird.signal),
+                    maxLines = 6,
+                    decorationBox = { inner ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (input.text.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.composer_placeholder),
+                                    color = songbird.glass.copy(alpha = 0.55f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // ? button to open slash command list
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (showCommandPopup) songbird.crimson.copy(alpha = 0.2f) else songbird.bubbleBorder.copy(alpha = 0.3f))
+                            .clickable { showCommandPopup = !showCommandPopup }
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("/", color = songbird.glass, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    }
+                    if (isGenerating) {
+                        StopButton(onClick = onStop)
+                    } else {
+                        SendButton(
+                            enabled = enabled && input.text.isNotBlank(),
+                            onClick = {
+                                val text = input.text
+                                input = TextFieldValue("")
+                                showCommandPopup = false
+                                onSubmit(text)
+                            },
+                        )
+                    }
                 }
             }
         }
