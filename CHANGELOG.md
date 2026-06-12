@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/Labushuya/so-mi/compare/v0.37.2...v0.38.0) (2026-06-12)
+
+
+### Features
+
+* Chat-Suche, OOM-Crash-Banner, Empty-State-Fix ([#142](https://github.com/Labushuya/so-mi/issues/142)) ([76d030c](https://github.com/Labushuya/so-mi/commit/76d030ca1ff5a1ff0d05e0f591535128736d8cb4))
+
 ## [0.37.2](https://github.com/Labushuya/so-mi/compare/v0.37.1...v0.37.2) (2026-06-12)
 
 
