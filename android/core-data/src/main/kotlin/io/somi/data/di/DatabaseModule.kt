@@ -39,10 +39,6 @@ internal object DatabaseModule {
             context.applicationContext,
             SoMiDatabase::class.java,
             dbFile.absolutePath,
-        return Room.databaseBuilder(
-            context.applicationContext,
-            SoMiDatabase::class.java,
-            dbFile.absolutePath,
         )
             .addMigrations(SoMiDatabase.MIGRATION_1_2)
             .build()
