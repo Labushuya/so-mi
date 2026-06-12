@@ -1152,10 +1152,26 @@ class ChatViewModel @Inject constructor(
         val recallContext = withContext(Dispatchers.IO) {
             runCatching { ragOrchestrator.recallForPrompt() }.getOrNull()
         }
-        val promptWithContext = if (recallContext != null) {
-            "$recallContext\n$userText"
-        } else {
-            userText
+        val recentMessages = withContext(Dispatchers.IO) {
+            runCatching { chatRepository.getRecentMessages(limit = 16) }.getOrDefault(emptyList())
+        }
+        // Drop the just-appended current user turn (last element) so history
+        // only contains completed prior exchanges.
+        val historyContext = if (recentMessages.size > 1) {
+            val history = recentMessages.dropLast(1).takeLast(14)
+            buildString {
+                append("Bisheriges Gespräch (neueste zuletzt):\n")
+                history.forEach { msg ->
+                    val role = if (msg.author == io.somi.common.chat.Author.USER) "Du" else "So-Mi"
+                    append("$role: ${msg.text.take(200)}\n")
+                }
+                append("\n")
+            }
+        } else null
+        val promptWithContext = buildString {
+            if (recallContext != null) append(recallContext)
+            if (historyContext != null) append(historyContext)
+            append(userText)
         }
 
         try {
