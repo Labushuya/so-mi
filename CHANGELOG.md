@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/Labushuya/so-mi/compare/v0.31.0...v0.31.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — doppeltes @Composable auf ErrorBanner ([#115](https://github.com/Labushuya/so-mi/issues/115)) ([018f321](https://github.com/Labushuya/so-mi/commit/018f321d3ea9dbabc2f6a32a7591a93a56fb96f7))
+
 ## [0.31.0](https://github.com/Labushuya/so-mi/compare/v0.30.1...v0.31.0) (2026-06-12)
 
 
