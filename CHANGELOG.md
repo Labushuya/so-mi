@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.2](https://github.com/Labushuya/so-mi/compare/v0.37.1...v0.37.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* neuer Chat zeigt nur eigene Nachrichten, letzter Chat löschbar ([#140](https://github.com/Labushuya/so-mi/issues/140)) ([e4374c8](https://github.com/Labushuya/so-mi/commit/e4374c84029d30275e0086b0234227554461ed82))
+
 ## [0.37.1](https://github.com/Labushuya/so-mi/compare/v0.37.0...v0.37.1) (2026-06-12)
 
 
