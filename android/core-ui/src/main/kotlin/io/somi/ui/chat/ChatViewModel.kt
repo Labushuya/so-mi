@@ -160,6 +160,7 @@ class ChatViewModel @Inject constructor(
      */
     // v0.37.0 — active conversation ID as observable state so messages re-subscribes on switch
     private val _activeConversationId = MutableStateFlow(1L)
+    private val _awaitingRenameInput = MutableStateFlow(false)
 
     val messages: StateFlow<List<Message>> = _activeConversationId
         .flatMapLatest { id -> chatRepository.observeMessagesForConversation(id) }
@@ -508,6 +509,18 @@ class ChatViewModel @Inject constructor(
         val text = userText.trim()
         if (text.isEmpty()) return
 
+        // v0.39.0 — handle rename input state
+        if (_awaitingRenameInput.value) {
+            _awaitingRenameInput.value = false
+            viewModelScope.launch {
+                chatRepository.appendUser(text)
+                val id = chatRepository.currentConversationId
+                conversationRepository.rename(id, text)
+                chatRepository.appendAssistant("✅ Umbenannt in \"$text\".")
+            }
+            return
+        }
+
         // v0.31.2 — test commands for band UI testing
         val testBanners = mapOf(
             "/trigger_error" to "Fehler: Dies ist ein Test-Fehlermeldungs-Band.",
@@ -518,6 +531,58 @@ class ChatViewModel @Inject constructor(
         )
         testBanners[text.lowercase()]?.let { msg ->
             viewModelScope.launch {
+                chatRepository.appendUser(text)
+                surfaceError(msg, retryable = false)
+            }
+            return
+        }
+
+        // v0.39.0 — chat management slash commands
+        when (text.lowercase()) {
+            "/clear" -> {
+                viewModelScope.launch {
+                    chatRepository.appendUser(text)
+                    chatRepository.clearCurrentConversation()
+                    chatRepository.appendAssistant("✅ Gespräch geleert.")
+                }
+                return
+            }
+            "/rename" -> {
+                viewModelScope.launch {
+                    chatRepository.appendUser(text)
+                    chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Sag mir den neuen Namen.")
+                    _awaitingRenameInput.value = true
+                }
+                return
+            }
+            "/archive" -> {
+                viewModelScope.launch {
+                    chatRepository.appendUser(text)
+                    val id = chatRepository.currentConversationId
+                    conversationRepository.rename(id, "📦 " + (conversations.value.firstOrNull { it.id == id }?.title?.removePrefix("📦 ") ?: "Archiviert"))
+                    chatRepository.appendAssistant("✅ Archiviert. Das Gespräch erscheint in der Liste mit 📦.")
+                }
+                return
+            }
+        }
+        if (text.lowercase().startsWith("/search ")) {
+            val query = text.substring(8).trim()
+            viewModelScope.launch {
+                chatRepository.appendUser(text)
+                if (query.isBlank()) {
+                    chatRepository.appendAssistant("Sag mir wonach ich suchen soll: /search <Begriff>")
+                } else {
+                    val results = chatRepository.searchInCurrentConversation(query)
+                    val reply = if (results.isEmpty()) "Keine Nachrichten mit \"$query\" gefunden."
+                    else "${results.size} Treffer für \"$query\":\n" + results.take(5).joinToString("\n") { "· ${it.text.take(80)}" } +
+                        if (results.size > 5) "\n…und ${results.size - 5} weitere." else ""
+                    chatRepository.appendAssistant(reply)
+                }
+            }
+            return
+        }
+
+
                 chatRepository.appendUser(text)
                 surfaceError(msg, retryable = false)
             }
