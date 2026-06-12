@@ -227,18 +227,19 @@ private fun SoMiAppRoot() {
     val instances by viewModel.instances.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
 
-    // v0.11.4: Settings now has sub-screens. Single in-VM enum cheaper
-    // than nav-compose for three destinations and matches the rest of
-    // the app's "explicit boolean state" pattern.
     var settingsRoute by remember { mutableStateOf(SettingsRoute.Hidden) }
+    // v0.37.0: Chat-List as new entrypoint. null = show list, non-null = open that conversation.
+    var activeConversationId by remember { mutableStateOf<Long?>(null) }
     val soulRepository = viewModel.soulRepository
     val soulPromptLoader = viewModel.soulPromptLoader
 
-    // v0.20.0: Hardware-Back-Button navigiert Settings-intern statt App zu schließen.
-    // Auf Root-Screen (Chat, settingsRoute=Hidden) schließt Back die App normal.
-    BackHandler(enabled = settingsRoute != SettingsRoute.Hidden) {
-        settingsRoute = if (settingsRoute == SettingsRoute.Root) SettingsRoute.Hidden
-                        else SettingsRoute.Root
+    // Back: settings first, then chat→list, then system
+    BackHandler(enabled = settingsRoute != SettingsRoute.Hidden || activeConversationId != null) {
+        when {
+            settingsRoute != SettingsRoute.Hidden ->
+                settingsRoute = if (settingsRoute == SettingsRoute.Root) SettingsRoute.Hidden else SettingsRoute.Root
+            activeConversationId != null -> activeConversationId = null
+        }
     }
 
     when (settingsRoute) {
@@ -291,8 +292,7 @@ private fun SoMiAppRoot() {
         }
     }
 
-    // Route on the underlying lifecycle — a WithBanner overlay must not
-    // change which surface the user sees, only paint a banner on top.
+    // Route on the underlying lifecycle
     when (state.unwrap()) {
         is ChatState.Booting -> BootingSplash()
         is ChatState.NoModelInstalled,
@@ -310,19 +310,34 @@ private fun SoMiAppRoot() {
             onOpenSettings = { settingsRoute = SettingsRoute.Root },
         )
         is ChatState.LoadingModel -> LoadingScreen()
-        is ChatState.Idle, is ChatState.Generating -> ChatShellScreen(
-            state = state,
-            messages = messages,
-            boot = boot,
-            versionName = BuildConfig.VERSION_NAME,
-            versionCode = BuildConfig.VERSION_CODE,
-            embedderStatus = viewModel.embedderStatus.collectAsStateWithLifecycle().value,
-            onSubmit = viewModel::submit,
-            onCancelGeneration = viewModel::cancelGeneration,
-            onRetry = viewModel::retry,
-            onOpenSettings = { settingsRoute = SettingsRoute.Root },
-        )
-        is ChatState.WithBanner -> Unit // unreachable: unwrap() never returns WithBanner
+        is ChatState.Idle, is ChatState.Generating -> {
+            // v0.37.0: show chat-list if no conversation selected, else show chat
+            if (activeConversationId == null) {
+                ChatListScreen(
+                    viewModel = viewModel,
+                    onOpenChat = { id ->
+                        viewModel.switchConversation(id)
+                        activeConversationId = id
+                    },
+                    onOpenSettings = { settingsRoute = SettingsRoute.Root },
+                )
+            } else {
+                ChatShellScreen(
+                    state = state,
+                    messages = messages,
+                    boot = boot,
+                    versionName = BuildConfig.VERSION_NAME,
+                    versionCode = BuildConfig.VERSION_CODE,
+                    embedderStatus = viewModel.embedderStatus.collectAsStateWithLifecycle().value,
+                    onSubmit = viewModel::submit,
+                    onCancelGeneration = viewModel::cancelGeneration,
+                    onRetry = viewModel::retry,
+                    onOpenSettings = { settingsRoute = SettingsRoute.Root },
+                    onBackToList = { activeConversationId = null },
+                )
+            }
+        }
+        is ChatState.WithBanner -> Unit
     }
 }
 
@@ -338,6 +353,7 @@ private fun ChatShellScreen(
     onCancelGeneration: () -> Unit,
     onRetry: (() -> Unit)? = null,
     onOpenSettings: () -> Unit,
+    onBackToList: () -> Unit = {},
 ) {
     val songbird = LocalSongbirdColors.current
     // WithBanner over Generating must still drive the live-typing bubble,
@@ -370,6 +386,7 @@ private fun ChatShellScreen(
             boot = boot,
             messageCount = messages.size,
             onOpenSettings = onOpenSettings,
+            onBackToList = onBackToList,
         )
 
         // Optional error banner above the message list, sourced from the
@@ -495,6 +512,7 @@ private fun ChatTopBar(
     boot: ChatViewModel.BootSnapshot?,
     messageCount: Int,
     onOpenSettings: () -> Unit,
+    onBackToList: () -> Unit = {},
 ) {
     val songbird = LocalSongbirdColors.current
     Column(
@@ -507,6 +525,18 @@ private fun ChatTopBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
+            // Back to chat list
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onBackToList() }
+                    .padding(4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("☰", color = songbird.glass, style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.width(8.dp))
             // Title row centered, settings gear at the end.
             Row(
                 modifier = Modifier.weight(1f),
