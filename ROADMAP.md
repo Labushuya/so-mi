@@ -2,60 +2,55 @@
 
 **Single source of truth für Phasen-Stand, User-Vereinbarungen aus Sitzungen, und den nächsten Push.**
 
-`SPEC.md` §12 ist der ursprüngliche Plan. Diese Datei hält IST-Stand und alle nicht-SPEC-User-Vereinbarungen aus Chat-Sitzungen fest, sodass nichts mehr in Memory-Notes oder Chat-Verlauf verloren geht.
+`SPEC.md` §12 ist der ursprüngliche Plan. Diese Datei hält IST-Stand und alle nicht-SPEC-User-Vereinbarungen fest.
 
-**Pflege-Pflicht:** Jede Sitzung beginnt mit einem Blick hier. Tasks im Backlog werden gegen diese Datei abgeglichen, nicht nur gegen SPEC.md. Wenn eine User-Vereinbarung eine SPEC-Abweichung darstellt, wird sie hier dokumentiert mit Begründung — nicht stillschweigend ignoriert.
+**Pflege-Pflicht:** Jede Sitzung beginnt mit einem Blick hier. ROADMAP.md gewinnt bei Konflikten mit SPEC.md.
 
 ---
 
-## Aktueller Stand (2026-06-10)
+## Aktueller Stand (2026-06-12)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.19.1 | ✅ stable | M8 Recall: Fakten werden vor jeder Antwort als Kontext injiziert. Fakt-Normalisierung. |
-| v0.19.0 | ✅ live (Build-Bug KDoc) | M8 Recall erster Entwurf |
-| v0.18.5 | ✅ live | Memory-Persistence-Fix: mkdirs(), Save auch ohne Embedder, MagicOS ADJUST_PAN |
-| v0.18.4 | ✅ live | Keyboard-Gap (imePadding), mehr Triggerwörter, Memory-Browser zeigt Fakten |
-| v0.18.3 | ✅ live | Echter Memory-Browser (liest .md), imePadding statt windowInsetsPadding |
-| v0.18.2 | ✅ live | 14B-Ampel-Fix (ramMinGB Korrektur) |
-| v0.18.1 | ✅ live | XLARGE-Tier when-Branch in tierLabel |
-| v0.18.0 | ✅ live | 14B-Ampel gelb, unvollständige Shards vervollständigen, Pause-Button |
-| v0.17.1 | ✅ live | Settings Akkordeon, Tastatur adjustResize, Modelle & Speicher gemergt |
-| v0.16.x | ✅ live | Download-UI, LLM-Katalog, Status-Badges, diverse Crash-Fixes |
-| v0.15.1 | ✅ live | Build-Fix: EmbeddingModelDownloadWorker internal-Klasse |
-| v0.14.3 | ✅ live | Embedder-Enqueue, Keyboard-Spacing, CHANGELOG |
+| v0.33.0 | ✅ stable | Slash-Command-Popup + Autocomplete + /-Button, Band auto-dismiss 5s |
+| v0.32.1 | ✅ live | Test-Commands für Chat-Band, 4 Band-Typen, 12B Staging |
+| v0.31.2 | ✅ live | Keyword-Suche UI, Band-Style WhatsApp |
+| v0.30.1 | ✅ live | Einfache Antwort nach Trigger (kein doppelter LLM-Call) |
+| v0.29.1 | ✅ live | Emojis in Kategorienamen, Duplikat-Erkennung (Levenshtein) |
+| v0.28.0 | ✅ live | Keyword-CRUD (edit/move/delete), getrennte UI-Sektionen |
+| v0.27.0 | ✅ live | Keywords per UI + /-Button pflegen |
+| v0.25.1 | ✅ live | Eigene Kategorien-Erkennung mit Keywords, Backup-Export |
+| v0.24.2 | ✅ live | Erinnerungen editieren + manuell anlegen |
+| v0.23.2 | ✅ live | Multi-Fakt-Split, Duplikat-Fix per Kategorie |
+| v0.22.0 | ✅ live | TopicClassifier (Regex), eigene Kategorien |
+| v0.21.2 | ✅ live | Memory-Browser CRUD |
+| v0.20.0 | ✅ live | Settings-Akkordeon, Navigation, WLAN-Toggle |
+| v0.19.1 | ✅ live | M8 Recall, Fakten als Kontext vor Generation |
 
 ---
 
 ## Phasen-Status gegen SPEC.md §12
 
-### ✅ Phase 0 — Repo-Bootstrap
+### ✅ Phase 0–2 — Bootstrap, Pipeline, LLM + Chat
 Komplett.
 
-### ✅ Phase 1 — Skeleton + Pipeline
-Komplett. Multi-Module-Build, release-please, signierte APKs.
-
-### ✅ Phase 2 — Lokales LLM + Chat-UI
-Komplett. llama.cpp, Hardware-Picker, soul.md-Prefix, streaming Chat.
-**Drift gegen SPEC §3:** AGP 8.5.2 + Kotlin 2.0.21, Compose BOM 2024.10.01 — siehe CLAUDE.md.
-
-### 🟡 Phase 3 — RAG + Persona-Memory (TEILWEISE GELIEFERT)
+### 🟡 Phase 3 — RAG + Persona-Memory (TEILWEISE)
 
 | Deliverable | Stand | Notiz |
 |---|---|---|
-| ObjectBox + ONNX Embedder | ✅ v0.14.0+ | paraphrase-multilingual-MiniLM-L12-v2, 384-dim |
-| Explicit-Trigger (M5+M6) | ✅ v0.14.0 | "merk dir" → save in notes.md + ObjectBox |
-| Recall / RAG-Inject (M8) | ✅ v0.19.1 | .md-Fakten als Kontext vor jeder Generation |
-| Fakt-Normalisierung | ✅ v0.19.1 | führende Konjunktionen ("dass") werden gestrippt |
-| Memory-Browser (M7) | 🟡 basic | liest .md; CRUD, Verschieben, Kategorien fehlen noch |
-| TopicClassifier (M9) | ❌ offen | alles landet derzeit in NOTES |
-| Auto-Toggle (M10) | ❌ offen | — |
-| Multi-Fakt-Extraktion | ❌ offen | "Ich heiße X und bin Y alt" → 2 Fakten |
-| KIWIX-AAR + search_kiwix | ❌ offen | — |
-| **SPEC §12 Akzeptanztest** | 🟡 teilweise | Schreiben ✅, Recall ✅ (text-basiert), KIWIX ❌ |
+| Explicit-Trigger + Save | ✅ v0.14+ | "merk dir" → .md + ObjectBox |
+| Recall / RAG-Inject | ✅ v0.19.1 | top-20 Fakten als Kontext |
+| Memory-Browser CRUD | ✅ v0.24.2+ | lesen, editieren, löschen, verschieben |
+| TopicClassifier (Heuristik) | ✅ v0.22.0 | Regex-basiert |
+| Custom Kategorien + Keywords | ✅ v0.27.0+ | per UI + per Slash-Command |
+| Setup-Guard | ❌ offen | v0.34.0 |
+| Backup Import | ❌ offen | Export fertig, Import fehlt |
+| Multi-Chat | ❌ offen | v0.35.0 |
+| M9 LLM-Klassifizierer | ❌ aufgeschoben | nach v0.35 |
+| KIWIX-AAR | ❌ Phase-3-Abschluss | |
 
 ### ❌ Phase 4 — Tools (12 aus SPEC §9)
-Nicht angefangen. Kein Online-Boost (User-Entscheidung). Intent-Router lokal-only.
+Nicht angefangen.
 
 ### ❌ Phase 5 — Voice + In-App-Updater
 Nicht angefangen.
@@ -65,99 +60,55 @@ Nicht angefangen.
 ## User-Vereinbarungen (bindend wie SPEC)
 
 ### Anzeige & UX
-- **⚠️ TO BE IMPROVED — Scroll-to-Bottom bei Tastatur** *(2026-06-12)* — Tastatur öffnen scrollt den Chat nicht automatisch nach unten. Mehrere Ansätze versucht (ViewCompat-Listener → Crash, snapshotFlow viewportEndOffset → keine Reaktion, WindowInsets.ime.getBottom → reagiert nicht auf MagicOS). Ursache unklar ohne Debug-Build. Aufgeschoben bis ein Debug-APK mit Logcat-Zugriff möglich ist.
-- **⚠️ TO BE IMPROVED — 14B-Modelle auf Magic V2 (16GB)** *(2026-06-12)* — 14B Q4_K_M (~9GB) + KV-Cache überschreitet 16GB. Candidate: Qwen2.5-12B-Q3_K_M (~5.8GB) als Zwischenschritt. OOM-Fallback auf vorheriges LLM noch nicht implementiert.
+- **⚠️ TO BE IMPROVED — Scroll-to-Bottom bei Tastatur** *(2026-06-12)* — mehrere Ansätze auf MagicOS gescheitert. Aufgeschoben bis Debug-APK möglich.
+- **⚠️ TO BE IMPROVED — 14B-Ampel zeigt rot** *(2026-06-12)* — StatFs auf MagicOS gibt Quota statt physischen Speicher. Aufgeschoben.
+- **Chat-Band** *(v0.33.0)* — 4 Typen (Error/Warning/Success/Info), 5s Auto-Dismiss, WhatsApp-Style Pill
+- **Slash-Command-Popup** *(v0.33.0)* — Autocomplete beim `/`-Tippen + /-Button; Klick fügt Command ein
 
+### Erinnerungen / RAG
+- **Recall aktiv** *(v0.19.1)* — top-20 Fakten als Kontext vor jeder Generation
+- **Multi-Fakt + Regex-Classifier** *(v0.22–v0.23)* — "und"-Split, PERSONS/DATES/PREFERENCES/TECHNICAL/NOTES
+- **Duplikat-Erkennung** *(v0.29.1)* — exakter Match + Levenshtein ≤ 2
+- **Eigene Kategorien + Keywords** *(v0.27.0)* — per UI oder `/note`-Slash; Keywords in `.keywords.json`
+- **⚠️ TO BE IMPROVED — Komplexe Fakt-Extraktion** *(2026-06-11)* — LLM-Pass geplant, aufgeschoben nach v0.35
+- **⚠️ TO BE IMPROVED — Recall-Qualität** *(2026-06-11)* — HNSW kommt wenn Embedder aktiv
 
-- **Recall aktiv** *(v0.19.1)* — top-20 Fakten aus .md als Kontext vor jeder Generation
-- **Fakt-Normalisierung** *(v0.19.1)* — führende Konjunktionen gestrippt, erste Letter groß
-- **Multi-Fakt-Extraktion** *(v0.23.2)* — "und"-Sätze werden gesplittet, per Regex in PERSONS/DATES/PREFERENCES/TECHNICAL/NOTES klassifiziert
-- **Erinnerungen speichern ohne Embedder** *(v0.18.5)* — .md immer beschrieben; ObjectBox mit Null-Vektor bis Embedder verfügbar
-- **Save-Bestätigung** *(v0.14.0)* — kurze in-character Chat-Bubble ("Hab ich.")
-- **⚠️ TO BE IMPROVED — Komplexe Fakt-Extraktion** *(2026-06-11)* — Regex-Heuristik versagt bei komplexen Sätzen mit mehreren Fakten. Geplante Lösung: LLM-Pass für Extraktion (M9.1). Aufgeschoben nach v0.25.0.
-- **⚠️ TO BE IMPROVED — Recall-Qualität** *(2026-06-11)* — Alle top-20 Fakten werden pauschal injiziert ohne semantische Sortierung. Verbessert sich wenn Embedder-Modell geladen (HNSW-Suche wird dann aktiv).
-
-### Memory-Browser CRUD *(2026-06-10 teilweise, v0.24.0 rest)*
-- **Kategorien anlegen** *(v0.23.1)* — benutzerdefinierte .md-Dateien
-- **Fakten löschen** *(v0.21.2)* — mit Bestätigung
-- **Fakten verschieben** *(v0.21.2)* — zwischen Kategorien
-- **Fakten editieren** — Text direkt änderbar → **v0.24.0**
-- **Fakten manuell anlegen** — ohne Trigger-Phrase → **v0.24.0**
-
-### Settings-Struktur *(2026-06-10)*
-Neue Reihenfolge der Akkordeon-Sektionen:
-1. **Diagnose** (immer offen — Gerät-Info, Version, Ampel)
-2. **So-Mi** (Erinnerungen GANZ OBEN, dann Persönlichkeit, Verhalten, Begrüßung, Lernen)
-3. **Modelle & Abhängigkeiten** (umbenennen von "Modelle & Speicher" — LLM + Gedächtnis-Modell + künftige Pakete)
-4. **Anzeige & Daten** (Vollbild, Backup & Import — So-Mis Daten sicherbar/importierbar)
-
-- **"Erinnerungen ansehen (leer)"-Label**: muss dynamisch sein: "Erinnerungen ansehen (N gespeichert)" oder "Keine Erinnerungen"
-- **So-Mi-Untermenü**: Erinnerungen erscheinen als erste Sektion, dann Persönlichkeit usw.
-
-### Navigation *(2026-06-10)*
-- **Hardware-Back-Button** navigiert intern (wie ← oben links), schließt die App nicht; nur auf dem Root-Screen (Chat) schließt Back die App
-
-### Modell-Ampel *(aufgeschoben — kein Blocker)*
-- **StorageRedline-Formel und StatFs-Quelle** — mehrfach angepasst, 14B zeigt weiterhin rot. Root-Cause unklar ohne Device-Debug-Build. Da die 14B-Modelle trotz roter Ampel funktionieren und auswählbar sind, ist das ein kosmetisches Problem. Aufgeschoben auf v0.23.x wenn ein Debug-Build mit Logcat-Zugriff möglich ist.
-
-### Modell-Auswahl
+### Modelle & Downloads
 - **7B Q4_K_M Default** *(CLAUDE.md)*
-- **14B Q3 + Q4 aktiv** *(v0.18.1)* — im Katalog, SHAs verifiziert, XLARGE-Tier (YELLOW auf Magic V2)
+- **14B Q3 + Q4 im Katalog** *(v0.15.1)* — qwen-research-Lizenz
+- **12B Q3_K_M Staging** *(v0.32.1)* — SHAs pending, ~5.8GB, GREEN auf Magic V2
+- **⚠️ TO BE IMPROVED — 14B auf Magic V2** *(2026-06-12)* — crasht (KV-Cache + 9GB > 16GB). 12B als Candidate. OOM-Fallback ausstehend.
 - **Wi-Fi-Gate für alle großen Downloads**
 - **Kein Auto-OOM-Fallback** — User bestätigt manuell
 
-### Downloads & Setup
-- **Embedder** *(v0.14.3+)* — paraphrase-multilingual-MiniLM-L12-v2, ~470 MB, WLAN-only, WorkManager
-- **Setup-Guard** *(2026-06-10)* — Chat erst nach LLM + Embedder; Option "Ohne Gedächtnis starten"
-- **In-App-Banner für alle Systemfehler** *(2026-06-10)* — anklickbar, Popup mit Erklärung + Handlung
-
-### Backup & Import *(2026-06-10)*
-- **So-Mis Daten exportierbar**: soul.md, memory/*.md, settings/*.json als ZIP
-- **Importierbar**: gleiche Struktur; UI unter Anzeige & Daten
-
-### Multi-Chat *(2026-06-09)*
-- conversationId in Room, Chat-Liste als Einstieg, FAB "Neues Gespräch", Swipe-to-delete
-
 ### Prozess
-- **Automatisches Pushen** *(2026-06-09)* — vollständig ohne User-Klick
+- **Vollautomatisches Pushen** — PR + release-please ohne User-Klick *(2026-06-09)*
 - **tl;dr + Test-Anweisung** nach jedem Push
-- **Stable-Einstufung** fragen nach positivem Test-Feedback
+- **Stable-Einstufung** nach positivem Test-Feedback
+- **Workflow + Agents bevorzugen** bei parallelen Tasks
 
 ---
 
 ## Pipeline — nächste Sprints
 
-### v0.20.0 — Settings-Überarbeitung + Navigation + Ampel-Fix (unmittelbar)
-1. Settings-Reihenfolge: Diagnose → So-Mi → Modelle & Abhängigkeiten → Anzeige & Daten
-2. "Erinnerungen ansehen (N gespeichert)"-Label dynamisch
-3. Hardware-Back-Button intern navigieren (kein App-Close)
-4. Ampel-Fix: `storageRedline = storageMinGB * 1.1` statt `* 1.5`; StatFs auf gesamten Geräte-Speicher umstellen
-5. Settings-Sektion umbenennen zu "Modelle & Abhängigkeiten"
+### v0.34.0 — Setup-Guard + Backup Import
+1. Setup-Guard: FirstLaunchScreen blockiert Chat bis LLM + Embedder installiert; "Ohne Gedächtnis starten"-Option
+2. Backup-Import: ZIP zurückspielen (Export seit v0.25.0 fertig)
+3. In-App-Hinweis wenn erforderliche Abhängigkeiten fehlen
 
-### v0.21.0 — Memory-Browser CRUD
-1. Erinnerungen editieren (Inline-Edit)
-2. Erinnerungen verschieben (zwischen Kategorien)
-3. Kategorien anlegen/umbenennen/löschen
-4. Reihenfolge per Drag (optional: Long-press + Reorder)
-
-### v0.22.0 — Multi-Fakt-Extraktion + TopicClassifier (M9)
-1. LLM-Pass extrahiert mehrere Fakten aus einem Satz
-2. TopicClassifier kategorisiert in PERSONS/DATES/PREFERENCES/TECHNICAL/NOTES
-3. Disambiguation-Chat-Bubble bei Unsicherheit
-
-### v0.23.0 — Setup-Guard + Backup & Import
-1. Setup-Guard: Chat gesperrt bis LLM + Embedder OK
-2. Backup-Export: SoMi-Daten als ZIP
-3. Import: ZIP zurückspielen
-
-### v0.24.0 — Multi-Chat
-1. conversationId in Room
-2. Chat-Liste als Einstieg
+### v0.35.0 — Multi-Chat
+1. conversationId-Spalte in Room + Migration
+2. Chat-Liste als App-Einstieg
 3. FAB "Neues Gespräch", Swipe-to-delete
 
+### v0.36.0 — 12B + OOM-Fallback
+1. Qwen2.5-12B SHAs live verifizieren + in ALL aufnehmen
+2. OOM-Detection → Banner "Modell zu groß — auf 7B wechseln?"
+3. Tier-Formel für XLARGE neu kalibrieren mit Debug-APK
+
 ### v1.0 — Phase-3-Abschluss
-1. KIWIX-AAR + libkiwix
-2. Notes-Corpus + Watcher
+1. M9 LLM-Klassifizierer für Fakt-Extraktion
+2. KIWIX-AAR + libkiwix
 3. Phase-3-Akzeptanztest erfüllt
 
 ---
@@ -165,6 +116,6 @@ Neue Reihenfolge der Akkordeon-Sektionen:
 ## Wie diese Datei zu pflegen ist
 
 - **Jede Sitzung:** ROADMAP zuerst lesen, dann SPEC.md wenn nötig
-- **Neue Vereinbarungen:** sofort in "User-Vereinbarungen" eintragen mit Datum
+- **Neue Vereinbarungen:** sofort eintragen mit Datum
 - **Nach Release:** "Aktueller Stand" aktualisieren, Pipeline bereinigen
 - **Plan-Agents:** bekommen ROADMAP als Kontext, nicht nur SPEC

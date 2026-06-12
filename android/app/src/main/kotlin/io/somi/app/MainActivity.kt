@@ -309,6 +309,7 @@ private fun SoMiAppRoot() {
             boot = boot,
             versionName = BuildConfig.VERSION_NAME,
             versionCode = BuildConfig.VERSION_CODE,
+            embedderStatus = viewModel.embedderStatus.collectAsStateWithLifecycle().value,
             onSubmit = viewModel::submit,
             onCancelGeneration = viewModel::cancelGeneration,
             onRetry = viewModel::retry,
@@ -325,6 +326,7 @@ private fun ChatShellScreen(
     boot: ChatViewModel.BootSnapshot?,
     versionName: String,
     versionCode: Int,
+    embedderStatus: io.somi.ui.chat.ChatViewModel.EmbedderStatus,
     onSubmit: (String) -> Unit,
     onCancelGeneration: () -> Unit,
     onRetry: (() -> Unit)? = null,
@@ -378,6 +380,15 @@ private fun ChatShellScreen(
                 message = bannerOverlay.message,
                 onRetry = if (bannerOverlay.retryable) onRetry else null,
                 kind = kind,
+            )
+        }
+        // Setup-Guard: inform user when embedder is missing (non-blocking)
+        if (embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.NotPresent ||
+            embedderStatus == io.somi.ui.chat.ChatViewModel.EmbedderStatus.Failed) {
+            ErrorBanner(
+                message = "⚠️ Gedächtnis-Modell fehlt — So-Mi kann sich noch nichts merken. Einstellungen → Modelle & Abhängigkeiten zum Download.",
+                onRetry = null,
+                kind = BannerKind.Warning,
             )
         }
 
