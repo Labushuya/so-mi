@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/Labushuya/so-mi/compare/v0.30.1...v0.31.0) (2026-06-12)
+
+
+### Features
+
+* Scroll via IME-Inset-State, System-Meldungen als Band, Keyword-Suche optisch verbessert ([#113](https://github.com/Labushuya/so-mi/issues/113)) ([3557a43](https://github.com/Labushuya/so-mi/commit/3557a4328c62e94c55371bd2977d4834045582cc))
+
 ## [0.30.1](https://github.com/Labushuya/so-mi/compare/v0.30.0...v0.30.1) (2026-06-12)
 
 
