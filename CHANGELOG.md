@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.2](https://github.com/Labushuya/so-mi/compare/v0.31.1...v0.31.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — überzählige geschweifte Klammer entfernt ([#117](https://github.com/Labushuya/so-mi/issues/117)) ([326dd2c](https://github.com/Labushuya/so-mi/commit/326dd2cf2863aa8013621273a14ce9080fb2b5a4))
+
 ## [0.31.1](https://github.com/Labushuya/so-mi/compare/v0.31.0...v0.31.1) (2026-06-12)
 
 
