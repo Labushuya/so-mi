@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.1](https://github.com/Labushuya/so-mi/compare/v0.36.0...v0.36.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — Mistral-Nemo vor ALL deklariert ([#131](https://github.com/Labushuya/so-mi/issues/131)) ([ff60642](https://github.com/Labushuya/so-mi/commit/ff6064262133ba2ded5eb74c20c7a8d4da419269))
+
 ## [0.36.0](https://github.com/Labushuya/so-mi/compare/v0.35.0...v0.36.0) (2026-06-12)
 
 
