@@ -381,19 +381,27 @@ private fun ChatShellScreen(
             val target = messages.size + if (isGenerating) 1 else 0
             if (target > 0) listState.animateScrollToItem(target - 1)
         }
-        // Scroll to bottom when keyboard opens — but ONLY if already at bottom.
-        val imeBottom = androidx.compose.foundation.layout.WindowInsets.ime
-            .getBottom(androidx.compose.ui.platform.LocalDensity.current)
-        val imeVisible = imeBottom > 0
-        LaunchedEffect(imeVisible) {
-            if (!imeVisible) return@LaunchedEffect
-            val lastIndex = messages.size + (if (isGenerating) 1 else 0) - 1
-            if (lastIndex < 0) return@LaunchedEffect
-            val layoutInfo = listState.layoutInfo
-            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            val totalItems = layoutInfo.totalItemsCount
-            if (lastVisible >= totalItems - 2) {
-                listState.animateScrollToItem(lastIndex)
+        // Scroll to bottom when keyboard opens — only if already near bottom.
+        // Uses ViewTreeObserver via WindowInsetsCompat for reliable IME detection
+        // across Android versions and OEM ROMs (MagicOS included).
+        val view = androidx.compose.ui.platform.LocalView.current
+        LaunchedEffect(Unit) {
+            var lastImeVisible = false
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
+                val imeNowVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
+                if (imeNowVisible && !lastImeVisible) {
+                    // Keyboard just opened — scroll to bottom if already near it
+                    val lastIndex = (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
+                    val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    val total = listState.layoutInfo.totalItemsCount
+                    if (total > 0 && lastVisible >= total - 3) {
+                        kotlinx.coroutines.MainScope().launch {
+                            listState.animateScrollToItem(lastIndex)
+                        }
+                    }
+                }
+                lastImeVisible = imeNowVisible
+                insets
             }
         }
 
