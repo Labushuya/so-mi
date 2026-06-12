@@ -437,21 +437,18 @@ class ChatViewModel @Inject constructor(
             val promptId = chatRepository.appendUser(text)
             val ragOutcome = handleRagTrigger(text)
             when (ragOutcome) {
-                // Keyword commands are handled entirely by handleRagTrigger —
-                // the ack bubble is already appended, no LLM generation needed.
+                // Trigger saved OR keyword command: ack bubble already written,
+                // no LLM generation needed. The ack IS the response.
+                // This prevents the double-answer and removes the weird
+                // "I'll remember X" followed by paraphrasing all known facts.
+                is io.somi.rag.SaveOutcome.Saved,
                 is io.somi.rag.SaveOutcome.KeywordAdded,
                 is io.somi.rag.SaveOutcome.KeywordRemoved,
                 is io.somi.rag.SaveOutcome.KeywordsShown -> {
                     generationJob = null
                     return@launch
                 }
-                else -> {
-                    // After a trigger-save, pass the original text to the LLM
-                    // (not just the stripped fact). So-Mi can then respond
-                    // naturally to the full message instead of parroting the fact back.
-                    // The trigger prefix ("Merke dir, ") is harmless context for the LLM.
-                    runGeneration(promptId, text)
-                }
+                else -> runGeneration(promptId, text)
             }
         }
     }

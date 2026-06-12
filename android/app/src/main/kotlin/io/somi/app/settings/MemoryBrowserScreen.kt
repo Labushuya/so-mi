@@ -544,46 +544,74 @@ private fun FactAccordion(
                             color = androidx.compose.ui.graphics.Color.Transparent,
                         ),
                 ) {
-                    // Section label bar
+                    var kwExpanded by remember { mutableStateOf(keywords.isNotEmpty()) }
+                    var kwSearch by remember { mutableStateOf("") }
+                    val filtered = if (kwSearch.isBlank()) keywords else keywords.filter { it.contains(kwSearch, ignoreCase = true) }
+
+                    // Section label bar — clickable to collapse/expand
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(songbird.bubbleBorder.copy(alpha = 0.3f))
+                            .clickable { kwExpanded = !kwExpanded }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "🏷 Erkennungs-Keywords",
+                            "🏷 Erkennungs-Keywords (${keywords.size}) ${if (kwExpanded) "▲" else "▼"}",
                             color = songbird.glass,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
                         SongbirdButton("+ Keyword", onClick = onAddKeyword, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
                     }
-                    if (keywords.isEmpty()) {
-                        Text(
-                            "Kein Keyword — Fakten landen hier wenn ein Wort aus dem Kategorienamen erkannt wird. Eigene Keywords hinzufügen für präzisere Erkennung.",
-                            color = songbird.glass,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        )
-                    } else {
-                        keywords.forEach { kw ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(kw, color = songbird.bone, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    SongbirdButton("✎", onClick = { onEditKeyword(kw) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
-                                    SongbirdButton("↗", onClick = { onMoveKeyword(kw) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
-                                    SongbirdButton("✕", onClick = { onDeleteKeyword(kw) }, kind = SongbirdButtonKind.Destructive, minHeight = 22.dp)
+                    if (kwExpanded) {
+                        if (keywords.size >= 5) {
+                            // Inline search when many keywords
+                            BasicTextField(
+                                value = kwSearch,
+                                onValueChange = { kwSearch = it },
+                                textStyle = LocalTextStyle.current.copy(color = songbird.bone, fontSize = MaterialTheme.typography.bodySmall.fontSize),
+                                cursorBrush = SolidColor(songbird.crimson),
+                                decorationBox = { inner ->
+                                    androidx.compose.foundation.layout.Box(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
+                                    ) {
+                                        if (kwSearch.isEmpty()) Text("Keyword suchen…", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                                        inner()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (filtered.isEmpty() && keywords.isNotEmpty()) {
+                            Text("Kein Keyword gefunden.", color = songbird.glass, style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
+                        } else if (keywords.isEmpty()) {
+                            Text(
+                                "Kein Keyword — Fakten landen hier wenn ein Wort aus dem Kategorienamen erkannt wird.",
+                                color = songbird.glass,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            )
+                        } else {
+                            filtered.forEach { kw ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(kw, color = songbird.bone, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        SongbirdButton("✎", onClick = { onEditKeyword(kw) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
+                                        SongbirdButton("↗", onClick = { onMoveKeyword(kw) }, kind = SongbirdButtonKind.Ghost, minHeight = 22.dp)
+                                        SongbirdButton("✕", onClick = { onDeleteKeyword(kw) }, kind = SongbirdButtonKind.Destructive, minHeight = 22.dp)
+                                    }
                                 }
                             }
+                            Spacer(Modifier.height(6.dp))
                         }
-                        Spacer(Modifier.height(6.dp))
                     }
                 }
             }

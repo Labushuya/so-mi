@@ -13,6 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -381,20 +383,22 @@ private fun ChatShellScreen(
             val target = messages.size + if (isGenerating) 1 else 0
             if (target > 0) listState.animateScrollToItem(target - 1)
         }
-        // Scroll to bottom when keyboard opens — only if already near bottom.
-        // We observe the viewport height: when the keyboard opens it shrinks,
-        // which changes layoutInfo.viewportEndOffset. If we were near the bottom
-        // before the shrink, scroll to stay there.
-        val viewportHeight = listState.layoutInfo.viewportEndOffset
-        LaunchedEffect(viewportHeight) {
-            if (viewportHeight <= 0) return@LaunchedEffect
-            val total = listState.layoutInfo.totalItemsCount
-            if (total <= 0) return@LaunchedEffect
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            // Only scroll if we were already near the bottom (within 3 items)
-            if (lastVisible >= total - 3) {
-                listState.animateScrollToItem(total - 1)
-            }
+        // Scroll to bottom when keyboard shrinks the viewport — only if near bottom.
+        // snapshotFlow on viewportEndOffset fires whenever the viewport size changes
+        // (keyboard open/close). We debounce by 150ms to avoid racing with layout.
+        LaunchedEffect(listState) {
+            kotlinx.coroutines.flow.snapshotFlow { listState.layoutInfo.viewportEndOffset }
+                .distinctUntilChanged()
+                .debounce(150L)
+                .collect { _ ->
+                    val info = listState.layoutInfo
+                    val total = info.totalItemsCount
+                    if (total <= 0) return@collect
+                    val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    if (lastVisible >= total - 3) {
+                        listState.animateScrollToItem(total - 1)
+                    }
+                }
         }
 
         LazyColumn(
