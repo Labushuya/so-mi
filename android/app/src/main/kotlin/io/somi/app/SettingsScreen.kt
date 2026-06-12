@@ -897,6 +897,28 @@ private fun DataSection(onOpenDataBrowser: () -> Unit) {
     val scope = rememberCoroutineScope()
     var backupStatus by remember { mutableStateOf("") }
 
+    // Import launcher — opens file picker for ZIP files
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            backupStatus = "Importiere…"
+            try {
+                val count = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val tmpFile = java.io.File(context.cacheDir, "import_backup.zip")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        tmpFile.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    io.somi.data.BackupManager(context).importBackup(tmpFile)
+                }
+                backupStatus = "Import abgeschlossen: $count Dateien wiederhergestellt."
+            } catch (t: Throwable) {
+                backupStatus = "Import fehlgeschlagen: ${t.message}"
+            }
+        }
+    }
+
     SectionCard(title = "Daten") {
         Text(
             text = "Schau Dir an, was So-Mi auf Dein Gerät schreibt — Modelle, Erinnerungen, Persönlichkeit, Datenbank. Alles unter \"SoMi/\".",
@@ -910,37 +932,41 @@ private fun DataSection(onOpenDataBrowser: () -> Unit) {
             onClick = onOpenDataBrowser,
         )
         Spacer(Modifier.height(8.dp))
-        SongbirdButton(
-            label = "Backup erstellen",
-            kind = SongbirdButtonKind.Ghost,
-            onClick = {
-                scope.launch {
-                    backupStatus = "Erstelle Backup…"
-                    try {
-                        val zipFile = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            io.somi.data.BackupManager(context).createBackup()
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SongbirdButton(
+                label = "Backup erstellen",
+                kind = SongbirdButtonKind.Ghost,
+                onClick = {
+                    scope.launch {
+                        backupStatus = "Erstelle Backup…"
+                        try {
+                            val zipFile = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                io.somi.data.BackupManager(context).createBackup()
+                            }
+                            backupStatus = "Backup: ${zipFile.name}"
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                context, context.packageName + ".fileprovider", zipFile,
+                            )
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "application/zip"
+                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Backup teilen").apply {
+                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            })
+                        } catch (t: Throwable) {
+                            backupStatus = "Fehler: ${t.message}"
                         }
-                        backupStatus = "Backup gespeichert: ${zipFile.name}"
-                        // Share via FileProvider
-                        val uri = androidx.core.content.FileProvider.getUriForFile(
-                            context,
-                            context.packageName + ".fileprovider",
-                            zipFile,
-                        )
-                        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                            type = "application/zip"
-                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(android.content.Intent.createChooser(intent, "Backup teilen").apply {
-                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        })
-                    } catch (t: Throwable) {
-                        backupStatus = "Fehler: ${t.message}"
                     }
-                }
-            },
-        )
+                },
+            )
+            SongbirdButton(
+                label = "Backup importieren",
+                kind = SongbirdButtonKind.Ghost,
+                onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+            )
+        }
         if (backupStatus.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
             Text(backupStatus, color = songbird.glass, style = MaterialTheme.typography.labelSmall)
