@@ -86,6 +86,7 @@ class ChatViewModel @Inject constructor(
     private val modelManager: ModelManager,
     private val modelStorage: ModelStorage,
     private val chatRepository: ChatRepository,
+    private val conversationRepository: io.somi.data.ConversationRepository,
     private val samplerSettings: io.somi.data.settings.SamplerSettingsRepository,
     val soulRepository: io.somi.data.soul.SoulRepository,
     private val ragOrchestrator: io.somi.rag.RagOrchestrator,
@@ -162,6 +163,57 @@ class ChatViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = emptyList(),
         )
+
+    // v0.37.0 — Conversation list for the Chat-List screen
+    val conversations: StateFlow<List<io.somi.data.db.ConversationEntity>> =
+        conversationRepository.observeAll()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val currentConversationId: Long get() = chatRepository.currentConversationId
+
+    /** Switch to an existing conversation. Resets the LLM lifecycle. */
+    fun switchConversation(id: Long) {
+        viewModelScope.launch {
+            generationJob?.cancel()
+            _generation.value = null
+            chatRepository.setConversation(id)
+            // Re-init messages flow is automatic — messages is a cold Flow that
+            // re-subscribes when the ViewModel restarts, but here we need to
+            // force a re-emit. Simplest: set a flag the UI observes.
+            _lifecycle.value = Lifecycle.Ready
+        }
+    }
+
+    /** Create a new conversation and switch to it. */
+    suspend fun createNewConversation(title: String = "Neues Gespräch"): Long {
+        val id = conversationRepository.create(title)
+        generationJob?.cancel()
+        _generation.value = null
+        chatRepository.setConversation(id)
+        return id
+    }
+
+    /** Rename a conversation. */
+    fun renameConversation(id: Long, newTitle: String) {
+        viewModelScope.launch { conversationRepository.rename(id, newTitle) }
+    }
+
+    /** Delete a conversation and all its messages. */
+    fun deleteConversation(id: Long) {
+        viewModelScope.launch {
+            if (id == chatRepository.currentConversationId) {
+                // Switch to another before deleting
+                val others = conversationRepository.observeAll()
+                val remaining = conversations.value.filter { it.id != id }
+                val next = remaining.firstOrNull()?.id
+                    ?: conversationRepository.create("Neue Session")
+                chatRepository.setConversation(next)
+            }
+            chatRepository.clearCurrentConversation()
+            conversationRepository.delete(id)
+        }
+    }
+
 
     private val _boot = MutableStateFlow<BootSnapshot?>(null)
     val boot: StateFlow<BootSnapshot?> = _boot.asStateFlow()
