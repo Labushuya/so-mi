@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.1](https://github.com/Labushuya/so-mi/compare/v0.38.0...v0.38.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* build — clearAll() in ChatRepository wiederhergestellt ([#144](https://github.com/Labushuya/so-mi/issues/144)) ([d1dd515](https://github.com/Labushuya/so-mi/commit/d1dd515340b5431cd381bbe78d0b0a89372bb7a5))
+
 ## [0.38.0](https://github.com/Labushuya/so-mi/compare/v0.37.2...v0.38.0) (2026-06-12)
 
 
