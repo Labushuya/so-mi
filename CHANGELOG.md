@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/Labushuya/so-mi/compare/v0.31.2...v0.32.0) (2026-06-12)
+
+
+### Features
+
+* Test-Commands für Chat-Band, 4 Band-Typen, 12B im Staging-Catalog ([#119](https://github.com/Labushuya/so-mi/issues/119)) ([3572da0](https://github.com/Labushuya/so-mi/commit/3572da0934a62c6adfd6e7de7f7f21459ee737f5))
+
 ## [0.31.2](https://github.com/Labushuya/so-mi/compare/v0.31.1...v0.31.2) (2026-06-12)
 
 
