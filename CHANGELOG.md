@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/Labushuya/so-mi/compare/v0.32.1...v0.33.0) (2026-06-12)
+
+
+### Features
+
+* Slash-Command-Popup mit Autocomplete und /-Button, Band auto-dismiss nach 5s ([#123](https://github.com/Labushuya/so-mi/issues/123)) ([da9c8ee](https://github.com/Labushuya/so-mi/commit/da9c8eed677aead18c66c0b3212587ec513b4925))
+
 ## [0.32.1](https://github.com/Labushuya/so-mi/compare/v0.32.0...v0.32.1) (2026-06-12)
 
 
