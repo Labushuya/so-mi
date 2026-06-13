@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.3](https://github.com/Labushuya/so-mi/compare/v0.40.2...v0.40.3) (2026-06-13)
+
+
+### Bug Fixes
+
+* Backup-Fehler — WAL-Checkpoint entfernt, alle drei DB-Dateien werden zusammen kopiert ([#158](https://github.com/Labushuya/so-mi/issues/158)) ([b378bc3](https://github.com/Labushuya/so-mi/commit/b378bc32cc5bd2681aeca7eeac75273ed76181b0))
+
 ## [0.40.2](https://github.com/Labushuya/so-mi/compare/v0.40.1...v0.40.2) (2026-06-13)
 
 
