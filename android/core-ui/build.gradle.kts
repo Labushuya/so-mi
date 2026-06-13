@@ -49,6 +49,7 @@ dependencies {
     // submit-pipeline. core-ui talks to core-rag only through the
     // narrow RagOrchestrator + SaveOutcome surface.
     implementation(project(":core-rag"))
+    implementation(project(":core-tools"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

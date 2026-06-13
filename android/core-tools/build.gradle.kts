@@ -1,9 +1,10 @@
-// core-tools — see SPEC §3 for responsibilities. Phase 1: empty stub so the
-// module graph compiles end-to-end and the GitHub Actions pipeline can
-// produce a release APK.
+// core-tools — Phase 4 Tool-System: ToolRouter, ToolRegistry, 3 built-in tools.
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -26,4 +27,12 @@ android {
 
 dependencies {
     implementation(project(":core-common"))
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
+    implementation(libs.androidx.datastore.preferences)
 }
