@@ -2,7 +2,6 @@ package io.somi.data
 
 import android.content.Context
 import android.util.Log
-import androidx.sqlite.db.SupportSQLiteOpenHelper
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -16,24 +15,18 @@ import java.util.zip.ZipOutputStream
  * v0.25.0 — Backup & Import für So-Mis Daten.
  * Plain class — kein Hilt, damit sie direkt aus Composables nutzbar ist.
  *
- * Exportiert: SoMi/memory/, SoMi/soul/, SoMi/settings/
- * Nicht exportiert: SoMi/llm/ (zu groß), SoMi/db/ (ObjectBox-Format)
- *
- * openHelper: wenn gesetzt, wird vor dem DB-Kopieren ein WAL-Checkpoint
- * ausgeführt, damit alle pending WAL-Daten in somi.db geflusht sind.
+ * Exportiert: SoMi/memory/, SoMi/soul/, SoMi/settings/, SoMi/db/
+ * WAL-Checkpoint: vor dem Backup muss der Aufrufer checkpointDatabase()
+ * auf dem ChatRepository aufrufen (erfolgt in SettingsScreen).
  */
 class BackupManager(
     private val context: Context,
-    private val openHelper: SupportSQLiteOpenHelper? = null,
 ) {
 
     fun createBackup(): File {
         val ts = SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.GERMAN).format(Date())
         val zipFile = File(StorageRoots.root(context), "so-mi-backup-$ts.zip")
         zipFile.parentFile?.mkdirs()
-
-        // Flush pending WAL data into somi.db before copying.
-        openHelper?.writableDatabase?.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
 
         ZipOutputStream(FileOutputStream(zipFile)).use { zip ->
             // User data dirs
