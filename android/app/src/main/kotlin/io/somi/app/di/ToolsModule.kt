@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import io.somi.common.embed.TextEmbedder
+import io.somi.common.llm.LlmCaller
 import io.somi.common.memory.MemorySearchPort
 import io.somi.llm.LlamaContext
 import io.somi.rag.embed.TextEmbedderAdapter
@@ -24,50 +25,32 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class ToolsModule {
 
-    @Binds
-    @Singleton
+    @Binds @Singleton
     abstract fun bindTextEmbedder(impl: TextEmbedderAdapter): TextEmbedder
 
-    @Binds
-    @Singleton
+    @Binds @Singleton
     abstract fun bindMemorySearch(impl: MemorySearchAdapter): MemorySearchPort
 
-    @Binds
-    @IntoSet
+    @Binds @Singleton
+    abstract fun bindLlmCaller(impl: LlamaContextLlmCaller): LlmCaller
+
+    @Binds @IntoSet
     abstract fun bindWeatherTool(impl: WeatherTool): ToolExecutor
 
-    @Binds
-    @IntoSet
+    @Binds @IntoSet
     abstract fun bindWebSearchTool(impl: WebSearchTool): ToolExecutor
 
-    @Binds
-    @IntoSet
+    @Binds @IntoSet
     abstract fun bindSearchMemoryTool(impl: SearchMemoryTool): ToolExecutor
 
     companion object {
-
-        @Provides
-        @IntoSet
+        @Provides @IntoSet
         fun provideWeatherDef(): ToolDefinition = BuiltInToolDefinitions.getWeather
 
-        @Provides
-        @IntoSet
+        @Provides @IntoSet
         fun provideWebSearchDef(): ToolDefinition = BuiltInToolDefinitions.searchWeb
 
-        @Provides
-        @IntoSet
+        @Provides @IntoSet
         fun provideSearchMemoryDef(): ToolDefinition = BuiltInToolDefinitions.searchMemory
-
-        @Provides
-        @Singleton
-        @LlmPlanPassQualifier
-        fun provideLlmPlanPass(llama: LlamaContext): @JvmSuppressWildcards suspend (String) -> String =
-            { prompt ->
-                val sb = StringBuilder()
-                llama.generate(prompt, maxTokens = 512).fold(sb) { acc, chunk ->
-                    acc.also { it.append(chunk) }
-                }
-                sb.toString()
-            }
     }
 }
