@@ -22,6 +22,10 @@ import io.somi.data.recommendModelTier
 import io.somi.llm.LlamaContext
 import io.somi.llm.SoulPromptLoader
 import io.somi.rag.RagBootstrap
+import io.somi.tools.executor.ToolDispatcher
+import io.somi.tools.model.ToolCall
+import io.somi.tools.prefs.ToolPrefsRepository
+import io.somi.tools.routing.ToolRouter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -95,11 +99,29 @@ class ChatViewModel @Inject constructor(
     private val ragOrchestrator: io.somi.rag.RagOrchestrator,
     val uiSettings: io.somi.data.settings.UiSettingsRepository,
     private val ragBootstrap: RagBootstrap,
+    private val toolRouter: ToolRouter,
+    private val toolDispatcher: ToolDispatcher,
+    private val toolPrefs: ToolPrefsRepository,
     @ApplicationContext private val appContext: Context,
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
 
     // --- Orthogonal state axes (private) --------------------------------
+
+    private val _pendingWebConsent = MutableStateFlow<ToolCall?>(null)
+    val pendingWebConsent: StateFlow<ToolCall?> = _pendingWebConsent.asStateFlow()
+
+    suspend fun checkpointDatabase() { /* WAL checkpoint is handled externally before backup */ }
+
+    fun confirmWebConsent(originalText: String) {
+        _pendingWebConsent.value = null
+        viewModelScope.launch {
+            toolPrefs.setWebConsentShown(true)
+            submit(originalText)
+        }
+    }
+
+    fun dismissWebConsent() { _pendingWebConsent.value = null }
 
     private enum class Lifecycle { Booting, NoModel, Downloading, Loading, Ready }
 
@@ -1218,7 +1240,21 @@ class ChatViewModel @Inject constructor(
                 append("\n")
             }
         } else null
+
+        // v0.43.0 — Tool routing before LLM generation
+        val toolResult = runCatching {
+            val toolCall = toolRouter.route(userText)
+            if (toolCall != null) {
+                if (toolCall.toolId == "search_web" && !toolPrefs.webConsentShown()) {
+                    _pendingWebConsent.value = toolCall
+                    return  // suspend until user acks web consent
+                }
+                toolDispatcher.dispatch(toolCall)
+            } else null
+        }.getOrNull()
+
         val promptWithContext = buildString {
+            if (toolResult != null) append("[Tool-Ergebnis]\n${toolResult.contextBlock}\n\n")
             if (recallContext != null) append(recallContext)
             if (historyContext != null) append(historyContext)
             append(userText)
