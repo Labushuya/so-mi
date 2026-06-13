@@ -12,13 +12,11 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.42.1 | ✅ live | Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker, Embedder-Hinweis |
-| v0.41.0 | ✅ live | HNSW-Recall — semantische Suche wenn Embedder aktiv, .md-Scan als Fallback |
-| v0.40.3 | ✅ live | Fix: Backup-Fehler (WAL-Checkpoint entfernt) |
-| v0.40.2 | ✅ live | LLM-Klassifizierer + Sliding-Window Gesprächskontext |
-| v0.39.2 | ✅ live | Fix: somi.db im Backup — WAL-Checkpoint + SoMiDatabase-Injection |
-| v0.39.1 | ✅ live | Build-Fix: verwaiste Zeilen ChatViewModel |
-| v0.39.0 | ✅ live | Backup mit Chat-Verlauf, Import-Bestätigung, /search /clear /rename /archive |
+| v0.42.1 | ✅ stable | Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker, Embedder-Hinweis |
+| v0.41.0 | ✅ stable | HNSW-Recall — semantische Suche wenn Embedder aktiv, .md-Scan als Fallback |
+| v0.40.3 | ✅ stable | Fix: Backup-Fehler (WAL-Checkpoint entfernt) |
+| v0.40.2 | ✅ stable | LLM-Klassifizierer + Sliding-Window Gesprächskontext |
+| v0.39.0 | ✅ stable | Backup mit Chat-Verlauf, Import-Bestätigung, /search /clear /rename /archive |
 | v0.38.1 | ✅ stable | Chat-Suche, OOM-Crash-Banner, Empty-State-Fix |
 | v0.37.2 | ✅ stable | Multi-Chat Nachrichten-Isolation, letzter Chat löschbar |
 | v0.37.1 | ✅ live | Multi-Chat Bug-Fix Room.databaseBuilder |
@@ -49,24 +47,23 @@
 ### ✅ Phase 0–2 — Bootstrap, Pipeline, LLM + Chat
 Komplett.
 
-### 🟡 Phase 3 — RAG + Persona-Memory (TEILWEISE)
+### ✅ Phase 3 — RAG + Persona-Memory (ABGESCHLOSSEN ohne KIWIX)
 
 | Deliverable | Stand |
 |---|---|
 | Explicit-Trigger + Save | ✅ v0.14+ |
 | Recall / RAG-Inject | ✅ v0.19.1 |
 | Memory-Browser CRUD | ✅ v0.24.2+ |
-| TopicClassifier (Heuristik) | ✅ v0.22.0 |
+| TopicClassifier Heuristik + LLM | ✅ v0.22.0 / v0.40.2 |
 | Custom Kategorien + Keywords | ✅ v0.27.0+ |
-| Backup Export + Import | ✅ v0.25.0 / v0.34.0 |
-| Setup-Guard | ✅ v0.34.0 (Banner, non-blocking) |
+| Backup Export + Import (inkl. DB) | ✅ v0.25.0 / v0.39.0 |
+| Setup-Guard | ✅ v0.34.0 |
 | FAQ | ✅ v0.35.0 |
-| Multi-Chat | ❌ offen — v0.37.0 |
-| M9 LLM-Klassifizierer | ✅ v0.40.2 |
-| HNSW-Recall | ✅ v0.41.0 |
-| KIWIX-AAR | ❌ Phase-3-Abschluss |
+| Multi-Chat | ✅ v0.37.0+ |
+| HNSW-Recall + Backfill | ✅ v0.41.0 / v0.42.1 |
+| KIWIX-AAR | ❌ verschoben auf v1.0 |
 
-### ❌ Phase 4 — Tools (12 aus SPEC §9)
+### 🟡 Phase 4 — Tools (in Arbeit ab v0.43.0)
 ### ❌ Phase 5 — Voice + In-App-Updater
 
 ---
@@ -80,12 +77,11 @@ Komplett.
 - **Slash-Command-Popup** *(v0.33.0)* — Autocomplete + /-Button; Klick fügt Command ein
 
 ### Erinnerungen / RAG
-- **Recall aktiv** *(v0.19.1)* — top-20 Fakten als Kontext vor jeder Generation
-- **Multi-Fakt + Regex-Classifier** *(v0.22–v0.23)* — "und"-Split, PERSONS/DATES/PREFERENCES/TECHNICAL/NOTES
+- **Recall aktiv** *(v0.19.1)* — HNSW semantisch wenn Embedder aktiv, .md-Fallback sonst
+- **Multi-Fakt + LLM-Classifier** *(v0.22–v0.40.2)* — "und"-Split, LLM-Klassifizierung + Regex-Fallback
 - **Duplikat-Erkennung** *(v0.29.1)* — exakter Match + Levenshtein ≤ 2
 - **Eigene Kategorien + Keywords** *(v0.27.0)* — per UI oder Slash-Command; Keywords in `.keywords.json`
-- **⚠️ TO BE IMPROVED — Komplexe Fakt-Extraktion** *(2026-06-11)* — LLM-Pass geplant nach v0.40
-- **⚠️ TO BE IMPROVED — Recall-Qualität** *(2026-06-11)* — HNSW kommt wenn Embedder aktiv
+- **Backfill-Worker** *(v0.42.1)* — re-embeddet ältere Fakten automatisch nach Embedder-Install
 
 ### Modelle & Downloads
 - **7B Q4_K_M Default** *(CLAUDE.md)*
