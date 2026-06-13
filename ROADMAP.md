@@ -12,7 +12,8 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.40.2 | ✅ live | LLM-Klassifizierer + Sliding-Window Gesprächskontext + Backup-DB-Fix |
+| v0.40.3 | ✅ live | Fix: Backup-Fehler (WAL-Checkpoint entfernt) |
+| v0.40.2 | ✅ live | LLM-Klassifizierer + Sliding-Window Gesprächskontext |
 | v0.39.2 | ✅ live | Fix: somi.db im Backup — WAL-Checkpoint + SoMiDatabase-Injection |
 | v0.39.1 | ✅ live | Build-Fix: verwaiste Zeilen ChatViewModel |
 | v0.39.0 | ✅ live | Backup mit Chat-Verlauf, Import-Bestätigung, /search /clear /rename /archive |
