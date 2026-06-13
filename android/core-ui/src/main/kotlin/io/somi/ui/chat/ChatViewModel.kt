@@ -101,8 +101,6 @@ class ChatViewModel @Inject constructor(
 
     // --- Orthogonal state axes (private) --------------------------------
 
-    suspend fun checkpointDatabase() = chatRepository.checkpointWal()
-
     private enum class Lifecycle { Booting, NoModel, Downloading, Loading, Ready }
 
     private data class DownloadProgress(val bytesDownloaded: Long, val bytesTotal: Long)
