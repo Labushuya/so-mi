@@ -626,9 +626,9 @@ class ChatViewModel @Inject constructor(
         when (outcome) {
             is io.somi.rag.SaveOutcome.NotTriggered -> Unit
             is io.somi.rag.SaveOutcome.Saved -> {
-                chatRepository.appendAssistant(SAVE_ACK_TEXT)
+                val ackId = chatRepository.appendAssistant("Notiert.")
 
-                // v0.40.0 — LLM-based reclassification (best-effort, fire-and-forget)
+                // v0.40.0/v0.41.1 — LLM-based reclassification, then update ack with details
                 viewModelScope.launch(Dispatchers.IO) {
                     runCatching {
                         val prompt = buildString {
@@ -641,9 +641,22 @@ class ChatViewModel @Inject constructor(
                                 llama.generate(prompt, maxTokens = 8)
                                     .fold("") { acc, chunk -> acc + chunk }
                             }
-                        }?.trim()?.lowercase()?.split(Regex("\\s+"))?.firstOrNull() ?: return@runCatching
-                        ragOrchestrator.reclassifyAndMove(outcome.factText, outcome.topic, llmTopic)
-                    }.onFailure { Log.w(TAG, "LLM reclassify failed", it) }
+                        }?.trim()?.lowercase()?.split(Regex("\\s+"))?.firstOrNull()
+                        if (llmTopic != null) {
+                            ragOrchestrator.reclassifyAndMove(outcome.factText, outcome.topic, llmTopic)
+                        }
+                        val topicDisplay = when (llmTopic ?: outcome.topic.id) {
+                            "persons" -> "Personen"
+                            "preferences" -> "Vorlieben"
+                            "dates" -> "Termine"
+                            "technical" -> "Technik"
+                            else -> "Notizen"
+                        }
+                        chatRepository.updateAssistantMessage(ackId, "\"${outcome.factText}\" → $topicDisplay")
+                    }.onFailure {
+                        Log.w(TAG, "LLM reclassify failed", it)
+                        chatRepository.updateAssistantMessage(ackId, "\"${outcome.factText}\" gespeichert.")
+                    }
                 }
             }
             is io.somi.rag.SaveOutcome.SaveFailed -> {
@@ -855,6 +868,27 @@ class ChatViewModel @Inject constructor(
                         info?.state == androidx.work.WorkInfo.State.CANCELLED -> EmbedderStatus.Failed
                         installed -> EmbedderStatus.Installed
                         else -> EmbedderStatus.NotPresent
+                    }
+                    // v0.41.1 — trigger backfill once when embedder becomes available
+                    if (_embedderStatus.value == EmbedderStatus.Installed) {
+                        val backfillInfos = wm.getWorkInfosForUniqueWork(
+                            io.somi.rag.download.EmbeddingBackfillWorker.WORK_NAME
+                        ).get()
+                        val alreadyHandled = backfillInfos.any {
+                            it.state == androidx.work.WorkInfo.State.SUCCEEDED ||
+                            it.state == androidx.work.WorkInfo.State.RUNNING ||
+                            it.state == androidx.work.WorkInfo.State.ENQUEUED
+                        }
+                        if (!alreadyHandled) {
+                            val req = androidx.work.OneTimeWorkRequestBuilder<io.somi.rag.download.EmbeddingBackfillWorker>()
+                                .build()
+                            wm.enqueueUniqueWork(
+                                io.somi.rag.download.EmbeddingBackfillWorker.WORK_NAME,
+                                androidx.work.ExistingWorkPolicy.KEEP,
+                                req,
+                            )
+                            Log.i(TAG, "embedding backfill enqueued")
+                        }
                     }
                 }
             } catch (t: Throwable) {

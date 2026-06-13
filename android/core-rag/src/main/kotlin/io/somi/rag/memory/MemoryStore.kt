@@ -112,6 +112,13 @@ class MemoryStore @Inject constructor(
         box.put(row)
     }
 
+    /** v0.41.1 — Update the embedding of an existing fact (backfill). */
+    fun updateEmbedding(id: Long, embedding: FloatArray) {
+        val row = box.get(id) ?: return
+        row.embedding = embedding
+        box.put(row)
+    }
+
     /**
      * Get the head of a supersedes-chain starting at [id], following
      * forward links until none remain. Returns the most recent row.
