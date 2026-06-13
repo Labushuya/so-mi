@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.1](https://github.com/Labushuya/so-mi/compare/v0.40.0...v0.40.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* build — LlamaContext aus core-rag entfernt, LLM-Klassifizierung in ChatViewModel ([#154](https://github.com/Labushuya/so-mi/issues/154)) ([6e298d2](https://github.com/Labushuya/so-mi/commit/6e298d219e23ebe95e0f08768ee785685121befa))
+
 ## [0.40.0](https://github.com/Labushuya/so-mi/compare/v0.39.2...v0.40.0) (2026-06-12)
 
 
