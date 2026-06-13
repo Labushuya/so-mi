@@ -69,6 +69,11 @@ class ChatRepository @Inject constructor(
         dao.deleteAll()
     }
 
+    /** Update the text of an existing message (e.g. to enrich a save-ack after LLM classification). */
+    suspend fun updateAssistantMessage(id: Long, newText: String) {
+        dao.updateText(id, newText)
+    }
+
     /** Returns the [limit] most-recent messages for the current conversation, oldest first. */
     suspend fun getRecentMessages(limit: Int): List<Message> =
         dao.getRecentForConversation(_currentConversationId, limit)

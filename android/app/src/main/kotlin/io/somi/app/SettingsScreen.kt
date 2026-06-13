@@ -500,7 +500,7 @@ private fun LearningSection(onOpenMemoryBrowser: () -> Unit) {
 
     SectionCard(title = "Lernen") {
         Text(
-            text = "So-Mi merkt sich, was Du ihr sagst. Sag 'Merke dir, ...' oder 'Vergiss nicht, ...' — So-Mi speichert den Fakt und erinnert sich bei zukünftigen Antworten daran.",
+            text = "So-Mi merkt sich, was Du ihr sagst — auch ohne Gedächtnis-Modell. Sag 'Merke dir, ...' oder 'Vergiss nicht, ...'. Mit installiertem Embedder findet sie passende Erinnerungen präziser.",
             color = songbird.glass,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -720,6 +720,15 @@ private fun DownloadsSection(
         Text("Gedächtnis-Modell (Embedder)", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(4.dp))
         EmbedderStatusBadge(status = embedderStatus)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = if (embedderStatus == ChatViewModel.EmbedderStatus.Installed)
+                "Aktiv — So-Mi findet passende Erinnerungen semantisch, auch ohne exakte Worttreffer."
+            else
+                "Ohne Embedder merkt sich So-Mi alles — erinnert sich aber ungenauer, weil sie Fakten nicht nach Relevanz sortieren kann.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodySmall,
+        )
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SongbirdButton(
