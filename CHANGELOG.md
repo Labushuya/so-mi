@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.1](https://github.com/Labushuya/so-mi/compare/v0.42.0...v0.42.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* build — EmbeddingBackfillWorker internal entfernt ([#164](https://github.com/Labushuya/so-mi/issues/164)) ([2fd040d](https://github.com/Labushuya/so-mi/commit/2fd040dc61e37dcb26c3af1a75fad229dd9a4514))
+
 ## [0.42.0](https://github.com/Labushuya/so-mi/compare/v0.41.0...v0.42.0) (2026-06-13)
 
 
