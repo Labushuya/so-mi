@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.1](https://github.com/Labushuya/so-mi/compare/v0.43.0...v0.43.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* build — LlmCaller Interface statt Lambda-Injection (Hilt-Typlöschung) ([#168](https://github.com/Labushuya/so-mi/issues/168)) ([0bd8cf6](https://github.com/Labushuya/so-mi/commit/0bd8cf61effda348ef5ef72b554d8a0b8ff0a159))
+
 ## [0.43.0](https://github.com/Labushuya/so-mi/compare/v0.42.1...v0.43.0) (2026-06-13)
 
 
