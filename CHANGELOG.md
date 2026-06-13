@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/Labushuya/so-mi/compare/v0.42.1...v0.43.0) (2026-06-13)
+
+
+### Features
+
+* Phase 4 Tool-System — ToolRouter (3-Stufen), get_weather, search_web, search_memory ([#166](https://github.com/Labushuya/so-mi/issues/166)) ([457b4d1](https://github.com/Labushuya/so-mi/commit/457b4d1032d7878fcfecef419243cbd44e4c4060))
+
 ## [0.42.1](https://github.com/Labushuya/so-mi/compare/v0.42.0...v0.42.1) (2026-06-13)
 
 
