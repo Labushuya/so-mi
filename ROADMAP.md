@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.41.0 | ✅ live | HNSW-Recall — semantische Suche wenn Embedder aktiv, .md-Scan als Fallback |
 | v0.40.3 | ✅ live | Fix: Backup-Fehler (WAL-Checkpoint entfernt) |
 | v0.40.2 | ✅ live | LLM-Klassifizierer + Sliding-Window Gesprächskontext |
 | v0.39.2 | ✅ live | Fix: somi.db im Backup — WAL-Checkpoint + SoMiDatabase-Injection |
@@ -60,7 +61,8 @@ Komplett.
 | Setup-Guard | ✅ v0.34.0 (Banner, non-blocking) |
 | FAQ | ✅ v0.35.0 |
 | Multi-Chat | ❌ offen — v0.37.0 |
-| M9 LLM-Klassifizierer | ❌ aufgeschoben nach v0.40 |
+| M9 LLM-Klassifizierer | ✅ v0.40.2 |
+| HNSW-Recall | ✅ v0.41.0 |
 | KIWIX-AAR | ❌ Phase-3-Abschluss |
 
 ### ❌ Phase 4 — Tools (12 aus SPEC §9)
@@ -102,11 +104,7 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.41.0 — Kontext-Qualität (nächstes)
-1. Besseres Recall-Ranking wenn Embedder aktiv (HNSW statt .md-Scan)
-2. Sliding-Window bereits in v0.40.2 umgesetzt ✅
-
-### v0.42.0 — Phase 4: Tool-System (Grundlage für Internet + Plugins)
+### v0.42.0 — Phase 4: Tool-System (nächstes)
 **Internet-Zugang** *(User-Vereinbarung 2026-06-13)*:
 - `search_web`-Tool: Suchanfragen an ungated API (Brave Search / SearXNG)
 - Ergebnisse als Kontext injiziert; Verarbeitung bleibt lokal
