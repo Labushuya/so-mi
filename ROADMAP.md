@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.42.1 | ✅ live | Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker, Embedder-Hinweis |
 | v0.41.0 | ✅ live | HNSW-Recall — semantische Suche wenn Embedder aktiv, .md-Scan als Fallback |
 | v0.40.3 | ✅ live | Fix: Backup-Fehler (WAL-Checkpoint entfernt) |
 | v0.40.2 | ✅ live | LLM-Klassifizierer + Sliding-Window Gesprächskontext |
@@ -104,7 +105,7 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.42.0 — Phase 4: Tool-System (nächstes)
+### v0.43.0 — Phase 4: Tool-System (nächstes)
 **Internet-Zugang** *(User-Vereinbarung 2026-06-13)*:
 - `search_web`-Tool: Suchanfragen an ungated API (Brave Search / SearXNG)
 - Ergebnisse als Kontext injiziert; Verarbeitung bleibt lokal
