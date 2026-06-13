@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.43.1 | ✅ live | Phase 4: Tool-System — ToolRouter (3-Stufen), get_weather, search_web, search_memory |
 | v0.42.1 | ✅ stable | Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker, Embedder-Hinweis |
 | v0.41.0 | ✅ stable | HNSW-Recall — semantische Suche wenn Embedder aktiv, .md-Scan als Fallback |
 | v0.40.3 | ✅ stable | Fix: Backup-Fehler (WAL-Checkpoint entfernt) |
@@ -63,7 +64,7 @@ Komplett.
 | HNSW-Recall + Backfill | ✅ v0.41.0 / v0.42.1 |
 | KIWIX-AAR | ❌ verschoben auf v1.0 |
 
-### 🟡 Phase 4 — Tools (in Arbeit ab v0.43.0)
+### 🟡 Phase 4 — Tools (3 von 12 implementiert, ab v0.43.1)
 ### ❌ Phase 5 — Voice + In-App-Updater
 
 ---
@@ -101,7 +102,11 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.43.0 — Phase 4: Tool-System (nächstes)
+### v0.44.0 — Tool-System Erweiterung (nächstes)
+- Settings → Tools: UI mit per-Tool-Toggle (de-/aktivierbar)
+- Web-Consent-Dialog im Chat (erster `search_web`-Call)
+- Restliche 9 Tools aus SPEC §9: create_reminder, read_calendar, create_event, search_notes, save_note, summarize, news_briefing, get_exchange_rate, speak
+- GBNF-Wiring im JNI-Layer (Stage-3 Constrained Decoding)
 **Internet-Zugang** *(User-Vereinbarung 2026-06-13)*:
 - `search_web`-Tool: Suchanfragen an ungated API (Brave Search / SearXNG)
 - Ergebnisse als Kontext injiziert; Verarbeitung bleibt lokal
