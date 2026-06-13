@@ -1166,7 +1166,7 @@ class ChatViewModel @Inject constructor(
         // Reads from the .md mirror (no HNSW yet). If no facts saved, no
         // prefix added. This runs on Dispatchers.IO (file read is fast).
         val recallContext = withContext(Dispatchers.IO) {
-            runCatching { ragOrchestrator.recallForPrompt() }.getOrNull()
+            runCatching { ragOrchestrator.recallForPrompt(userText) }.getOrNull()
         }
         val recentMessages = withContext(Dispatchers.IO) {
             runCatching { chatRepository.getRecentMessages(limit = 16) }.getOrDefault(emptyList())

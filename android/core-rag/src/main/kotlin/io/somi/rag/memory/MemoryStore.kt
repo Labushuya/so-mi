@@ -4,6 +4,7 @@ import android.util.Log
 import dagger.Lazy
 import io.objectbox.BoxStore
 import io.objectbox.kotlin.boxFor
+import io.objectbox.query.QueryBuilder
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
@@ -149,12 +150,63 @@ class MemoryStore @Inject constructor(
         allHeads().filter { it.topic == topic.id }
 
     /**
-     * v0.14.0 M3 — placeholder cosine top-K. Real HNSW query lands
-     * in M8 (Recall). For now this just runs over allHeads() with a
-     * naive cosine — fine for tests and dev devices, not production
-     * scale. ObjectBox's HNSW query API call goes here.
+     * v0.15.1 M8 — HNSW-backed top-K using ObjectBox nearestNeighbors.
+     * Requests [k]*4 (min 40) candidates to absorb tombstoned/superseded
+     * rows that are filtered post-query. Falls back to [topKScan] if the
+     * HNSW index is unavailable (empty store or query error).
      */
     fun topK(
+        queryEmbedding: FloatArray,
+        k: Int = 5,
+        cosineThreshold: Float = 0.0f,
+        now: Long = System.currentTimeMillis(),
+        decayHalfLifeDays: Int = 90,
+    ): List<RankedFact> {
+        require(queryEmbedding.isNotEmpty())
+        // Request more candidates than k to account for tombstoned/superseded rows
+        // that will be filtered out after the HNSW query.
+        val candidateCount = (k * 4).coerceAtLeast(40)
+        val rawResults = runCatching {
+            box.query(MemoryFact_.embedding.nearestNeighbors(queryEmbedding, candidateCount))
+                .build()
+                .findWithScores()
+        }.getOrElse { t ->
+            Log.w(TAG, "HNSW query failed, falling back to scan", t)
+            return topKScan(queryEmbedding, k, cosineThreshold, now, decayHalfLifeDays)
+        }
+        if (rawResults.isEmpty()) return topKScan(queryEmbedding, k, cosineThreshold, now, decayHalfLifeDays)
+
+        // Build superseded-id set for head filtering
+        val supersededIds = rawResults.map { it.get() }
+            .filter { it.supersedesId != 0L }
+            .map { it.supersedesId }
+            .toHashSet()
+
+        val ranked = ArrayList<RankedFact>(k)
+        for (r in rawResults) {
+            val fact = r.get()
+            if (fact.tombstoned) continue
+            if (fact.id in supersededIds) continue
+            if (fact.embedding.size != queryEmbedding.size) continue
+            // COSINE distance from ObjectBox: 0 = identical, 1 = orthogonal, 2 = opposite
+            // Convert to similarity: similarity = 1 - distance
+            val cos = (1f - r.score.toFloat()).coerceIn(0f, 1f)
+            if (cos < cosineThreshold) continue
+            val ageDays = (now - fact.lastSeenAt).coerceAtLeast(0L) / MS_PER_DAY
+            val decay = exp(-ageDays.toDouble() / decayHalfLifeDays).toFloat()
+            ranked += RankedFact(fact = fact, cosine = cos, score = cos * decay)
+            if (ranked.size >= k) break
+        }
+        ranked.sortByDescending { it.score }
+        return ranked
+    }
+
+    /**
+     * v0.14.0 M3 — naive cosine scan over allHeads(). Kept as fallback
+     * for [topK] when the HNSW index is unavailable or returns no results.
+     * Not suitable for production scale.
+     */
+    private fun topKScan(
         queryEmbedding: FloatArray,
         k: Int = 5,
         cosineThreshold: Float = 0.0f,
