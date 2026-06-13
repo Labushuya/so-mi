@@ -4,12 +4,9 @@ import io.somi.common.chat.Author
 import io.somi.common.chat.Message
 import io.somi.data.db.MessageDao
 import io.somi.data.db.MessageEntity
-import io.somi.data.db.SoMiDatabase
 import io.somi.data.db.toDomain
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +17,6 @@ import javax.inject.Singleton
 @Singleton
 class ChatRepository @Inject constructor(
     private val dao: MessageDao,
-    private val db: SoMiDatabase,
 ) {
     private var _currentConversationId: Long = 1L
     val currentConversationId: Long get() = _currentConversationId
@@ -71,11 +67,6 @@ class ChatRepository @Inject constructor(
 
     suspend fun clearAll() {
         dao.deleteAll()
-    }
-
-    /** Flush pending WAL data into the main DB file before backup. */
-    suspend fun checkpointWal() = withContext(Dispatchers.IO) {
-        db.openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
     }
 
     /** Returns the [limit] most-recent messages for the current conversation, oldest first. */

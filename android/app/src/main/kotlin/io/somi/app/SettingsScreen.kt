@@ -965,7 +965,6 @@ private fun DataSection(viewModel: ChatViewModel, onOpenDataBrowser: () -> Unit,
                         backupStatus = "Erstelle Backup…"
                         try {
                             val zipFile = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                viewModel.checkpointDatabase()
                                 io.somi.data.BackupManager(context).createBackup()
                             }
                             backupStatus = "Backup: ${zipFile.name}"
