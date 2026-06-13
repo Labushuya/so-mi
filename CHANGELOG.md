@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/Labushuya/so-mi/compare/v0.40.3...v0.41.0) (2026-06-13)
+
+
+### Features
+
+* HNSW-Recall — ObjectBox nearestNeighbors wenn Embedder aktiv, .md-Scan als Fallback ([#160](https://github.com/Labushuya/so-mi/issues/160)) ([4398d30](https://github.com/Labushuya/so-mi/commit/4398d30c22c62445468f9a0e8359e60426d9b553))
+
 ## [0.40.3](https://github.com/Labushuya/so-mi/compare/v0.40.2...v0.40.3) (2026-06-13)
 
 
