@@ -37,10 +37,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -629,6 +631,24 @@ class ChatViewModel @Inject constructor(
             is io.somi.rag.SaveOutcome.NotTriggered -> Unit
             is io.somi.rag.SaveOutcome.Saved -> {
                 chatRepository.appendAssistant(SAVE_ACK_TEXT)
+
+                // v0.40.0 — LLM-based reclassification (best-effort, fire-and-forget)
+                viewModelScope.launch(Dispatchers.IO) {
+                    runCatching {
+                        val prompt = buildString {
+                            append("Klassifiziere diesen Fakt in genau eine Kategorie. Antworte NUR mit dem Kategorie-Schlüssel.\n\n")
+                            append("Kategorien: persons, preferences, dates, technical, notes\n\n")
+                            append("Fakt: ${outcome.factText}\n\nKategorie:")
+                        }
+                        val llmTopic = withTimeoutOrNull(3000L) {
+                            withContext(llamaDispatcher) {
+                                llama.generate(prompt, maxTokens = 8)
+                                    .fold("") { acc, chunk -> acc + chunk }
+                            }
+                        }?.trim()?.lowercase()?.split(Regex("\\s+"))?.firstOrNull() ?: return@runCatching
+                        ragOrchestrator.reclassifyAndMove(outcome.factText, outcome.topic, llmTopic)
+                    }.onFailure { Log.w(TAG, "LLM reclassify failed", it) }
+                }
             }
             is io.somi.rag.SaveOutcome.SaveFailed -> {
                 val msg = when (outcome.reason) {

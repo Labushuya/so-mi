@@ -135,6 +135,22 @@ class MemoryFileRepository @Inject constructor(
             }
         }
 
+    /** Remove a single fact from a topic file by exact text match. */
+    suspend fun remove(fact: String, topic: MemoryTopic) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val file = fileFor(topic)
+            if (!file.exists()) return@withLock
+            val normalized = fact.trim().lowercase()
+            val kept = file.readLines().filter { line ->
+                if (!line.trimStart().startsWith("- ")) return@filter true
+                val lineFact = line.trimStart().removePrefix("- ")
+                    .replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim().lowercase()
+                lineFact != normalized
+            }
+            file.writeText(kept.joinToString("\n") + "\n")
+        }
+    }
+
     /** Wipe a topic file (used by tests + Settings reset). */
     suspend fun clear(topic: MemoryTopic) = withContext(Dispatchers.IO) {
         mutex.withLock {
