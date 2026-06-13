@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
  * so reruns are no-ops.
  */
 @HiltWorker
-internal class EmbeddingBackfillWorker @AssistedInject constructor(
+class EmbeddingBackfillWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val memoryStore: MemoryStore,
