@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.2](https://github.com/Labushuya/so-mi/compare/v0.40.1...v0.40.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* build — SoMiDatabase nicht in core-ui, WAL-Checkpoint über ChatRepository.checkpointWal() ([#156](https://github.com/Labushuya/so-mi/issues/156)) ([6d630db](https://github.com/Labushuya/so-mi/commit/6d630dbd5f39eaeaa54590127c5dab4f55e69bb6))
+
 ## [0.40.1](https://github.com/Labushuya/so-mi/compare/v0.40.0...v0.40.1) (2026-06-13)
 
 
