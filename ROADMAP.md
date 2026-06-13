@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.40.2 | ✅ live | LLM-Klassifizierer + Sliding-Window Gesprächskontext + Backup-DB-Fix |
 | v0.39.2 | ✅ live | Fix: somi.db im Backup — WAL-Checkpoint + SoMiDatabase-Injection |
 | v0.39.1 | ✅ live | Build-Fix: verwaiste Zeilen ChatViewModel |
 | v0.39.0 | ✅ live | Backup mit Chat-Verlauf, Import-Bestätigung, /search /clear /rename /archive |
@@ -100,20 +101,9 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.39.0 — Backup vollständig + Chat Phase 2 (unmittelbar)
-1. Room-DB (`somi.db`) ins Backup aufnehmen — Chat-Verlauf exportierbar
-2. Import-Bestätigung wenn vorhandene Daten überschrieben werden
-3. Nachrichten-Suche innerhalb eines Gesprächs (Suchfeld im Chat)
-4. Chat umbenennen direkt aus dem Chat heraus
-5. Chat-Archivierung (ausblenden ohne löschen)
-
-### v0.40.0 — M9 LLM-Klassifizierer
-1. Kurzer LLM-Pass nach Trigger-Save: strukturierte Fakten-Extraktion
-2. Bessere Kategorisierung ohne Regex-Grenzen
-
-### v0.41.0 — Kontext-Qualität
-1. Sliding-Window bei langen Gesprächen (KV-Cache-Schutz)
-2. Besseres Recall-Ranking wenn Embedder aktiv (HNSW)
+### v0.41.0 — Kontext-Qualität (nächstes)
+1. Besseres Recall-Ranking wenn Embedder aktiv (HNSW statt .md-Scan)
+2. Sliding-Window bereits in v0.40.2 umgesetzt ✅
 
 ### v0.42.0 — Phase 4: Tool-System (Grundlage für Internet + Plugins)
 **Internet-Zugang** *(User-Vereinbarung 2026-06-13)*:
