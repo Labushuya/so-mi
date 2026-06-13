@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.0](https://github.com/Labushuya/so-mi/compare/v0.41.0...v0.42.0) (2026-06-13)
+
+
+### Features
+
+* Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker, Embedder-Hinweis korrigiert ([#162](https://github.com/Labushuya/so-mi/issues/162)) ([5de21fc](https://github.com/Labushuya/so-mi/commit/5de21fcda0b5a4e456d57dcacaf1719c83657622))
+
 ## [0.41.0](https://github.com/Labushuya/so-mi/compare/v0.40.3...v0.41.0) (2026-06-13)
 
 
