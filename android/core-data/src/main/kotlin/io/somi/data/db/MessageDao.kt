@@ -12,6 +12,9 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(message: MessageEntity): Long
 
+    @Query("UPDATE messages SET text = :text WHERE id = :id")
+    suspend fun updateText(id: Long, text: String)
+
     @Query("SELECT * FROM messages WHERE conversation_id = :conversationId ORDER BY id ASC")
     fun observeByConversation(conversationId: Long): Flow<List<MessageEntity>>
 
