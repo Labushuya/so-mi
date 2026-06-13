@@ -2,6 +2,7 @@ package io.somi.tools.routing
 
 import android.util.Log
 import io.somi.common.embed.TextEmbedder
+import io.somi.common.llm.LlmCaller
 import io.somi.tools.model.RoutingStage
 import io.somi.tools.model.ToolCall
 import io.somi.tools.registry.ToolRegistry
@@ -15,7 +16,7 @@ import javax.inject.Singleton
 class ToolRouter @Inject constructor(
     private val registry: ToolRegistry,
     private val embedder: TextEmbedder,
-    private val llmPlanPass: @JvmSuppressWildcards suspend (String) -> String,
+    private val llmCaller: LlmCaller,
 ) {
     companion object {
         private const val COSINE_THRESHOLD = 0.78f
@@ -77,7 +78,7 @@ JSON:""".trimIndent()
             .replace("{{TOOLS}}", registry.descriptionBlock())
             .replace("{{QUERY}}", query)
         val raw = withContext(Dispatchers.Default) {
-            runCatching { llmPlanPass(prompt) }.getOrDefault("")
+            runCatching { llmCaller.generate(prompt) }.getOrDefault("")
         }
         return parsePlanResponse(raw)
     }
