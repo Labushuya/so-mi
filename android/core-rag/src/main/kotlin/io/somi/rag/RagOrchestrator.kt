@@ -329,7 +329,7 @@ class RagOrchestrator @Inject constructor(
      *
      * @return formatted context string, or null if no facts exist.
      */
-    fun recallForPrompt(): String? {
+    private fun recallFallback(): String? {
         // Read ALL .md files in the memory directory — including custom categories
         // created by the user (e.g. "Beruf & Job" → "beruf_und_job.md").
         val root = memoryFiles.rootDir
@@ -355,6 +355,39 @@ class RagOrchestrator @Inject constructor(
             allFacts.forEach { append("- $it\n") }
             append("\n")
         }
+    }
+
+    /**
+     * v0.18.5 M8 + semantic path — public entry point for ChatViewModel.
+     *
+     * If the embedder is available and [userText] is non-blank, embeds the
+     * query and retrieves the top-K most semantically similar facts via
+     * HNSW. Falls back to the full .md scan when the embedder is not ready
+     * or no query text is provided (preserves backwards-compat: callers
+     * that pass no args still get the .md-scan result).
+     *
+     * @param userText the user's message; defaults to "" so existing
+     *   call sites that pass no argument continue to compile unchanged.
+     * @return formatted context string, or null if no facts exist.
+     */
+    suspend fun recallForPrompt(userText: String = ""): String? {
+        // If embedder is available and we have a query, use semantic HNSW recall
+        if (userText.isNotBlank() && runCatching { embedder.isAvailable() }.getOrDefault(false)) {
+            return withContext(Dispatchers.IO) {
+                runCatching {
+                    val queryEmbedding = embedder.embed(userText)
+                    val ranked = memoryStore.topK(queryEmbedding, k = MAX_RECALL_FACTS)
+                    if (ranked.isEmpty()) return@runCatching recallFallback()
+                    buildString {
+                        append("Was du über deinen Nutzer weißt (diese Fakten kennt der Nutzer — nutze sie natürlich im Gespräch, wiederhole sie nicht einfach):\n")
+                        ranked.forEach { append("- ${it.fact.fact}\n") }
+                        append("\n")
+                    }
+                }.getOrElse { recallFallback() }
+            }
+        }
+        // Fallback: .md scan (no embedder or no query text)
+        return recallFallback()
     }
 
     /**
