@@ -1245,28 +1245,33 @@ class ChatViewModel @Inject constructor(
             }
         } else null
 
-        // v0.43.0 — Tool routing before LLM generation
-        val toolResult = runCatching {
-            val toolCall = toolRouter.route(userText)
-            if (toolCall != null) {
-                Log.i(TAG, "tool matched: ${toolCall.toolId} via ${toolCall.stage}")
-                if (toolCall.toolId == "search_web" && !toolPrefs.webConsentShown()) {
-                    _pendingWebConsent.value = toolCall
-                    return  // suspend until user acks web consent
-                }
-                val hint = when (toolCall.toolId) {
-                    "get_weather" -> "Wetterdaten werden abgerufen…"
-                    "search_web" -> "Web-Suche läuft…"
-                    "search_memory" -> "Erinnerungen werden durchsucht…"
-                    else -> "Tool wird ausgeführt…"
-                }
-                _activeToolHint.value = hint
-                toolDispatcher.dispatch(toolCall).also { result ->
-                    Log.i(TAG, "tool result: ${toolCall.toolId} error=${result.error} len=${result.contextBlock.length}")
-                }
-            } else null
-        }.onFailure { Log.w(TAG, "tool routing failed", it) }.getOrNull()
+        // v0.43.0 — Tool routing before LLM generation (15s hard timeout)
+        var webConsentPending = false
+        val toolResult = withTimeoutOrNull(15_000L) {
+            runCatching {
+                val toolCall = toolRouter.route(userText)
+                if (toolCall != null) {
+                    Log.i(TAG, "tool matched: ${toolCall.toolId} via ${toolCall.stage}")
+                    if (toolCall.toolId == "search_web" && !toolPrefs.webConsentShown()) {
+                        _pendingWebConsent.value = toolCall
+                        webConsentPending = true
+                        return@withTimeoutOrNull null
+                    }
+                    val hint = when (toolCall.toolId) {
+                        "get_weather" -> "Wetterdaten werden abgerufen…"
+                        "search_web" -> "Web-Suche läuft…"
+                        "search_memory" -> "Erinnerungen werden durchsucht…"
+                        else -> "Tool wird ausgeführt…"
+                    }
+                    _activeToolHint.value = hint
+                    toolDispatcher.dispatch(toolCall).also { result ->
+                        Log.i(TAG, "tool result: ${toolCall.toolId} error=${result.error} len=${result.contextBlock.length}")
+                    }
+                } else null
+            }.onFailure { Log.w(TAG, "tool routing failed", it) }.getOrNull()
+        }.also { if (it == null && !webConsentPending) Log.w(TAG, "tool dispatch timed out after 15s") }
         _activeToolHint.value = null
+        if (webConsentPending) return
 
         val promptWithContext = buildString {
             if (recallContext != null) append(recallContext)
@@ -1277,6 +1282,8 @@ class ChatViewModel @Inject constructor(
                 append("Aktuelle Daten die ich gerade abgerufen habe (verwende NUR diese für die Antwort, nicht dein eigenes Wissen):\n\n")
                 append(toolResult.contextBlock)
                 append("\nNutzerAnfrage: ")
+            } else if (toolResult != null && toolResult.error != null) {
+                Log.i(TAG, "tool ${toolResult.toolId} error — proceeding without context: ${toolResult.error}")
             }
             append(userText)
         }

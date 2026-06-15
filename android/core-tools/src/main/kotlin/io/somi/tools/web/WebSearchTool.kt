@@ -17,7 +17,7 @@ class WebSearchTool @Inject constructor() : ToolExecutor {
         val maxResults = (call.params["max_results"] as? Int) ?: 5
         val results = runCatching { client.search(query, maxResults) }.getOrElse { emptyList() }
         if (results.isEmpty()) {
-            return ToolResult(toolId, "Keine Web-Ergebnisse für: $query", displayHint = "Web-Suche")
+            return ToolResult(toolId, "", error = "Keine Web-Ergebnisse für: $query", displayHint = "Web-Suche")
         }
         val block = buildString {
             append("[Web-Suche: \"$query\"]\n")
