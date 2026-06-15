@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.2](https://github.com/Labushuya/so-mi/compare/v0.43.1...v0.43.2) (2026-06-15)
+
+
+### Bug Fixes
+
+* Tool-Ergebnisse werden jetzt genutzt — Kontext-Framing, Tool-Chip, Logging ([#170](https://github.com/Labushuya/so-mi/issues/170)) ([458dbe7](https://github.com/Labushuya/so-mi/commit/458dbe780c02ad63de530363538cdf49ef1bac33))
+
 ## [0.43.1](https://github.com/Labushuya/so-mi/compare/v0.43.0...v0.43.1) (2026-06-13)
 
 
