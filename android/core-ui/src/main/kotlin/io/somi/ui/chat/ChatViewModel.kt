@@ -139,8 +139,12 @@ class ChatViewModel @Inject constructor(
     private val _download = MutableStateFlow<DownloadProgress?>(null)
     private val _generation = MutableStateFlow<GenerationStream?>(null)
     private val _errorBanner = MutableStateFlow<TransientError?>(null)
+    private val _activeToolHint = MutableStateFlow<String?>(null)
 
     // --- Public state ----------------------------------------------------
+
+    /** Non-null while a tool is executing (e.g. "Wetter wird abgerufen…"). Shown as a chip in the UI. */
+    val activeToolHint: StateFlow<String?> = _activeToolHint.asStateFlow()
 
     /**
      * Derived UI state. The inner lifecycle drives routing and composer-
@@ -1245,18 +1249,35 @@ class ChatViewModel @Inject constructor(
         val toolResult = runCatching {
             val toolCall = toolRouter.route(userText)
             if (toolCall != null) {
+                Log.i(TAG, "tool matched: ${toolCall.toolId} via ${toolCall.stage}")
                 if (toolCall.toolId == "search_web" && !toolPrefs.webConsentShown()) {
                     _pendingWebConsent.value = toolCall
                     return  // suspend until user acks web consent
                 }
-                toolDispatcher.dispatch(toolCall)
+                val hint = when (toolCall.toolId) {
+                    "get_weather" -> "Wetterdaten werden abgerufen…"
+                    "search_web" -> "Web-Suche läuft…"
+                    "search_memory" -> "Erinnerungen werden durchsucht…"
+                    else -> "Tool wird ausgeführt…"
+                }
+                _activeToolHint.value = hint
+                toolDispatcher.dispatch(toolCall).also { result ->
+                    Log.i(TAG, "tool result: ${toolCall.toolId} error=${result.error} len=${result.contextBlock.length}")
+                }
             } else null
-        }.getOrNull()
+        }.onFailure { Log.w(TAG, "tool routing failed", it) }.getOrNull()
+        _activeToolHint.value = null
 
         val promptWithContext = buildString {
-            if (toolResult != null) append("[Tool-Ergebnis]\n${toolResult.contextBlock}\n\n")
             if (recallContext != null) append(recallContext)
             if (historyContext != null) append(historyContext)
+            // Tool result: injected as the last thing before the question so the
+            // LLM treats it as authoritative current context, not background noise.
+            if (toolResult != null && toolResult.error == null) {
+                append("Aktuelle Daten die ich gerade abgerufen habe (verwende NUR diese für die Antwort, nicht dein eigenes Wissen):\n\n")
+                append(toolResult.contextBlock)
+                append("\nNutzerAnfrage: ")
+            }
             append(userText)
         }
 

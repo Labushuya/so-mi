@@ -329,6 +329,7 @@ private fun SoMiAppRoot() {
                     versionName = BuildConfig.VERSION_NAME,
                     versionCode = BuildConfig.VERSION_CODE,
                     embedderStatus = viewModel.embedderStatus.collectAsStateWithLifecycle().value,
+                    activeToolHint = viewModel.activeToolHint.collectAsStateWithLifecycle().value,
                     onSubmit = viewModel::submit,
                     onCancelGeneration = viewModel::cancelGeneration,
                     onRetry = viewModel::retry,
@@ -349,6 +350,7 @@ private fun ChatShellScreen(
     versionName: String,
     versionCode: Int,
     embedderStatus: io.somi.ui.chat.ChatViewModel.EmbedderStatus,
+    activeToolHint: String? = null,
     onSubmit: (String) -> Unit,
     onCancelGeneration: () -> Unit,
     onRetry: (() -> Unit)? = null,
@@ -428,6 +430,11 @@ private fun ChatShellScreen(
                     kind = BannerKind.Info,
                 )
             io.somi.ui.chat.ChatViewModel.EmbedderStatus.Installed -> Unit // no banner needed
+        }
+
+        // Tool-activity chip — shown while a tool call is in flight
+        if (activeToolHint != null) {
+            ErrorBanner(message = "⚙ $activeToolHint", onRetry = null, kind = BannerKind.Info)
         }
 
         // Message history + live-typing bubble for in-flight generation.
