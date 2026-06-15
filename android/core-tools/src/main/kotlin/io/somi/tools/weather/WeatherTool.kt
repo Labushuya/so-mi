@@ -17,6 +17,9 @@ class WeatherTool @Inject constructor() : ToolExecutor {
         val days = (call.params["days"] as? Int) ?: 1
         val result = runCatching { client.fetch(location, days) }
             .getOrElse { "Wetterdaten nicht verfügbar." }
+        if (result.contains("nicht gefunden") || result.contains("nicht verfügbar")) {
+            return ToolResult(toolId, "", error = result, displayHint = "Wetter $location")
+        }
         return ToolResult(toolId, "[Wetter]\n$result", displayHint = "Wetter $location")
     }
 }
