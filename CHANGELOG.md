@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.3](https://github.com/Labushuya/so-mi/compare/v0.43.2...v0.43.3) (2026-06-15)
+
+
+### Bug Fixes
+
+* Tool-Fehler — Timeout 15s, Fehler-Strings als error, [@erinnerung](https://github.com/erinnerung) kein ONNX ([#172](https://github.com/Labushuya/so-mi/issues/172)) ([a5d743d](https://github.com/Labushuya/so-mi/commit/a5d743de96fbb51122fbc0e5eaff13e1d9b2aa07))
+
 ## [0.43.2](https://github.com/Labushuya/so-mi/compare/v0.43.1...v0.43.2) (2026-06-15)
 
 
