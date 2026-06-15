@@ -25,6 +25,9 @@ class MemorySearchAdapter @Inject constructor(
             }
         }
 
+    override suspend fun topKKeywords(query: String, k: Int): List<String> =
+        withContext(Dispatchers.IO) { keywordScan(query, k) }
+
     private fun keywordScan(query: String, k: Int): List<String> {
         val tokens = query.lowercase().split(' ').filter { it.length >= 3 }
         return memoryFiles.rootDir
