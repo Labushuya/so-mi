@@ -65,12 +65,15 @@ class UiSettingsRepository @Inject constructor(
 
     suspend fun setGreetingMode(mode: GreetingMode) = save(_state.value.copy(greetingMode = mode))
 
+    suspend fun setToolMode(mode: ToolMode) = save(_state.value.copy(toolMode = mode))
+
     suspend fun save(settings: UiSettings) = withContext(Dispatchers.IO) {
         _state.value = settings
         try {
             val json = JSONObject().apply {
                 put("immersive", settings.immersive)
                 put("greetingMode", settings.greetingMode.name)
+                put("toolMode", settings.toolMode.name)
             }
             file.writeText(json.toString())
         } catch (t: Throwable) {
@@ -90,6 +93,9 @@ class UiSettingsRepository @Inject constructor(
                 greetingMode = runCatching {
                     GreetingMode.valueOf(json.optString("greetingMode", UiSettings.DEFAULTS.greetingMode.name))
                 }.getOrDefault(UiSettings.DEFAULTS.greetingMode),
+                toolMode = runCatching {
+                    ToolMode.valueOf(json.optString("toolMode", UiSettings.DEFAULTS.toolMode.name))
+                }.getOrDefault(UiSettings.DEFAULTS.toolMode),
             )
         } catch (t: Throwable) {
             Log.w(TAG, "load failed; using defaults", t)
@@ -108,6 +114,7 @@ class UiSettingsRepository @Inject constructor(
 data class UiSettings(
     val immersive: Boolean = true,
     val greetingMode: GreetingMode = GreetingMode.COLD_START,
+    val toolMode: ToolMode = ToolMode.COMPACT,
 ) {
     companion object {
         val DEFAULTS = UiSettings()
@@ -126,4 +133,18 @@ enum class GreetingMode {
 
     /** Never greet. */
     NONE,
+}
+
+/**
+ * Tool-execution mode toggle.
+ *
+ * COMPACT: Tool results truncated to ~200 tokens before LLM injection.
+ *   Fast and stable — no KV-cache rebuild needed.
+ * SYSTEM_PROMPT: Tool results + soul.md sent as a fresh system prompt
+ *   before each tool-assisted generation. Complete data, ~2-3s overhead
+ *   from KV-cache invalidation. Experimental.
+ */
+enum class ToolMode {
+    COMPACT,
+    SYSTEM_PROMPT,
 }
