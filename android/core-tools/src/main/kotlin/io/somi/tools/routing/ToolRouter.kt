@@ -6,8 +6,6 @@ import io.somi.common.llm.LlmCaller
 import io.somi.tools.model.RoutingStage
 import io.somi.tools.model.ToolCall
 import io.somi.tools.registry.ToolRegistry
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -77,9 +75,7 @@ JSON:""".trimIndent()
         val prompt = PLAN_PROMPT
             .replace("{{TOOLS}}", registry.descriptionBlock())
             .replace("{{QUERY}}", query)
-        val raw = withContext(Dispatchers.Default) {
-            runCatching { llmCaller.generate(prompt) }.getOrDefault("")
-        }
+        val raw = runCatching { llmCaller.generate(prompt) }.getOrDefault("")
         return parsePlanResponse(raw)
     }
 

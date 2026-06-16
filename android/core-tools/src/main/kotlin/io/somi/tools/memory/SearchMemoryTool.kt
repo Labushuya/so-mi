@@ -20,7 +20,7 @@ class SearchMemoryTool @Inject constructor(
         // Use keyword-only scan — avoids ONNX embedder while LLM is loaded (OOM risk)
         val facts = runCatching { memorySearch.topKKeywords(query, k) }.getOrElse { emptyList() }
         if (facts.isEmpty()) {
-            return ToolResult(toolId, "Keine Erinnerungen zu: $query", displayHint = "Erinnerungssuche")
+            return ToolResult(toolId, "", error = "Keine Erinnerungen zu: $query", displayHint = "Erinnerungssuche")
         }
         val block = buildString {
             append("[Erinnerungssuche: \"$query\"]\n")
