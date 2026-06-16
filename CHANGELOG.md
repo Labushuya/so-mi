@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.2](https://github.com/Labushuya/so-mi/compare/v0.44.1...v0.44.2) (2026-06-16)
+
+
+### Bug Fixes
+
+* Web-Consent entfernt, History bei Tool-Calls unterdrückt, Prompt-Framing vereinfacht ([#178](https://github.com/Labushuya/so-mi/issues/178)) ([c7b0a9a](https://github.com/Labushuya/so-mi/commit/c7b0a9af741c8763daa584d61ae02ca8238974f1))
+
 ## [0.44.1](https://github.com/Labushuya/so-mi/compare/v0.44.0...v0.44.1) (2026-06-16)
 
 
