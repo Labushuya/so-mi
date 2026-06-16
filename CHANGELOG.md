@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.3](https://github.com/Labushuya/so-mi/compare/v0.44.2...v0.44.3) (2026-06-16)
+
+
+### Bug Fixes
+
+* Wetter versteht 'morgen'/'heute', History bei jedem Tool-Call unterdrückt ([#180](https://github.com/Labushuya/so-mi/issues/180)) ([7572156](https://github.com/Labushuya/so-mi/commit/7572156d2e171e8ff67cc3c5e93b9d2864e523ec))
+
 ## [0.44.2](https://github.com/Labushuya/so-mi/compare/v0.44.1...v0.44.2) (2026-06-16)
 
 
