@@ -136,6 +136,13 @@ internal fun SettingsScreen(
                             coroutineScope.launch { viewModel.uiSettings.setGreetingMode(m) }
                         },
                     )
+                    Spacer(Modifier.height(16.dp))
+                    ToolModeSection(
+                        mode = uiSettings.toolMode,
+                        onModeChange = { m ->
+                            coroutineScope.launch { viewModel.uiSettings.setToolMode(m) }
+                        },
+                    )
                 }
             }
             // 3. Modelle & Abhängigkeiten (LLM + Gedächtnis-Modell + künftige Pakete)
@@ -872,6 +879,34 @@ private fun GreetingSection(
             description = "Keine Begrüßung. Nur Stille bis Du etwas tippst.",
             selected = mode == io.somi.data.settings.GreetingMode.NONE,
             onSelect = { onModeChange(io.somi.data.settings.GreetingMode.NONE) },
+        )
+    }
+}
+
+@Composable
+private fun ToolModeSection(
+    mode: io.somi.data.settings.ToolMode,
+    onModeChange: (io.somi.data.settings.ToolMode) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Tool-Modus") {
+        Text(
+            text = "So-Mi kann Werkzeuge nutzen — Wetter, Web-Suche, Erinnerungssuche. Hier wählst Du wie Ergebnisse verarbeitet werden.",
+            color = songbird.glass,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        GreetingRadioRow(
+            label = "Kompakt (Standard)",
+            description = "Tool-Ergebnisse werden auf ~200 Wörter gekürzt bevor So-Mi antwortet. Schnell, stabil, empfohlen.",
+            selected = mode == io.somi.data.settings.ToolMode.COMPACT,
+            onSelect = { onModeChange(io.somi.data.settings.ToolMode.COMPACT) },
+        )
+        GreetingRadioRow(
+            label = "System-Prompt (Experimentell)",
+            description = "Tool-Daten werden als Systemkontext gesetzt — vollständige Daten, aber ~2–3 Sek. Overhead und höherer RAM-Bedarf. Kann auf manchen Geräten instabil sein.",
+            selected = mode == io.somi.data.settings.ToolMode.SYSTEM_PROMPT,
+            onSelect = { onModeChange(io.somi.data.settings.ToolMode.SYSTEM_PROMPT) },
         )
     }
 }

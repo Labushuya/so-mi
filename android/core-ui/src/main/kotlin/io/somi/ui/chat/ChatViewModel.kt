@@ -1273,15 +1273,37 @@ class ChatViewModel @Inject constructor(
         _activeToolHint.value = null
         if (webConsentPending) return
 
+        val toolMode = uiSettings.state.value.toolMode
+        val hasToolData = toolResult != null && toolResult.error == null
+
+        // SYSTEM_PROMPT mode: rebuild system prompt with tool data before generation.
+        // This invalidates the KV cache (~2-3s) but ensures the LLM sees the tool
+        // result as authoritative context rather than noise in the user turn.
+        if (hasToolData && toolMode == io.somi.data.settings.ToolMode.SYSTEM_PROMPT) {
+            val soul = cachedSoul ?: soulPromptLoader.load()
+            val systemWithTool = buildString {
+                append(soul.take(MAX_SYSTEM_PROMPT_CHARS))
+                append("\n\n[Aktuelle Tool-Daten — verwende NUR diese für die folgende Antwort]\n")
+                append(toolResult!!.contextBlock)
+            }
+            withContext(llamaDispatcher) {
+                llama.setSystemPrompt(systemWithTool)
+            }
+        }
+
         val promptWithContext = buildString {
             if (recallContext != null) append(recallContext)
             if (historyContext != null) append(historyContext)
-            // Tool result: injected as the last thing before the question so the
-            // LLM treats it as authoritative current context, not background noise.
-            if (toolResult != null && toolResult.error == null) {
-                append("Aktuelle Daten die ich gerade abgerufen habe (verwende NUR diese für die Antwort, nicht dein eigenes Wissen):\n\n")
-                append(toolResult.contextBlock)
-                append("\nNutzerAnfrage: ")
+            if (hasToolData) {
+                val contextData = if (toolMode == io.somi.data.settings.ToolMode.COMPACT)
+                    toolResult!!.contextBlock.take(800) // ~200 tokens
+                else
+                    "" // already in system prompt
+                if (contextData.isNotEmpty()) {
+                    append("Aktuelle Daten (verwende NUR diese für die Antwort):\n\n")
+                    append(contextData)
+                    append("\nNutzerAnfrage: ")
+                }
             } else if (toolResult != null && toolResult.error != null) {
                 Log.i(TAG, "tool ${toolResult.toolId} error — proceeding without context: ${toolResult.error}")
             }
@@ -1311,9 +1333,17 @@ class ChatViewModel @Inject constructor(
             Log.i(TAG, "generation cancelled by user @ promptId=$promptId")
         } catch (t: Throwable) {
             Log.e(TAG, "generation failed @ promptId=$promptId", t)
-            // Banner on top, lifecycle stays Ready, composer stays usable.
             surfaceError("Hat nicht geklappt. Versuch's nochmal.", cause = t)
         } finally {
+            // Restore original system prompt if SYSTEM_PROMPT mode modified it
+            if (hasToolData && toolMode == io.somi.data.settings.ToolMode.SYSTEM_PROMPT) {
+                runCatching {
+                    val soul = cachedSoul ?: soulPromptLoader.load()
+                    withContext(llamaDispatcher) {
+                        llama.setSystemPrompt(soul.take(MAX_SYSTEM_PROMPT_CHARS))
+                    }
+                }.onFailure { Log.w(TAG, "system prompt restore failed", it) }
+            }
             generationJob = null
         }
 
