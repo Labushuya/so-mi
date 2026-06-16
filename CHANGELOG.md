@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/Labushuya/so-mi/compare/v0.43.3...v0.44.0) (2026-06-16)
+
+
+### Features
+
+* Tool-Modus-Toggle in Settings — Kompakt vs. System-Prompt (experimentell) ([#174](https://github.com/Labushuya/so-mi/issues/174)) ([d1a6040](https://github.com/Labushuya/so-mi/commit/d1a6040a91eccd6a2e23df94bb423b3f81b7027c))
+
 ## [0.43.3](https://github.com/Labushuya/so-mi/compare/v0.43.2...v0.43.3) (2026-06-15)
 
 
