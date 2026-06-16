@@ -18,7 +18,7 @@ object BuiltInToolDefinitions {
         ),
         paramExtractor = { query ->
             val m = Regex("""wetter\s+(?:in\s+|für\s+|von\s+)?(\w[\w\s]{1,25})""").find(query.lowercase())
-            val loc = m?.groupValues?.getOrNull(1)?.trim() ?: query
+            val loc = m?.groupValues?.getOrNull(1)?.trim().orEmpty()
             mapOf("location" to loc, "days" to 1)
         },
     )
@@ -38,6 +38,9 @@ object BuiltInToolDefinitions {
             val clean = query
                 .replace(Regex("@web\\b"), "")
                 .replace(Regex("such[e]?\\s+(?:im\\s+internet|online|im\\s+web|im\\s+netz)\\s+(?:nach\\s+)?"), "")
+                .replace(Regex("such\\s+online\\s+nach\\s*"), "")
+                .replace(Regex("google\\s+(?:mal|nach|für\\s+mich)\\s*"), "")
+                .replace(Regex("aktuelle[sn]?\\s+(?:news|nachrichten|infos?)\\s+(?:zu|über)\\s*"), "")
                 .trim()
             mapOf("query" to clean.ifBlank { query }, "max_results" to 5)
         },

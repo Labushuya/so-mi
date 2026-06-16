@@ -903,8 +903,8 @@ private fun ToolModeSection(
             onSelect = { onModeChange(io.somi.data.settings.ToolMode.COMPACT) },
         )
         GreetingRadioRow(
-            label = "System-Prompt (Experimentell)",
-            description = "Tool-Daten werden als Systemkontext gesetzt — vollständige Daten, aber ~2–3 Sek. Overhead und höherer RAM-Bedarf. Kann auf manchen Geräten instabil sein.",
+            label = "System-Prompt (Langsam — nicht empfohlen)",
+            description = "Vollständige Tool-Daten als Systemkontext — erfordert Modell-Neustart. Overhead: 15–30 Sek. pro Tool-Anfrage. Nur für Tests.",
             selected = mode == io.somi.data.settings.ToolMode.SYSTEM_PROMPT,
             onSelect = { onModeChange(io.somi.data.settings.ToolMode.SYSTEM_PROMPT) },
         )

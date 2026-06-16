@@ -1271,7 +1271,10 @@ class ChatViewModel @Inject constructor(
             }.onFailure { Log.w(TAG, "tool routing failed", it) }.getOrNull()
         }.also { if (it == null && !webConsentPending) Log.w(TAG, "tool dispatch timed out after 15s") }
         _activeToolHint.value = null
-        if (webConsentPending) return
+        if (webConsentPending) {
+            _generation.value = null
+            return
+        }
 
         val toolMode = uiSettings.state.value.toolMode
         val hasToolData = toolResult != null && toolResult.error == null
