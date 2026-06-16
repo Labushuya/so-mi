@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/Labushuya/so-mi/compare/v0.44.0...v0.44.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* 7 Tool-Bugs — State-Leak, falscher Dispatcher, Timeout, leere Params, Web-Stripping ([#176](https://github.com/Labushuya/so-mi/issues/176)) ([56a9200](https://github.com/Labushuya/so-mi/commit/56a92006181a5fe345cc4d334afa91919f3df6ff))
+
 ## [0.44.0](https://github.com/Labushuya/so-mi/compare/v0.43.3...v0.44.0) (2026-06-16)
 
 
