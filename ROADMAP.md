@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.44.0 | ✅ live | Tool-Modus-Toggle: Kompakt (stabil) vs. System-Prompt (experimentell) |
 | v0.43.3 | ✅ live | Fix: Tool-Timeout 15s, error-Propagation, @erinnerung OOM-Schutz |
 | v0.43.2 | ✅ live | Fix: Tool-Ergebnisse werden genutzt — Kontext-Framing + Tool-Chip |
 | v0.43.1 | ✅ live | Phase 4: Tool-System — ToolRouter (3-Stufen), get_weather, search_web, search_memory |
