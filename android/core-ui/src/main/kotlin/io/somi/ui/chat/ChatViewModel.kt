@@ -1246,17 +1246,12 @@ class ChatViewModel @Inject constructor(
         } else null
 
         // v0.43.0 — Tool routing before LLM generation (15s hard timeout)
-        var webConsentPending = false
         val toolResult = withTimeoutOrNull(15_000L) {
             runCatching {
                 val toolCall = toolRouter.route(userText)
                 if (toolCall != null) {
                     Log.i(TAG, "tool matched: ${toolCall.toolId} via ${toolCall.stage}")
-                    if (toolCall.toolId == "search_web" && !toolPrefs.webConsentShown()) {
-                        _pendingWebConsent.value = toolCall
-                        webConsentPending = true
-                        return@withTimeoutOrNull null
-                    }
+                    // Web-consent is surfaced via the result footer text; no blocking dialog needed.
                     val hint = when (toolCall.toolId) {
                         "get_weather" -> "Wetterdaten werden abgerufen…"
                         "search_web" -> "Web-Suche läuft…"
@@ -1269,12 +1264,8 @@ class ChatViewModel @Inject constructor(
                     }
                 } else null
             }.onFailure { Log.w(TAG, "tool routing failed", it) }.getOrNull()
-        }.also { if (it == null && !webConsentPending) Log.w(TAG, "tool dispatch timed out after 15s") }
+        }.also { if (it == null) Log.w(TAG, "tool dispatch timed out after 15s") }
         _activeToolHint.value = null
-        if (webConsentPending) {
-            _generation.value = null
-            return
-        }
 
         val toolMode = uiSettings.state.value.toolMode
         val hasToolData = toolResult != null && toolResult.error == null
@@ -1295,23 +1286,27 @@ class ChatViewModel @Inject constructor(
         }
 
         val promptWithContext = buildString {
-            if (recallContext != null) append(recallContext)
-            if (historyContext != null) append(historyContext)
+            // When a tool result is present, suppress both recall facts and conversation
+            // history — they add noise that causes the LLM to ignore the tool data.
+            if (!hasToolData && recallContext != null) append(recallContext)
+            if (!hasToolData && historyContext != null) append(historyContext)
             if (hasToolData) {
                 val contextData = if (toolMode == io.somi.data.settings.ToolMode.COMPACT)
                     toolResult!!.contextBlock.take(800) // ~200 tokens
                 else
                     "" // already in system prompt
                 if (contextData.isNotEmpty()) {
-                    append("Aktuelle Daten (verwende NUR diese für die Antwort):\n\n")
                     append(contextData)
-                    append("\nNutzerAnfrage: ")
+                    append("\n\nBeantworte jetzt diese Anfrage direkt und präzise auf Basis der obigen Daten: ")
+                } else {
+                    Log.w(TAG, "tool ${toolResult!!.toolId} contextBlock empty in COMPACT mode")
                 }
             } else if (toolResult != null && toolResult.error != null) {
                 Log.i(TAG, "tool ${toolResult.toolId} error — proceeding without context: ${toolResult.error}")
             }
             append(userText)
         }
+        Log.i(TAG, "promptWithContext len=${promptWithContext.length} hasToolData=$hasToolData")
 
         try {
             // v0.11.4: read max-tokens from the persisted SamplerParams
