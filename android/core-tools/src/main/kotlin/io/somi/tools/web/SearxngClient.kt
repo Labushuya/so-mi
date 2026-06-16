@@ -11,8 +11,9 @@ import java.util.concurrent.TimeUnit
 
 class SearxngClient {
     private val http = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .readTimeout(4, TimeUnit.SECONDS)
+        .callTimeout(5, TimeUnit.SECONDS)
         .build()
     private val mirrors = listOf("https://searx.be", "https://searx.info", "https://search.bus-hit.me")
 

@@ -12,8 +12,8 @@ class WeatherTool @Inject constructor() : ToolExecutor {
     private val client = OpenMeteoClient()
 
     override suspend fun execute(call: ToolCall): ToolResult {
-        val location = call.params["location"]?.toString()
-            ?: return ToolResult(toolId, "", error = "location fehlt")
+        val location = call.params["location"]?.toString()?.takeIf { it.isNotBlank() }
+            ?: return ToolResult(toolId, "", error = "Kein Ort angegeben — bitte Ort nennen.")
         val days = (call.params["days"] as? Int) ?: 1
         val result = runCatching { client.fetch(location, days) }
             .getOrElse { "Wetterdaten nicht verfügbar." }
