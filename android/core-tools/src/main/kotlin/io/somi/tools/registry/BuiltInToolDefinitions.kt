@@ -17,9 +17,22 @@ object BuiltInToolDefinitions {
             Regex("""wie\s+ist\s+(?:das\s+wetter|die\s+temperatur)"""),
         ),
         paramExtractor = { query ->
-            val m = Regex("""wetter\s+(?:in\s+|für\s+|von\s+)?(\w[\w\s]{1,25})""").find(query.lowercase())
+            val lower = query.lowercase()
+            // Extract day offset: "morgen" = tomorrow (days=2), "übermorgen" = (days=3), else today (days=1)
+            val days = when {
+                lower.contains("übermorgen") -> 3
+                lower.contains("morgen") -> 2
+                lower.contains("nächste woche") -> 7
+                lower.contains("woche") -> 5
+                else -> 1
+            }
+            // Extract location: match after "wetter [in/für/von] <city>", strip time words first
+            val cleaned = lower
+                .replace(Regex("\\b(morgen|heute|übermorgen|nächste?\\s+woche|aktuell|gerade|jetzt|wird|wie)\\b"), " ")
+                .replace(Regex("\\s{2,}"), " ").trim()
+            val m = Regex("""wetter\s+(?:in\s+|für\s+|von\s+)?(\w[\w\s]{1,25})""").find(cleaned)
             val loc = m?.groupValues?.getOrNull(1)?.trim().orEmpty()
-            mapOf("location" to loc, "days" to 1)
+            mapOf("location" to loc, "days" to days)
         },
     )
 

@@ -1287,9 +1287,11 @@ class ChatViewModel @Inject constructor(
 
         val promptWithContext = buildString {
             // When a tool result is present, suppress both recall facts and conversation
-            // history — they add noise that causes the LLM to ignore the tool data.
-            if (!hasToolData && recallContext != null) append(recallContext)
-            if (!hasToolData && historyContext != null) append(historyContext)
+            // Suppress recall + history whenever a tool was attempted (success or error) —
+            // mixing prior context with tool results confuses the LLM in all cases.
+            val toolWasAttempted = toolResult != null
+            if (!toolWasAttempted && recallContext != null) append(recallContext)
+            if (!toolWasAttempted && historyContext != null) append(historyContext)
             if (hasToolData) {
                 val contextData = if (toolMode == io.somi.data.settings.ToolMode.COMPACT)
                     toolResult!!.contextBlock.take(800) // ~200 tokens
