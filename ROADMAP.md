@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.44.2 | ✅ live | Web-Consent entfernt, History bei Tools unterdrückt, Prompt-Framing |
 | v0.44.1 | ✅ live | 7 Tool-Bugs behoben — State-Leak, Dispatcher, Timeout, Params |
 | v0.44.0 | ✅ live | Tool-Modus-Toggle: Kompakt vs. System-Prompt |
 | v0.43.3 | ✅ live | Fix: Tool-Timeout 15s, error-Propagation, @erinnerung OOM-Schutz |
