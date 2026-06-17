@@ -4,6 +4,7 @@ import android.util.Log
 import io.somi.common.embed.TextEmbedder
 import io.somi.common.llm.LlmCaller
 import io.somi.tools.model.RoutingStage
+import io.somi.tools.prefs.ToolPrefsRepository
 import io.somi.tools.model.ToolCall
 import io.somi.tools.registry.ToolRegistry
 import org.json.JSONObject
@@ -15,6 +16,7 @@ class ToolRouter @Inject constructor(
     private val registry: ToolRegistry,
     private val embedder: TextEmbedder,
     private val llmCaller: LlmCaller,
+    private val toolPrefs: ToolPrefsRepository,
 ) {
     companion object {
         private const val COSINE_THRESHOLD = 0.78f
@@ -34,14 +36,16 @@ JSON:""".trimIndent()
 
     suspend fun route(query: String): ToolCall? {
         if (registry.tools.isEmpty()) return null
-        return stageRegex(query)
-            ?: stageEmbedding(query)
-            ?: stageLlmPlan(query)
+        val enabled = registry.tools.filter { tool -> toolPrefs.isToolEnabled(tool.id) }
+        if (enabled.isEmpty()) return null
+        return stageRegex(query, enabled)
+            ?: stageEmbedding(query, enabled)
+            ?: stageLlmPlan(query, enabled)
     }
 
-    private fun stageRegex(query: String): ToolCall? {
+    private fun stageRegex(query: String, enabled: List<io.somi.tools.registry.ToolDefinition>): ToolCall? {
         val lower = query.lowercase()
-        for (tool in registry.tools) {
+        for (tool in enabled) {
             if (tool.regexPatterns.isEmpty()) continue
             if (tool.regexPatterns.any { it.containsMatchIn(lower) }) {
                 val params = tool.paramExtractor?.invoke(query) ?: emptyMap()
@@ -52,11 +56,11 @@ JSON:""".trimIndent()
         return null
     }
 
-    private suspend fun stageEmbedding(query: String): ToolCall? {
+    private suspend fun stageEmbedding(query: String, enabled: List<io.somi.tools.registry.ToolDefinition>): ToolCall? {
         val queryVec = embedder.embed(query) ?: return null
-        var bestTool = registry.tools.firstOrNull() ?: return null
+        var bestTool = enabled.firstOrNull() ?: return null
         var bestScore = -1f
-        for (tool in registry.tools) {
+        for (tool in enabled) {
             val vec = tool.descriptionVector ?: run {
                 val v = embedder.embed(tool.description) ?: return null
                 tool.descriptionVector = v
@@ -71,9 +75,9 @@ JSON:""".trimIndent()
         } else null
     }
 
-    private suspend fun stageLlmPlan(query: String): ToolCall? {
+    private suspend fun stageLlmPlan(query: String, enabled: List<io.somi.tools.registry.ToolDefinition>): ToolCall? {
         val prompt = PLAN_PROMPT
-            .replace("{{TOOLS}}", registry.descriptionBlock())
+            .replace("{{TOOLS}}", enabled.joinToString("\n") { tool -> "- ${tool.id}: ${tool.description}" })
             .replace("{{QUERY}}", query)
         val raw = runCatching { llmCaller.generate(prompt) }.getOrDefault("")
         return parsePlanResponse(raw)

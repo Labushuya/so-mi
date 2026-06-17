@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,4 +25,16 @@ class ToolPrefsRepository @Inject constructor(
     suspend fun setWebConsentShown(shown: Boolean) {
         context.toolPrefsStore.edit { it[WEB_CONSENT] = shown }
     }
+
+    private fun toolKey(toolId: String) = booleanPreferencesKey("tool_enabled_$toolId")
+
+    suspend fun isToolEnabled(toolId: String): Boolean =
+        context.toolPrefsStore.data.first()[toolKey(toolId)] ?: true
+
+    suspend fun setToolEnabled(toolId: String, enabled: Boolean) {
+        context.toolPrefsStore.edit { prefs -> prefs[toolKey(toolId)] = enabled }
+    }
+
+    fun toolEnabledFlow(toolId: String): Flow<Boolean> =
+        context.toolPrefsStore.data.map { prefs -> prefs[toolKey(toolId)] ?: true }
 }
