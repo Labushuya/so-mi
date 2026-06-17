@@ -18,18 +18,41 @@ object BuiltInToolDefinitions {
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
-            // Extract day offset: "morgen" = tomorrow (days=2), "übermorgen" = (days=3), else today (days=1)
+            // Dynamic day-offset: understands "morgen", "übermorgen", "in N Tagen",
+            // "am Wochenende", "nächsten Montag/Freitag", "nächste Woche"
+            val inNDays = Regex("""in\s+(\d+)\s+tag""").find(lower)?.groupValues?.getOrNull(1)?.toIntOrNull()
             val days = when {
                 lower.contains("übermorgen") -> 3
-                lower.contains("morgen") -> 2
+                inNDays != null && inNDays in 1..7 -> inNDays
+                lower.contains("am wochenende") || lower.contains("wochenende") -> {
+                    val cal = java.util.Calendar.getInstance()
+                    val today = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                    val sat = java.util.Calendar.SATURDAY
+                    val d = ((sat - today + 7) % 7).let { if (it == 0) 7 else it }
+                    d.coerceIn(1, 7)
+                }
+                lower.contains("nächsten montag") || lower.contains("nächsten mo") -> {
+                    val cal = java.util.Calendar.getInstance()
+                    val today = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                    val d = ((java.util.Calendar.MONDAY - today + 7) % 7).let { if (it == 0) 7 else it }
+                    d.coerceIn(1, 7)
+                }
+                lower.contains("nächsten freitag") || lower.contains("nächsten fr") -> {
+                    val cal = java.util.Calendar.getInstance()
+                    val today = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                    val d = ((java.util.Calendar.FRIDAY - today + 7) % 7).let { if (it == 0) 7 else it }
+                    d.coerceIn(1, 7)
+                }
                 lower.contains("nächste woche") -> 7
-                lower.contains("woche") -> 5
+                lower.contains("diese woche") || (lower.contains("woche") && !lower.contains("wochenende")) -> 5
+                lower.contains("morgen") -> 2
                 else -> 1
             }
-            // Extract location: match after "wetter [in/für/von] <city>", strip time words first
+            // Strip time/day words before extracting location name
             val cleaned = lower
-                .replace(Regex("\\b(morgen|heute|übermorgen|nächste?\\s+woche|aktuell|gerade|jetzt|wird|wie)\\b"), " ")
-                .replace(Regex("\\s{2,}"), " ").trim()
+                .replace(Regex("""in\s+\d+\s+tagen?"""), " ")
+                .replace(Regex("""\b(morgen|heute|übermorgen|nächste[ns]?\s+\w+|am\s+wochenende|wochenende|diese\s+woche|nächste\s+woche|aktuell|gerade|jetzt|wird|wie|wird es|nächsten)\b"""), " ")
+                .replace(Regex("""\s{2,}"""), " ").trim()
             val m = Regex("""wetter\s+(?:in\s+|für\s+|von\s+)?(\w[\w\s]{1,25})""").find(cleaned)
             val loc = m?.groupValues?.getOrNull(1)?.trim().orEmpty()
             mapOf("location" to loc, "days" to days)
