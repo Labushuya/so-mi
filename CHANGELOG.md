@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.1](https://github.com/Labushuya/so-mi/compare/v0.45.0...v0.45.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* Kategorie-Suche matcht echte Dateinamen — Custom-Kategorien mit Emoji funktionieren ([#184](https://github.com/Labushuya/so-mi/issues/184)) ([cbdfbc8](https://github.com/Labushuya/so-mi/commit/cbdfbc817de022cdbb5911d4c72122ec2035f8b5))
+
 ## [0.45.0](https://github.com/Labushuya/so-mi/compare/v0.44.3...v0.45.0) (2026-06-17)
 
 
