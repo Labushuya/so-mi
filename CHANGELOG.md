@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.3](https://github.com/Labushuya/so-mi/compare/v0.46.2...v0.46.3) (2026-06-17)
+
+
+### Bug Fixes
+
+* build — collectAsState statt collectAsStateWithLifecycle für plain Flow ([#192](https://github.com/Labushuya/so-mi/issues/192)) ([fc195c8](https://github.com/Labushuya/so-mi/commit/fc195c8485dca4800d82b2d9c673e07959741e55))
+
 ## [0.46.2](https://github.com/Labushuya/so-mi/compare/v0.46.1...v0.46.2) (2026-06-17)
 
 
