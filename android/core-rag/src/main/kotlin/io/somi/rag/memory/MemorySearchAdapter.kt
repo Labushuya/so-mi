@@ -28,6 +28,20 @@ class MemorySearchAdapter @Inject constructor(
     override suspend fun topKKeywords(query: String, k: Int): List<String> =
         withContext(Dispatchers.IO) { keywordScan(query, k) }
 
+    override suspend fun topKByCategory(categoryId: String, k: Int): List<String> =
+        withContext(Dispatchers.IO) {
+            val file = java.io.File(memoryFiles.rootDir, "$categoryId.md")
+            if (!file.exists()) return@withContext emptyList()
+            file.readLines()
+                .filter { it.trimStart().startsWith("- ") }
+                .map {
+                    it.trimStart().removePrefix("- ")
+                        .replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim()
+                }
+                .filter { it.isNotBlank() }
+                .take(k)
+        }
+
     private fun keywordScan(query: String, k: Int): List<String> {
         val tokens = query.lowercase().split(' ').filter { it.length >= 3 }
         return memoryFiles.rootDir

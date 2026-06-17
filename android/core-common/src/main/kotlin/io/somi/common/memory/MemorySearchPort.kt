@@ -1,16 +1,13 @@
 package io.somi.common.memory
 
 interface MemorySearchPort {
-    /**
-     * Top-[k] memory facts ranked by semantic relevance to [query].
-     * Returns empty list (never throws) when the store is empty or unavailable.
-     */
     suspend fun topKFacts(query: String, k: Int = 10): List<String>
+    suspend fun topKKeywords(query: String, k: Int = 10): List<String>
 
     /**
-     * Keyword-only scan — no embedder, no HNSW.
-     * Safe to call while the LLM is loaded without risking OOM from
-     * running ONNX + llama.cpp simultaneously.
+     * Returns up to [k] facts from a specific named category file.
+     * [categoryId] = MemoryTopic.id ("persons","preferences","dates","technical","notes")
+     * or a custom category file name. Returns empty list when not found.
      */
-    suspend fun topKKeywords(query: String, k: Int = 10): List<String>
+    suspend fun topKByCategory(categoryId: String, k: Int = 10): List<String>
 }
