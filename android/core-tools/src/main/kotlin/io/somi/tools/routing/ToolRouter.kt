@@ -4,8 +4,9 @@ import android.util.Log
 import io.somi.common.embed.TextEmbedder
 import io.somi.common.llm.LlmCaller
 import io.somi.tools.model.RoutingStage
-import io.somi.tools.prefs.ToolPrefsRepository
 import io.somi.tools.model.ToolCall
+import io.somi.tools.model.ToolDefinition
+import io.somi.tools.prefs.ToolPrefsRepository
 import io.somi.tools.registry.ToolRegistry
 import org.json.JSONObject
 import javax.inject.Inject
@@ -43,7 +44,7 @@ JSON:""".trimIndent()
             ?: stageLlmPlan(query, enabled)
     }
 
-    private fun stageRegex(query: String, enabled: List<io.somi.tools.registry.ToolDefinition>): ToolCall? {
+    private fun stageRegex(query: String, enabled: List<ToolDefinition>): ToolCall? {
         val lower = query.lowercase()
         for (tool in enabled) {
             if (tool.regexPatterns.isEmpty()) continue
@@ -56,7 +57,7 @@ JSON:""".trimIndent()
         return null
     }
 
-    private suspend fun stageEmbedding(query: String, enabled: List<io.somi.tools.registry.ToolDefinition>): ToolCall? {
+    private suspend fun stageEmbedding(query: String, enabled: List<ToolDefinition>): ToolCall? {
         val queryVec = embedder.embed(query) ?: return null
         var bestTool = enabled.firstOrNull() ?: return null
         var bestScore = -1f
@@ -75,7 +76,7 @@ JSON:""".trimIndent()
         } else null
     }
 
-    private suspend fun stageLlmPlan(query: String, enabled: List<io.somi.tools.registry.ToolDefinition>): ToolCall? {
+    private suspend fun stageLlmPlan(query: String, enabled: List<ToolDefinition>): ToolCall? {
         val prompt = PLAN_PROMPT
             .replace("{{TOOLS}}", enabled.joinToString("\n") { tool -> "- ${tool.id}: ${tool.description}" })
             .replace("{{QUERY}}", query)
