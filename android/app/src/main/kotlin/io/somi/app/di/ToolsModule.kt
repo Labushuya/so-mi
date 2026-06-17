@@ -43,6 +43,10 @@ abstract class ToolsModule {
     @Binds @IntoSet
     abstract fun bindSearchMemoryTool(impl: SearchMemoryTool): ToolExecutor
 
+    @Binds @IntoSet abstract fun bindReminderTool(impl: io.somi.tools.reminder.ReminderTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindExchangeRateTool(impl: io.somi.tools.exchange.ExchangeRateTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindNewsBriefingTool(impl: io.somi.tools.news.NewsBriefingTool): ToolExecutor
+
     companion object {
         @Provides @IntoSet
         fun provideWeatherDef(): ToolDefinition = BuiltInToolDefinitions.getWeather
@@ -52,5 +56,9 @@ abstract class ToolsModule {
 
         @Provides @IntoSet
         fun provideSearchMemoryDef(): ToolDefinition = BuiltInToolDefinitions.searchMemory
+
+        @Provides @IntoSet fun provideReminderDef(): ToolDefinition = BuiltInToolDefinitions.createReminder
+        @Provides @IntoSet fun provideExchangeRateDef(): ToolDefinition = BuiltInToolDefinitions.getExchangeRate
+        @Provides @IntoSet fun provideNewsBriefingDef(): ToolDefinition = BuiltInToolDefinitions.newsBriefing
     }
 }
