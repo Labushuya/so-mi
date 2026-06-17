@@ -42,6 +42,15 @@ class MemorySearchAdapter @Inject constructor(
                 .take(k)
         }
 
+    override suspend fun availableCategories(): List<String> =
+        withContext(Dispatchers.IO) {
+            memoryFiles.rootDir
+                .listFiles()
+                ?.filter { it.extension == "md" }
+                ?.map { it.nameWithoutExtension }
+                ?: emptyList()
+        }
+
     private fun keywordScan(query: String, k: Int): List<String> {
         val tokens = query.lowercase().split(' ').filter { it.length >= 3 }
         return memoryFiles.rootDir
