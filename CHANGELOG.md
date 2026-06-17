@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.4](https://github.com/Labushuya/so-mi/compare/v0.46.3...v0.46.4) (2026-06-17)
+
+
+### Bug Fixes
+
+* build — collectAsState Import hinzugefügt ([#194](https://github.com/Labushuya/so-mi/issues/194)) ([562d92b](https://github.com/Labushuya/so-mi/commit/562d92bd72f685c938294c59059f844c81968253))
+
 ## [0.46.3](https://github.com/Labushuya/so-mi/compare/v0.46.2...v0.46.3) (2026-06-17)
 
 
