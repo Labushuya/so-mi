@@ -12,7 +12,8 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.45.0 | ✅ live | Wetter dynamisch (Wochenende/Wochentag/in N Tagen), Erinnerungen Kategorie |
+| v0.45.1 | ✅ live | Custom-Kategorien mit Emoji via Dateiname-Matching |
+| v0.45.0 | ✅ live | Wetter dynamisch, Erinnerungen Kategorie |
 | v0.44.3 | ✅ live | Wetter versteht "morgen", History bei Tool-Fehler unterdrückt |
 | v0.44.2 | ✅ live | Web-Consent entfernt, History bei Tools unterdrückt |
 | v0.44.1 | ✅ live | 7 Tool-Bugs behoben — State-Leak, Dispatcher, Timeout, Params |
