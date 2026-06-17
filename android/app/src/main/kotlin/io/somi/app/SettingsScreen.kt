@@ -143,12 +143,12 @@ internal fun SettingsScreen(
                             coroutineScope.launch { viewModel.uiSettings.setToolMode(m) }
                         },
                         toolEnabled = mapOf(
-                            "get_weather" to viewModel.isToolEnabledFlow("get_weather").collectAsStateWithLifecycle().value,
-                            "search_web" to viewModel.isToolEnabledFlow("search_web").collectAsStateWithLifecycle().value,
-                            "search_memory" to viewModel.isToolEnabledFlow("search_memory").collectAsStateWithLifecycle().value,
-                            "create_reminder" to viewModel.isToolEnabledFlow("create_reminder").collectAsStateWithLifecycle().value,
-                            "get_exchange_rate" to viewModel.isToolEnabledFlow("get_exchange_rate").collectAsStateWithLifecycle().value,
-                            "news_briefing" to viewModel.isToolEnabledFlow("news_briefing").collectAsStateWithLifecycle().value,
+                            "get_weather" to viewModel.isToolEnabledFlow("get_weather").collectAsState(initial = true).value,
+                            "search_web" to viewModel.isToolEnabledFlow("search_web").collectAsState(initial = true).value,
+                            "search_memory" to viewModel.isToolEnabledFlow("search_memory").collectAsState(initial = true).value,
+                            "create_reminder" to viewModel.isToolEnabledFlow("create_reminder").collectAsState(initial = true).value,
+                            "get_exchange_rate" to viewModel.isToolEnabledFlow("get_exchange_rate").collectAsState(initial = true).value,
+                            "news_briefing" to viewModel.isToolEnabledFlow("news_briefing").collectAsState(initial = true).value,
                         ),
                         onToolToggle = { id, enabled -> viewModel.setToolEnabled(id, enabled) },
                     )
