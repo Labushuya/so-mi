@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.46.4 | ✅ live | per-Tool-Toggle, create_reminder, get_exchange_rate, news_briefing |
 | v0.45.1 | ✅ stable | Custom-Kategorien mit Emoji via Dateiname-Matching |
 | v0.45.0 | ✅ stable | Wetter dynamisch (Wochenende/Wochentag/in N Tagen), Erinnerungen Kategorie |
 | v0.44.x | ✅ stable | Tool-System vollständig funktional: Wetter, Web-Suche, Erinnerungen |
