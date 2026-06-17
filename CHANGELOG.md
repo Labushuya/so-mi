@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.2](https://github.com/Labushuya/so-mi/compare/v0.46.1...v0.46.2) (2026-06-17)
+
+
+### Bug Fixes
+
+* build — ToolModeSection Aufruf mit toolEnabled + onToolToggle ([#190](https://github.com/Labushuya/so-mi/issues/190)) ([b746a67](https://github.com/Labushuya/so-mi/commit/b746a67dea671d7ce53cd0680f2f757cc35fd6e3))
+
 ## [0.46.1](https://github.com/Labushuya/so-mi/compare/v0.46.0...v0.46.1) (2026-06-17)
 
 
