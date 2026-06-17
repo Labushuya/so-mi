@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/Labushuya/so-mi/compare/v0.45.1...v0.46.0) (2026-06-17)
+
+
+### Features
+
+* v0.46.0 — per-Tool-Toggle, create_reminder, get_exchange_rate, news_briefing ([#186](https://github.com/Labushuya/so-mi/issues/186)) ([589d92c](https://github.com/Labushuya/so-mi/commit/589d92c2a165cf1db73439e2e3ca1c17e588ec49))
+
 ## [0.45.1](https://github.com/Labushuya/so-mi/compare/v0.45.0...v0.45.1) (2026-06-17)
 
 
