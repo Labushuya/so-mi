@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/Labushuya/so-mi/compare/v0.44.3...v0.45.0) (2026-06-17)
+
+
+### Features
+
+* Wetter versteht 'in N Tagen'/Wochenende/Wochentag, Erinnerungen nach Kategorie abrufbar ([#182](https://github.com/Labushuya/so-mi/issues/182)) ([64e81c1](https://github.com/Labushuya/so-mi/commit/64e81c1ed6fb693f0a4697dce13a9d697e81be41))
+
 ## [0.44.3](https://github.com/Labushuya/so-mi/compare/v0.44.2...v0.44.3) (2026-06-16)
 
 
