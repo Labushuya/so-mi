@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.1](https://github.com/Labushuya/so-mi/compare/v0.46.0...v0.46.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* build — ToolDefinition Import-Pfad ([#188](https://github.com/Labushuya/so-mi/issues/188)) ([c3540a5](https://github.com/Labushuya/so-mi/commit/c3540a547d02115dea7c603e279c4c97076a1bd4))
+
 ## [0.46.0](https://github.com/Labushuya/so-mi/compare/v0.45.1...v0.46.0) (2026-06-17)
 
 
