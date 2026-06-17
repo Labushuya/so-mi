@@ -99,4 +99,61 @@ object BuiltInToolDefinitions {
             mapOf("query" to clean.ifBlank { query }, "k" to 10)
         },
     )
+
+    val createReminder = ToolDefinition(
+        id = "create_reminder",
+        description = "Eine Erinnerung oder Benachrichtigung für später setzen",
+        paramSchema = """{"type":"object","properties":{"text":{"type":"string"},"delay_minutes":{"type":"integer","default":30}},"required":["text"]}""",
+        regexPatterns = listOf(
+            Regex("""erinner(?:e|)\s+mich\s+(?:daran\s+)?(?:dass\s+|zu\s+)?"""),
+            Regex("""stell(?:e|)\s+(?:mir\s+)?(?:eine?\s+)?erinnerung"""),
+            Regex("""benachrichtig(?:e|)\s+mich"""),
+            Regex("""@reminder\b"""),
+        ),
+        paramExtractor = { query ->
+            val lower = query.lowercase()
+            val delayM = Regex("""in\s+(\d+)\s+minuten?""").find(lower)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            val delayH = Regex("""in\s+(\d+)\s+stunden?""").find(lower)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { h -> h * 60 }
+            val delay = delayM ?: delayH ?: 30
+            val text = query
+                .replace(Regex("(?i)erinner(?:e|)\\s+mich\\s+"), "")
+                .replace(Regex("(?i)in\\s+\\d+\\s+(?:minuten?|stunden?)"), "")
+                .replace(Regex("@reminder"), "")
+                .trim().ifBlank { query }
+            mapOf("text" to text, "delay_minutes" to delay)
+        },
+    )
+
+    val getExchangeRate = ToolDefinition(
+        id = "get_exchange_rate",
+        description = "Aktuellen Wechselkurs oder Währungsumrechnung abrufen",
+        paramSchema = """{"type":"object","properties":{"from":{"type":"string"},"to":{"type":"string"},"amount":{"type":"number","default":1}},"required":["from","to"]}""",
+        regexPatterns = listOf(
+            Regex("""wechselkurs\s+[A-Za-z]{3}"""),
+            Regex("""[A-Za-z]{3}\s+(?:zu|in|nach)\s+[A-Za-z]{3}\s+(?:umrechnen|konvertieren)"""),
+            Regex("""wie\s+viel\s+(?:ist|sind)\s+\d"""),
+        ),
+        paramExtractor = { query ->
+            val lower = query.lowercase()
+            val currencies = Regex("""([a-z]{3})""").findAll(lower)
+                .map { m -> m.value.uppercase() }
+                .filter { c -> c.length == 3 && c.all { ch -> ch.isLetter() } }
+                .toList()
+            val amount = Regex("""(\d+\.?\d*)""").find(lower)?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: 1.0
+            mapOf("from" to (currencies.getOrNull(0) ?: "EUR"), "to" to (currencies.getOrNull(1) ?: "USD"), "amount" to amount)
+        },
+    )
+
+    val newsBriefing = ToolDefinition(
+        id = "news_briefing",
+        description = "Aktuelle Nachrichten und Headlines abrufen",
+        paramSchema = """{"type":"object","properties":{"max_items":{"type":"integer","default":9}},"required":[]}""",
+        regexPatterns = listOf(
+            Regex("""(?:aktuelle[sn]?|neueste[sn]?|heutige[sn]?)\s+(?:nachrichten?|news|headlines?)"""),
+            Regex("""was\s+(?:ist|passiert|gibt\s+es)\s+(?:heute|gerade|aktuell)"""),
+            Regex("""@news\b"""),
+            Regex("""nachrichtenüberblick"""),
+        ),
+        paramExtractor = { _ -> mapOf("max_items" to 9) },
+    )
 }

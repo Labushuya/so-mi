@@ -887,6 +887,8 @@ private fun GreetingSection(
 private fun ToolModeSection(
     mode: io.somi.data.settings.ToolMode,
     onModeChange: (io.somi.data.settings.ToolMode) -> Unit,
+    toolEnabled: Map<String, Boolean>,
+    onToolToggle: (String, Boolean) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     SectionCard(title = "Tool-Modus") {
@@ -908,6 +910,30 @@ private fun ToolModeSection(
             selected = mode == io.somi.data.settings.ToolMode.SYSTEM_PROMPT,
             onSelect = { onModeChange(io.somi.data.settings.ToolMode.SYSTEM_PROMPT) },
         )
+        Spacer(Modifier.height(16.dp))
+        Text("Aktive Tools", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(8.dp))
+        val toolLabels = listOf(
+            Triple("get_weather", "Wetter", "Aktuelles Wetter und Vorhersagen."),
+            Triple("search_web", "Web-Suche", "Im Internet suchen (verlässt das Gerät)."),
+            Triple("search_memory", "Erinnerungen", "In gespeicherten Fakten suchen."),
+            Triple("create_reminder", "Erinnerung setzen", "Android-Benachrichtigung zu einem Zeitpunkt."),
+            Triple("get_exchange_rate", "Wechselkurs", "Aktuelle Währungsumrechnung."),
+            Triple("news_briefing", "Nachrichten", "RSS-Feeds (verlässt das Gerät)."),
+        )
+        toolLabels.forEach { (id, label, desc) ->
+            val enabled = toolEnabled[id] ?: true
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(label, color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
+                    Text(desc, color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                }
+                androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { onToolToggle(id, it) })
+            }
+        }
     }
 }
 

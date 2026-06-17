@@ -113,6 +113,11 @@ class ChatViewModel @Inject constructor(
 
     suspend fun checkpointDatabase() { /* WAL checkpoint is handled externally before backup */ }
 
+    fun isToolEnabledFlow(toolId: String) = toolPrefs.toolEnabledFlow(toolId)
+    fun setToolEnabled(toolId: String, enabled: Boolean) {
+        viewModelScope.launch { toolPrefs.setToolEnabled(toolId, enabled) }
+    }
+
     fun confirmWebConsent(originalText: String) {
         _pendingWebConsent.value = null
         viewModelScope.launch {
