@@ -18,7 +18,7 @@ import javax.inject.Singleton
 class ReminderTool @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ToolExecutor {
-    override val toolId = "create_reminder"
+    override val toolId = "set_alarm"
 
     override suspend fun execute(call: ToolCall): ToolResult {
         val text = call.params["text"]?.toString()?.takeIf { it.isNotBlank() }
@@ -38,8 +38,12 @@ class ReminderTool @Inject constructor(
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMs, pi)
             val timeDesc = if (delayMinutes < 60) "in $delayMinutes Minuten"
                           else "in ${delayMinutes / 60} Stunden"
-            ToolResult(toolId, "[Erinnerung gesetzt]\n\"$text\" $timeDesc.", displayHint = "Erinnerung $timeDesc")
-        }.getOrElse { ToolResult(toolId, "", error = "Erinnerung konnte nicht gesetzt werden: ${it.message}") }
+            ToolResult(
+                toolId,
+                "[Alarm gesetzt]\n\"$text\" $timeDesc.\nHinweis: Benachrichtigungen müssen in den Systemeinstellungen für So-Mi erlaubt sein.",
+                displayHint = "Alarm $timeDesc",
+            )
+        }.getOrElse { ToolResult(toolId, "", error = "Alarm konnte nicht gesetzt werden: ${it.message}") }
     }
 
     private fun ensureChannel() {
