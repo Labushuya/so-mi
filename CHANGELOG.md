@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.6](https://github.com/Labushuya/so-mi/compare/v0.46.5...v0.46.6) (2026-06-19)
+
+
+### Bug Fixes
+
+* USE_EXACT_ALARM auto-granted, Alarm-Fallback, Tool-History-Blöcke herausgefiltert ([#198](https://github.com/Labushuya/so-mi/issues/198)) ([2db8402](https://github.com/Labushuya/so-mi/commit/2db8402d03a088ae8f2b55cd12860ac9976de92f))
+
 ## [0.46.5](https://github.com/Labushuya/so-mi/compare/v0.46.4...v0.46.5) (2026-06-19)
 
 
