@@ -147,7 +147,7 @@ internal fun SettingsScreen(
                             "get_weather" to viewModel.isToolEnabledFlow("get_weather").collectAsState(initial = true).value,
                             "search_web" to viewModel.isToolEnabledFlow("search_web").collectAsState(initial = true).value,
                             "search_memory" to viewModel.isToolEnabledFlow("search_memory").collectAsState(initial = true).value,
-                            "create_reminder" to viewModel.isToolEnabledFlow("create_reminder").collectAsState(initial = true).value,
+                            "set_alarm" to viewModel.isToolEnabledFlow("set_alarm").collectAsState(initial = true).value,
                             "get_exchange_rate" to viewModel.isToolEnabledFlow("get_exchange_rate").collectAsState(initial = true).value,
                             "news_briefing" to viewModel.isToolEnabledFlow("news_briefing").collectAsState(initial = true).value,
                         ),
@@ -927,7 +927,7 @@ private fun ToolModeSection(
             Triple("get_weather", "Wetter", "Aktuelles Wetter und Vorhersagen."),
             Triple("search_web", "Web-Suche", "Im Internet suchen (verlässt das Gerät)."),
             Triple("search_memory", "Erinnerungen", "In gespeicherten Fakten suchen."),
-            Triple("create_reminder", "Erinnerung setzen", "Android-Benachrichtigung zu einem Zeitpunkt."),
+            Triple("set_alarm", "Alarm setzen", "Setzt eine Alarm-Benachrichtigung nach X Minuten/Stunden. Benötigte Systemrechte: Benachrichtigungen für So-Mi erlauben."),
             Triple("get_exchange_rate", "Wechselkurs", "Aktuelle Währungsumrechnung."),
             Triple("news_briefing", "Nachrichten", "RSS-Feeds (verlässt das Gerät)."),
         )

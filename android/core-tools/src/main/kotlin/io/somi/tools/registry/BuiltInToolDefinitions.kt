@@ -100,15 +100,17 @@ object BuiltInToolDefinitions {
         },
     )
 
-    val createReminder = ToolDefinition(
-        id = "create_reminder",
-        description = "Eine Erinnerung oder Benachrichtigung für später setzen",
+    val setAlarm = ToolDefinition(
+        id = "set_alarm",
+        description = "Einen Alarm oder eine Benachrichtigung für einen späteren Zeitpunkt setzen",
         paramSchema = """{"type":"object","properties":{"text":{"type":"string"},"delay_minutes":{"type":"integer","default":30}},"required":["text"]}""",
         regexPatterns = listOf(
             Regex("""erinner(?:e|)\s+mich\s+(?:daran\s+)?(?:dass\s+|zu\s+)?"""),
-            Regex("""stell(?:e|)\s+(?:mir\s+)?(?:eine?\s+)?erinnerung"""),
+            Regex("""stell(?:e|)\s+(?:mir\s+)?(?:einen?\s+)?(?:alarm|timer|wecker)"""),
             Regex("""benachrichtig(?:e|)\s+mich"""),
+            Regex("""@alarm\b"""),
             Regex("""@reminder\b"""),
+            Regex("""weck(?:e|)\s+mich"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
@@ -117,8 +119,9 @@ object BuiltInToolDefinitions {
             val delay = delayM ?: delayH ?: 30
             val text = query
                 .replace(Regex("(?i)erinner(?:e|)\\s+mich\\s+"), "")
+                .replace(Regex("(?i)stell(?:e|)\\s+(?:mir\\s+)?(?:einen?\\s+)?(?:alarm|timer|wecker)\\s+"), "")
                 .replace(Regex("(?i)in\\s+\\d+\\s+(?:minuten?|stunden?)"), "")
-                .replace(Regex("@reminder"), "")
+                .replace(Regex("@alarm|@reminder"), "")
                 .trim().ifBlank { query }
             mapOf("text" to text, "delay_minutes" to delay)
         },

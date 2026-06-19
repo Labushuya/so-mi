@@ -57,7 +57,7 @@ abstract class ToolsModule {
         @Provides @IntoSet
         fun provideSearchMemoryDef(): ToolDefinition = BuiltInToolDefinitions.searchMemory
 
-        @Provides @IntoSet fun provideReminderDef(): ToolDefinition = BuiltInToolDefinitions.createReminder
+        @Provides @IntoSet fun provideReminderDef(): ToolDefinition = BuiltInToolDefinitions.setAlarm
         @Provides @IntoSet fun provideExchangeRateDef(): ToolDefinition = BuiltInToolDefinitions.getExchangeRate
         @Provides @IntoSet fun provideNewsBriefingDef(): ToolDefinition = BuiltInToolDefinitions.newsBriefing
     }
