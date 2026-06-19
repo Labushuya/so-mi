@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.5](https://github.com/Labushuya/so-mi/compare/v0.46.4...v0.46.5) (2026-06-19)
+
+
+### Bug Fixes
+
+* Stage-3-Crash deaktiviert, create_reminder→set_alarm, Alarm-Label + Hinweis ([#196](https://github.com/Labushuya/so-mi/issues/196)) ([c725e22](https://github.com/Labushuya/so-mi/commit/c725e22b3270befe6ed6572ac9ea46b77c02d50c))
+
 ## [0.46.4](https://github.com/Labushuya/so-mi/compare/v0.46.3...v0.46.4) (2026-06-17)
 
 
