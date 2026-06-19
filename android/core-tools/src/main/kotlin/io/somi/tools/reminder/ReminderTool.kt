@@ -35,12 +35,18 @@ class ReminderTool @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMs, pi)
+            val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+            if (canExact) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMs, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMs, pi)
+            }
             val timeDesc = if (delayMinutes < 60) "in $delayMinutes Minuten"
                           else "in ${delayMinutes / 60} Stunden"
+            val accuracyNote = if (!canExact) "\n(Ungefähre Zeit — für präzise Alarme: Einstellungen → Apps → So-Mi → Alarme & Erinnerungen aktivieren)" else ""
             ToolResult(
                 toolId,
-                "[Alarm gesetzt]\n\"$text\" $timeDesc.\nHinweis: Benachrichtigungen müssen in den Systemeinstellungen für So-Mi erlaubt sein.",
+                "[Alarm gesetzt]\n\"$text\" $timeDesc.$accuracyNote",
                 displayHint = "Alarm $timeDesc",
             )
         }.getOrElse { ToolResult(toolId, "", error = "Alarm konnte nicht gesetzt werden: ${it.message}") }

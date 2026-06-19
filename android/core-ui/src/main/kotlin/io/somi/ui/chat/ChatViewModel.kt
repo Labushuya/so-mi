@@ -1244,7 +1244,12 @@ class ChatViewModel @Inject constructor(
                 append("Bisheriges Gespräch (neueste zuletzt):\n")
                 history.forEach { msg ->
                     val role = if (msg.author == io.somi.common.chat.Author.USER) "Du" else "So-Mi"
-                    append("$role: ${msg.text.take(200)}\n")
+                    // Strip tool-result blocks from history — they contain stale data that
+                    // the LLM would paraphrase even when the tool is now disabled.
+                    val text = if (msg.author == io.somi.common.chat.Author.ASSISTANT)
+                        msg.text.lines().filterNot { it.trimStart().startsWith("[") }.joinToString("\n").trim()
+                    else msg.text
+                    if (text.isNotBlank()) append("$role: ${text.take(200)}\n")
                 }
                 append("\n")
             }
