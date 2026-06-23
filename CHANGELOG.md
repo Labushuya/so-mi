@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.46.8](https://github.com/Labushuya/so-mi/compare/v0.46.7...v0.46.8) (2026-06-23)
+
+
+### Bug Fixes
+
+* build — Notification-Sound Typ-Fehler behoben ([#202](https://github.com/Labushuya/so-mi/issues/202)) ([6f8758f](https://github.com/Labushuya/so-mi/commit/6f8758fa26620c5796bd3fa6b736961b16c6ad65))
+* Stage-2-Embedding deaktiviert — verhindert ONNX+LLM-Concurrent-Crash ([#206](https://github.com/Labushuya/so-mi/issues/206)) ([b4567b6](https://github.com/Labushuya/so-mi/commit/b4567b6f6d6f661c861faff44b80b60e74e157b6))
+* Tool-History-Filter bei deaktiviertem Tool, matchesAnyToolPattern für Regex-Check ([#205](https://github.com/Labushuya/so-mi/issues/205)) ([2caccd4](https://github.com/Labushuya/so-mi/commit/2caccd4aaa235f965f9b5c314ba76d0c944b58ff))
+
 ## [0.46.7](https://github.com/Labushuya/so-mi/compare/v0.46.6...v0.46.7) (2026-06-23)
 
 
