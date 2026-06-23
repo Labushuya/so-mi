@@ -1,18 +1,20 @@
 package io.somi.tools.reminder
 
-import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.somi.tools.executor.ToolExecutor
 import io.somi.tools.model.ToolCall
 import io.somi.tools.model.ToolResult
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,21 +30,21 @@ class ReminderTool @Inject constructor(
         val delayMinutes = (call.params["delay_minutes"] as? Int)?.coerceIn(1, 10080) ?: 30
         return runCatching {
             ensureChannel()
-            val triggerMs = System.currentTimeMillis() + delayMinutes * 60_000L
-            val intent = Intent(context, ReminderReceiver::class.java).apply {
-                putExtra("text", text)
-            }
-            val pi = PendingIntent.getBroadcast(
-                context, text.hashCode(), intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            val request = OneTimeWorkRequestBuilder<AlarmWorker>()
+                .setInitialDelay(delayMinutes.toLong(), TimeUnit.MINUTES)
+                .setInputData(workDataOf("text" to text))
+                .addTag("alarm")
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "alarm_${text.hashCode()}",
+                ExistingWorkPolicy.REPLACE,
+                request,
             )
-            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMs, pi)
             val timeDesc = if (delayMinutes < 60) "in $delayMinutes Minuten"
                           else "in ${delayMinutes / 60} Stunden"
             ToolResult(
                 toolId,
-                "[Alarm gesetzt]\n\"$text\" $timeDesc.\nHinweis: Benachrichtigungen müssen in den Systemeinstellungen für So-Mi erlaubt sein.",
+                "[Alarm gesetzt]\n\"$text\" $timeDesc.",
                 displayHint = "Alarm $timeDesc",
             )
         }.getOrElse { ToolResult(toolId, "", error = "Alarm konnte nicht gesetzt werden: ${it.message}") }
