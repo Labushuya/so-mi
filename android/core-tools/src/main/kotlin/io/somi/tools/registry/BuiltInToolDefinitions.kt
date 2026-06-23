@@ -147,18 +147,36 @@ object BuiltInToolDefinitions {
         description = "Aktuellen Wechselkurs oder Währungsumrechnung abrufen",
         paramSchema = """{"type":"object","properties":{"from":{"type":"string"},"to":{"type":"string"},"amount":{"type":"number","default":1}},"required":["from","to"]}""",
         regexPatterns = listOf(
-            Regex("""wechselkurs\s+[A-Za-z]{3}"""),
-            Regex("""[A-Za-z]{3}\s+(?:zu|in|nach)\s+[A-Za-z]{3}\s+(?:umrechnen|konvertieren)"""),
-            Regex("""wie\s+viel\s+(?:ist|sind)\s+\d"""),
+            Regex("""wechselkurs"""),
+            Regex("""(?:umrechnen|konvertieren)"""),
+            Regex("""(?:wie\s+viel|was)\s+(?:ist|sind|kostet|kosten)\s+\d"""),
+            Regex("""(?:euro|dollar|eur|usd|gbp|chf|jpy|btc)\s+(?:zu|in|nach|umrechnen)"""),
+            Regex("""(?:in|nach)\s+(?:euro|dollar|eur|usd|gbp|chf|jpy|btc)\s+umrechnen"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
-            val currencies = Regex("""([a-z]{3})""").findAll(lower)
-                .map { m -> m.value.uppercase() }
-                .filter { c -> c.length == 3 && c.all { ch -> ch.isLetter() } }
-                .toList()
-            val amount = Regex("""(\d+\.?\d*)""").find(lower)?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: 1.0
-            mapOf("from" to (currencies.getOrNull(0) ?: "EUR"), "to" to (currencies.getOrNull(1) ?: "USD"), "amount" to amount)
+            // Known currency codes and German names — avoid matching random 3-letter words
+            val currencyMap = mapOf(
+                "euro" to "EUR", "eur" to "EUR",
+                "dollar" to "USD", "usd" to "USD",
+                "pfund" to "GBP", "gbp" to "GBP",
+                "franken" to "CHF", "chf" to "CHF",
+                "yen" to "JPY", "jpy" to "JPY",
+                "yuan" to "CNY", "cny" to "CNY",
+                "bitcoin" to "BTC", "btc" to "BTC",
+                "rubel" to "RUB", "rub" to "RUB",
+                "kronen" to "SEK",
+            )
+            val foundCurrencies = currencyMap.entries
+                .filter { (name, _) -> lower.contains(name) }
+                .map { (_, code) -> code }
+                .distinct()
+            val amount = Regex("""(\d[\d.,]*)""").find(lower)?.groupValues?.getOrNull(1)
+                ?.replace(",", ".")?.toDoubleOrNull() ?: 1.0
+            // Determine from/to: amount comes before "from" currency, after comes "to"
+            val fromCode = foundCurrencies.getOrNull(0) ?: "EUR"
+            val toCode = foundCurrencies.getOrNull(1) ?: "USD"
+            mapOf("from" to fromCode, "to" to toCode, "amount" to amount)
         },
     )
 
