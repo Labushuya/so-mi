@@ -17,10 +17,8 @@
          we don't need to attest the use-case via Play Console. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- API 33+: USE_EXACT_ALARM is auto-granted, no user action needed -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" android:minSdkVersion="33" />
-    <!-- API 31-32 fallback: requires special app access on those versions -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".SoMiApp"
