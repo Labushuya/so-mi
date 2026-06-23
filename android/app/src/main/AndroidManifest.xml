@@ -16,6 +16,7 @@
          per Android 14's typed-FGS rules; non-Play distribution means
          we don't need to attest the use-case via Play Console. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -48,7 +49,7 @@
              the dataSync type to satisfy targetSdk 35's typed-foreground rule. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="dataSync|shortService"
             tools:node="merge" />
 
         <activity
