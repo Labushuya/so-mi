@@ -9,9 +9,6 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.somi.tools.executor.ToolExecutor
 import io.somi.tools.model.ToolCall
