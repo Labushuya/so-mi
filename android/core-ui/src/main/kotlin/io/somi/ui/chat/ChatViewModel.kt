@@ -1238,18 +1238,20 @@ class ChatViewModel @Inject constructor(
         }
         // Drop the just-appended current user turn (last element) so history
         // only contains completed prior exchanges.
+        // Also filter out tool-result messages (lines starting with "[") to prevent
+        // So-Mi from paraphrasing stale tool data when the tool is disabled.
         val historyContext = if (recentMessages.size > 1) {
             val history = recentMessages.dropLast(1).takeLast(14)
-            buildString {
+                .filter { msg ->
+                    // Keep user messages always; filter assistant messages that are tool blocks
+                    msg.author == io.somi.common.chat.Author.USER ||
+                    !msg.text.trimStart().startsWith("[")
+                }
+            if (history.isEmpty()) null else buildString {
                 append("Bisheriges Gespräch (neueste zuletzt):\n")
                 history.forEach { msg ->
                     val role = if (msg.author == io.somi.common.chat.Author.USER) "Du" else "So-Mi"
-                    // Strip tool-result blocks from history — they contain stale data that
-                    // the LLM would paraphrase even when the tool is now disabled.
-                    val text = if (msg.author == io.somi.common.chat.Author.ASSISTANT)
-                        msg.text.lines().filterNot { it.trimStart().startsWith("[") }.joinToString("\n").trim()
-                    else msg.text
-                    if (text.isNotBlank()) append("$role: ${text.take(200)}\n")
+                    append("$role: ${msg.text.take(200)}\n")
                 }
                 append("\n")
             }
