@@ -12,7 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.46.8 | ✅ live | Tool-History gefiltert, Zahlwörter im Alarm, Alarm mit Ton+Vibration |
+| v0.46.8 | ✅ live | Stage-2-Crash behoben, Tool-History-Filter auch bei deaktivierten Tools |
 | v0.46.5 | ✅ stable | Stage-3-Crash, set_alarm, Alarm-Hinweis |
 | v0.46.4 | ✅ stable | per-Tool-Toggle, set_alarm, get_exchange_rate, news_briefing |
 | v0.45.1 | ✅ stable | Custom-Kategorien mit Emoji via Dateiname-Matching |
