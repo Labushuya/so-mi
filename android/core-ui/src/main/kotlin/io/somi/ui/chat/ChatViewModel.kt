@@ -1281,6 +1281,9 @@ class ChatViewModel @Inject constructor(
 
         val toolMode = uiSettings.state.value.toolMode
         val hasToolData = toolResult != null && toolResult.error == null
+        // Suppress history whenever the query matches any tool pattern —
+        // even if the tool is disabled — to prevent stale tool data from leaking.
+        val toolWasAttemptedOrMatched = toolResult != null || toolRouter.matchesAnyToolPattern(userText)
 
         // SYSTEM_PROMPT mode: rebuild system prompt with tool data before generation.
         // This invalidates the KV cache (~2-3s) but ensures the LLM sees the tool
@@ -1298,12 +1301,10 @@ class ChatViewModel @Inject constructor(
         }
 
         val promptWithContext = buildString {
-            // When a tool result is present, suppress both recall facts and conversation
-            // Suppress recall + history whenever a tool was attempted (success or error) —
-            // mixing prior context with tool results confuses the LLM in all cases.
-            val toolWasAttempted = toolResult != null
-            if (!toolWasAttempted && recallContext != null) append(recallContext)
-            if (!toolWasAttempted && historyContext != null) append(historyContext)
+            // Suppress recall + history when query matches a tool pattern —
+            // prevents stale tool data from leaking even when tools are disabled.
+            if (!toolWasAttemptedOrMatched && recallContext != null) append(recallContext)
+            if (!toolWasAttemptedOrMatched && historyContext != null) append(historyContext)
             if (hasToolData) {
                 val contextData = if (toolMode == io.somi.data.settings.ToolMode.COMPACT)
                     toolResult!!.contextBlock.take(800) // ~200 tokens
