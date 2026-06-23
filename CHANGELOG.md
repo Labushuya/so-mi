@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.46.7](https://github.com/Labushuya/so-mi/compare/v0.46.6...v0.46.7) (2026-06-23)
+
+
+### Bug Fixes
+
+* build — Notification-Sound Typ-Fehler behoben ([#202](https://github.com/Labushuya/so-mi/issues/202)) ([6f8758f](https://github.com/Labushuya/so-mi/commit/6f8758fa26620c5796bd3fa6b736961b16c6ad65))
+* Tool-History gefiltert, Zahlwörter im Alarm, Ton+Vibration bei Alarm ([#200](https://github.com/Labushuya/so-mi/issues/200)) ([1a00750](https://github.com/Labushuya/so-mi/commit/1a00750d6393952d37c5ac3301e851811a2ebcc2))
+* Tool-History-Filter bei deaktiviertem Tool, matchesAnyToolPattern für Regex-Check ([#205](https://github.com/Labushuya/so-mi/issues/205)) ([2caccd4](https://github.com/Labushuya/so-mi/commit/2caccd4aaa235f965f9b5c314ba76d0c944b58ff))
+
 ## [0.46.6](https://github.com/Labushuya/so-mi/compare/v0.46.5...v0.46.6) (2026-06-23)
 
 
