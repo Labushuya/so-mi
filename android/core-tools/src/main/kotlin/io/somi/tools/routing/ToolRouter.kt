@@ -45,6 +45,15 @@ JSON:""".trimIndent()
             ?: stageEmbedding(query, enabled)
     }
 
+    /** Returns true if the query matches any tool's regex — regardless of enabled state.
+     *  Used to suppress stale tool history even when a tool is disabled. */
+    fun matchesAnyToolPattern(query: String): Boolean {
+        val lower = query.lowercase()
+        return registry.tools.any { tool ->
+            tool.regexPatterns.any { it.containsMatchIn(lower) }
+        }
+    }
+
     private fun stageRegex(query: String, enabled: List<ToolDefinition>): ToolCall? {
         val lower = query.lowercase()
         for (tool in enabled) {
