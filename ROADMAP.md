@@ -12,8 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.46.6 | ✅ live | USE_EXACT_ALARM auto-granted, History-Tool-Blöcke gefiltert |
-| v0.46.5 | ✅ stable | Stage-3-Crash, set_alarm Umbenennung |
+| v0.46.5 | ✅ live | Stage-3-Crash, set_alarm Umbenennung + Alarm-Hinweis |
 | v0.46.4 | ✅ stable | per-Tool-Toggle, set_alarm, get_exchange_rate, news_briefing |
 | v0.45.1 | ✅ stable | Custom-Kategorien mit Emoji via Dateiname-Matching |
 | v0.45.0 | ✅ stable | Wetter dynamisch (Wochenende/Wochentag/in N Tagen), Erinnerungen Kategorie |
