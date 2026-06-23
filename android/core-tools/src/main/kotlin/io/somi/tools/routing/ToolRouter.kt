@@ -39,10 +39,9 @@ JSON:""".trimIndent()
         if (registry.tools.isEmpty()) return null
         val enabled = registry.tools.filter { tool -> toolPrefs.isToolEnabled(tool.id) }
         if (enabled.isEmpty()) return null
-        // Stage 3 (LLM-Planpass) deaktiviert: concurrent LLM access causes native crash.
-        // Stages 1+2 cover all practical cases via regex and embedding cosine.
+        // Stage 2 (Embedding) + Stage 3 (LLM) disabled: concurrent ONNX/LLM access causes crashes.
+        // Stage 1 (regex) covers all practical cases with deterministic patterns.
         return stageRegex(query, enabled)
-            ?: stageEmbedding(query, enabled)
     }
 
     /** Returns true if the query matches any tool's regex — regardless of enabled state.
