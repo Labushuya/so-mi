@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.9](https://github.com/Labushuya/so-mi/compare/v0.46.8...v0.46.9) (2026-06-23)
+
+
+### Bug Fixes
+
+* Alarm auf WorkManager, Exchange Rate Currency-Map statt 3-Letter-Regex ([#208](https://github.com/Labushuya/so-mi/issues/208)) ([c840d7b](https://github.com/Labushuya/so-mi/commit/c840d7b1c48721e0e856a26ad40f951a2352f79c))
+
 ## [0.46.8](https://github.com/Labushuya/so-mi/compare/v0.46.7...v0.46.8) (2026-06-23)
 
 
