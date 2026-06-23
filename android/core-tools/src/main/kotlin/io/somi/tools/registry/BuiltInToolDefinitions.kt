@@ -114,13 +114,28 @@ object BuiltInToolDefinitions {
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
+            // Map German number words to digits
+            val wordToNum = mapOf(
+                "eine" to 1, "einer" to 1, "einem" to 1, "ein" to 1,
+                "zwei" to 2, "drei" to 3, "vier" to 4, "fünf" to 5,
+                "sechs" to 6, "sieben" to 7, "acht" to 8, "neun" to 9,
+                "zehn" to 10, "fünfzehn" to 15, "zwanzig" to 20,
+                "dreißig" to 30, "sechzig" to 60, "neunzig" to 90,
+            )
+            // Try digit-based match first, then word-based
             val delayM = Regex("""in\s+(\d+)\s+minuten?""").find(lower)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            val delayH = Regex("""in\s+(\d+)\s+stunden?""").find(lower)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { h -> h * 60 }
+                ?: wordToNum.entries.firstOrNull { (word, _) ->
+                    Regex("in\\s+$word\\s+minuten?").containsMatchIn(lower)
+                }?.value
+            val delayH = Regex("""in\s+(\d+)\s+stunden?""").find(lower)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { it * 60 }
+                ?: wordToNum.entries.firstOrNull { (word, _) ->
+                    Regex("in\\s+$word\\s+stunden?").containsMatchIn(lower)
+                }?.value?.let { it * 60 }
             val delay = delayM ?: delayH ?: 30
             val text = query
                 .replace(Regex("(?i)erinner(?:e|)\\s+mich\\s+"), "")
                 .replace(Regex("(?i)stell(?:e|)\\s+(?:mir\\s+)?(?:einen?\\s+)?(?:alarm|timer|wecker)\\s+"), "")
-                .replace(Regex("(?i)in\\s+\\d+\\s+(?:minuten?|stunden?)"), "")
+                .replace(Regex("(?i)in\\s+(?:\\d+|eine[rm]?|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|fünfzehn|zwanzig|dreißig|sechzig|neunzig)\\s+(?:minuten?|stunden?)"), "")
                 .replace(Regex("@alarm|@reminder"), "")
                 .trim().ifBlank { query }
             mapOf("text" to text, "delay_minutes" to delay)
