@@ -12,7 +12,8 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.46.10 | ✅ live | Alarm auf WorkManager, Exchange Rate Currency-Map |
+| v0.46.11 | ✅ live | Alarm Foreground-Worker + direktes Ringtone-Playback |
+| v0.46.10 | ✅ stable | Alarm WorkManager, Exchange Rate Currency-Map |
 | v0.46.8 | ✅ stable | Stage-2-Crash, Tool-History-Filter |
 | v0.46.5 | ✅ stable | Stage-3-Crash, set_alarm, Alarm-Hinweis |
 | v0.46.4 | ✅ stable | per-Tool-Toggle, set_alarm, get_exchange_rate, news_briefing |
