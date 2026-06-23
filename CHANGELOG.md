@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.11](https://github.com/Labushuya/so-mi/compare/v0.46.10...v0.46.11) (2026-06-23)
+
+
+### Bug Fixes
+
+* Alarm als Foreground-Worker — Ringtone + Vibration auch bei gesperrtem Display ([#212](https://github.com/Labushuya/so-mi/issues/212)) ([a2e0d46](https://github.com/Labushuya/so-mi/commit/a2e0d46abf554e28d745fc560cd61c5a328d2034))
+
 ## [0.46.10](https://github.com/Labushuya/so-mi/compare/v0.46.9...v0.46.10) (2026-06-23)
 
 
