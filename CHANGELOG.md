@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.10](https://github.com/Labushuya/so-mi/compare/v0.46.9...v0.46.10) (2026-06-23)
+
+
+### Bug Fixes
+
+* build — hilt-work Dependency für AlarmWorker ([#210](https://github.com/Labushuya/so-mi/issues/210)) ([a4e3004](https://github.com/Labushuya/so-mi/commit/a4e300443ed76866660deed825c12970b1262417))
+
 ## [0.46.9](https://github.com/Labushuya/so-mi/compare/v0.46.8...v0.46.9) (2026-06-23)
 
 
