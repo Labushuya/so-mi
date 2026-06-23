@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.7](https://github.com/Labushuya/so-mi/compare/v0.46.6...v0.46.7) (2026-06-23)
+
+
+### Bug Fixes
+
+* Tool-History gefiltert, Zahlwörter im Alarm, Ton+Vibration bei Alarm ([#200](https://github.com/Labushuya/so-mi/issues/200)) ([1a00750](https://github.com/Labushuya/so-mi/commit/1a00750d6393952d37c5ac3301e851811a2ebcc2))
+
 ## [0.46.6](https://github.com/Labushuya/so-mi/compare/v0.46.5...v0.46.6) (2026-06-19)
 
 
