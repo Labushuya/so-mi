@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.12](https://github.com/Labushuya/so-mi/compare/v0.46.11...v0.46.12) (2026-06-24)
+
+
+### Bug Fixes
+
+* Absturz — setForeground/shortService entfernt; deaktiviertes Tool gibt Hinweis ([#214](https://github.com/Labushuya/so-mi/issues/214)) ([65b14d4](https://github.com/Labushuya/so-mi/commit/65b14d411b94de37222587131b068e8c77bfe746))
+
 ## [0.46.11](https://github.com/Labushuya/so-mi/compare/v0.46.10...v0.46.11) (2026-06-23)
 
 
