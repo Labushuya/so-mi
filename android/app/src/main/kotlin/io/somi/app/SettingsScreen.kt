@@ -150,6 +150,8 @@ internal fun SettingsScreen(
                             "set_alarm" to viewModel.isToolEnabledFlow("set_alarm").collectAsState(initial = true).value,
                             "get_exchange_rate" to viewModel.isToolEnabledFlow("get_exchange_rate").collectAsState(initial = true).value,
                             "news_briefing" to viewModel.isToolEnabledFlow("news_briefing").collectAsState(initial = true).value,
+                            "read_calendar" to viewModel.isToolEnabledFlow("read_calendar").collectAsState(initial = true).value,
+                            "create_event" to viewModel.isToolEnabledFlow("create_event").collectAsState(initial = true).value,
                         ),
                         onToolToggle = { id, enabled -> viewModel.setToolEnabled(id, enabled) },
                     )
@@ -927,9 +929,11 @@ private fun ToolModeSection(
             Triple("get_weather", "Wetter", "Aktuelles Wetter und Vorhersagen."),
             Triple("search_web", "Web-Suche", "Im Internet suchen (verlässt das Gerät)."),
             Triple("search_memory", "Erinnerungen", "In gespeicherten Fakten suchen."),
-            Triple("set_alarm", "Alarm setzen", "Setzt eine Alarm-Benachrichtigung nach X Minuten/Stunden. Benötigte Systemrechte: Benachrichtigungen für So-Mi erlauben."),
+            Triple("set_alarm", "Alarm setzen", "Setzt eine Alarm-Benachrichtigung nach X Minuten/Stunden."),
             Triple("get_exchange_rate", "Wechselkurs", "Aktuelle Währungsumrechnung."),
             Triple("news_briefing", "Nachrichten", "RSS-Feeds (verlässt das Gerät)."),
+            Triple("read_calendar", "Kalender lesen", "Termine aus dem Kalender abrufen. Benötigt: Kalender-Berechtigung."),
+            Triple("create_event", "Termin erstellen", "Neuen Termin im Kalender anlegen. Benötigt: Kalender-Berechtigung."),
         )
         toolLabels.forEach { (id, label, desc) ->
             val enabled = toolEnabled[id] ?: true
