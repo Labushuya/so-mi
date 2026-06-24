@@ -192,4 +192,51 @@ object BuiltInToolDefinitions {
         ),
         paramExtractor = { _ -> mapOf("max_items" to 9) },
     )
+
+    val readCalendar = ToolDefinition(
+        id = "read_calendar",
+        description = "Kalendertermine für einen Zeitraum abrufen",
+        paramSchema = """{"type":"object","properties":{"days":{"type":"integer","default":7},"range_start":{"type":"string"},"range_end":{"type":"string"}},"required":[]}""",
+        regexPatterns = listOf(
+            Regex("""(?:meine[sn]?|nächste[sn]?|heute[sn]?)\s+(?:termine?|kalender|verabredungen?)"""),
+            Regex("""was\s+(?:steht|habe\s+ich|ist)\s+(?:heute|morgen|diese\s+woche|nächste\s+woche)"""),
+            Regex("""@kalender\b"""),
+            Regex("""zeig\s+(?:mir\s+)?(?:meine[sn]?\s+)?termine?"""),
+            Regex("""wann\s+(?:habe\s+ich|ist)\s+(?:mein|der)\s+nächste[rn]?\s+termin"""),
+        ),
+        paramExtractor = { query ->
+            val lower = query.lowercase()
+            val days = when {
+                lower.contains("heute") -> 1
+                lower.contains("morgen") -> 2
+                lower.contains("diese woche") -> 7
+                lower.contains("nächste woche") -> 14
+                lower.contains("monat") -> 30
+                else -> 7
+            }
+            mapOf("days" to days)
+        },
+    )
+
+    val createEvent = ToolDefinition(
+        id = "create_event",
+        description = "Einen neuen Kalendertermin erstellen",
+        paramSchema = """{"type":"object","properties":{"title":{"type":"string"},"start":{"type":"string"},"end":{"type":"string"},"location":{"type":"string"},"notes":{"type":"string"}},"required":["title","start"]}""",
+        regexPatterns = listOf(
+            Regex("""(?:trage[sn]?|erstell[e]?|leg[e]?|schreib[e]?)\s+(?:einen?\s+)?(?:termin|event|verabredung)"""),
+            Regex("""@termin\b"""),
+            Regex("""erinner[e]?\s+mich\s+am\s+\d"""),
+            Regex("""termin\s+(?:für|am|morgen|heute|nächste[sn]?)"""),
+        ),
+        paramExtractor = { query ->
+            // Basic extraction — LLM will fill details via tool hint
+            val lower = query.lowercase()
+            val title = query
+                .replace(Regex("(?i)trage[sn]?\\s+(?:einen?\\s+)?(?:termin|event)\\s+(?:für\\s+)?"), "")
+                .replace(Regex("(?i)erstell[e]?\\s+(?:einen?\\s+)?(?:termin|event)\\s+"), "")
+                .replace(Regex("@termin"), "")
+                .trim().ifBlank { "Neuer Termin" }
+            mapOf("title" to title, "start" to "")
+        },
+    )
 }

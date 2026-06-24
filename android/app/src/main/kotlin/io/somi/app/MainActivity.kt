@@ -224,6 +224,17 @@ private fun SoMiAppRoot() {
         }
     }
 
+    // Calendar permissions — requested once, fire-and-forget.
+    val calPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { /* result ignored — tool handles denial gracefully */ }
+    LaunchedEffect(Unit) {
+        calPermLauncher.launch(arrayOf(
+            android.Manifest.permission.READ_CALENDAR,
+            android.Manifest.permission.WRITE_CALENDAR,
+        ))
+    }
+
     val instances by viewModel.instances.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
 
