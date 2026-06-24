@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.47.0 | ✅ live | Kalender-Integration: read_calendar + create_event |
 | v0.46.12 | ✅ stable | Absturz behoben (shortService/FGS), deaktiviertes Tool zeigt Hinweis |
 | v0.46.11 | ✅ stable | Alarm Foreground-Worker |
 | v0.46.10 | ✅ stable | Alarm WorkManager, Exchange Rate Currency-Map |
@@ -115,9 +116,7 @@ Komplett.
 - `get_exchange_rate` — exchangerate.host (kein Key)
 - `news_briefing` — lokale RSS-Feeds
 
-### v0.47.0 — Kalender-Integration
-- `read_calendar` — CalendarContract (READ_CALENDAR Permission)
-- `create_event` — CalendarContract (WRITE_CALENDAR Permission)
+
 
 ### v1.0 — Phase-3/4-Abschluss
 1. KIWIX-Offline-Lexikon
