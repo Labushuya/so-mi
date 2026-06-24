@@ -1318,6 +1318,10 @@ class ChatViewModel @Inject constructor(
                 }
             } else if (toolResult != null && toolResult.error != null) {
                 Log.i(TAG, "tool ${toolResult.toolId} error — proceeding without context: ${toolResult.error}")
+            } else if (toolResult == null && toolWasAttemptedOrMatched) {
+                // Tool matched by pattern but is disabled — tell So-Mi explicitly
+                append("Hinweis: Das passende Tool für diese Anfrage ist gerade deaktiviert. ")
+                append("Antworte aus deinem eigenen Wissen, weise aber darauf hin dass keine aktuellen Echtzeitdaten verfügbar sind und die Information veraltet sein könnte.\n\n")
             }
             append(userText)
         }
