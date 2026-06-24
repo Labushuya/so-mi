@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/Labushuya/so-mi/compare/v0.46.12...v0.47.0) (2026-06-24)
+
+
+### Features
+
+* Kalender-Integration — read_calendar + create_event mit Runtime-Permission ([#216](https://github.com/Labushuya/so-mi/issues/216)) ([b82114a](https://github.com/Labushuya/so-mi/commit/b82114a6d8aa120cb8a3d0a7417e91a8970db806))
+
 ## [0.46.12](https://github.com/Labushuya/so-mi/compare/v0.46.11...v0.46.12) (2026-06-24)
 
 
