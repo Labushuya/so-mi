@@ -46,6 +46,8 @@ abstract class ToolsModule {
     @Binds @IntoSet abstract fun bindReminderTool(impl: io.somi.tools.reminder.ReminderTool): ToolExecutor
     @Binds @IntoSet abstract fun bindExchangeRateTool(impl: io.somi.tools.exchange.ExchangeRateTool): ToolExecutor
     @Binds @IntoSet abstract fun bindNewsBriefingTool(impl: io.somi.tools.news.NewsBriefingTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindCalendarReadTool(impl: io.somi.tools.calendar.CalendarReadTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindCalendarCreateTool(impl: io.somi.tools.calendar.CalendarCreateTool): ToolExecutor
 
     companion object {
         @Provides @IntoSet
@@ -60,5 +62,7 @@ abstract class ToolsModule {
         @Provides @IntoSet fun provideReminderDef(): ToolDefinition = BuiltInToolDefinitions.setAlarm
         @Provides @IntoSet fun provideExchangeRateDef(): ToolDefinition = BuiltInToolDefinitions.getExchangeRate
         @Provides @IntoSet fun provideNewsBriefingDef(): ToolDefinition = BuiltInToolDefinitions.newsBriefing
+        @Provides @IntoSet fun provideCalendarReadDef(): ToolDefinition = BuiltInToolDefinitions.readCalendar
+        @Provides @IntoSet fun provideCalendarCreateDef(): ToolDefinition = BuiltInToolDefinitions.createEvent
     }
 }
