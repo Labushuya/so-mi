@@ -56,21 +56,43 @@ class CalendarCreateTool @Inject constructor(
             .getOrNull()
             ?: return@withContext ToolResult(toolId, "", error = "Termin konnte nicht erstellt werden.")
 
+        val calName = getCalendarName(calendarId)
         val displayFmt = java.text.SimpleDateFormat("EEE dd.MM. HH:mm", Locale.GERMAN)
-        val block = "[Termin erstellt]\n\"$title\" am ${displayFmt.format(java.util.Date(startMs))}"
+        val block = "[Termin erstellt]\n\"$title\" am ${displayFmt.format(java.util.Date(startMs))}\nKalender: $calName"
         ToolResult(toolId, block, displayHint = "Termin: $title")
     }
 
     private fun findPrimaryCalendarId(): Long? {
-        val projection = arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.IS_PRIMARY)
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+            CalendarContract.Calendars.IS_PRIMARY,
+        )
         val cursor = context.contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI, projection,
-            "${CalendarContract.Calendars.VISIBLE} = 1", null,
-            "${CalendarContract.Calendars.IS_PRIMARY} DESC"
+            "${CalendarContract.Calendars.VISIBLE} = 1 AND ${CalendarContract.Calendars.SYNC_EVENTS} = 1",
+            null,
+            // Google accounts first (contain "google"), then primary
+            "${CalendarContract.Calendars.ACCOUNT_TYPE} DESC, ${CalendarContract.Calendars.IS_PRIMARY} DESC"
         ) ?: return null
         return cursor.use { c ->
             if (c.moveToFirst()) c.getLong(c.getColumnIndex(CalendarContract.Calendars._ID))
             else null
+        }
+    }
+
+    private fun getCalendarName(id: Long): String {
+        val projection = arrayOf(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, CalendarContract.Calendars.ACCOUNT_NAME, CalendarContract.Calendars.ACCOUNT_TYPE)
+        val cursor = context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI, projection,
+            "${CalendarContract.Calendars._ID} = ?", arrayOf(id.toString()), null
+        ) ?: return "Kalender"
+        return cursor.use { c ->
+            if (!c.moveToFirst()) return "Kalender"
+            val type = c.getString(c.getColumnIndex(CalendarContract.Calendars.ACCOUNT_TYPE)) ?: ""
+            val name = c.getString(c.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)) ?: ""
+            val account = c.getString(c.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)) ?: ""
+            if (type.contains("google", ignoreCase = true)) "Google Kalender ($account)" else name
         }
     }
 }
