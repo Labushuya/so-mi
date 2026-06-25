@@ -12,7 +12,8 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.47.0 | ✅ live | Kalender-Integration: read_calendar + create_event |
+| v0.47.1 | ✅ live | Google Kalender unterstützt, Kalender-Name im Ergebnis |
+| v0.47.0 | ✅ stable | Kalender-Integration: read_calendar + create_event |
 | v0.46.12 | ✅ stable | Absturz behoben (shortService/FGS), deaktiviertes Tool zeigt Hinweis |
 | v0.46.11 | ✅ stable | Alarm Foreground-Worker |
 | v0.46.10 | ✅ stable | Alarm WorkManager, Exchange Rate Currency-Map |
