@@ -153,3 +153,4 @@ class CalendarReadTool @Inject constructor(
     data class CalInfo(val id: Long, val displayName: String)
     data class CalEvent(val title: String, val startMs: Long, val calendarName: String)
 }
+// v0.47.1 Google Calendar fix
