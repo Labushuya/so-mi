@@ -23,7 +23,7 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell (LLM) dire
 - Glitch-Shader-Effekte, immersiver Vollbild-Modus
 
 ### Gedächtnis & RAG
-- **Erinnerungen speichern:** `"Merk dir, ich bin SRE bei Delos Cloud"` → gespeichert + kategorisiert
+- **Erinnerungen speichern:** `"Merk dir, ich liebe Kaffee"` → gespeichert + kategorisiert
 - **LLM-Klassifizierer:** nach dem Speichern klassifiziert das Modell den Fakt (Personen / Vorlieben / Termine / Technik / Notizen)
 - **HNSW-Vektorsuche:** semantisches Recall via ObjectBox wenn Embedder aktiv; Keyword-Fallback sonst
 - **Backfill-Worker:** re-embeddet ältere Fakten automatisch nach Embedder-Installation
