@@ -1,97 +1,153 @@
-# So-Mi (Songbird)
+# So-Mi — Offline-First Android-Assistentin
 
-Persönliche, offline-first Android-Assistentin: lokales LLM + KIWIX-RAG + Conversation-Memory + Tool-Calling. Single-User, Sideload-only über GitHub Releases. Persönlichkeit angelehnt an Songbird (So-Mi) aus Cyberpunk 2077: Phantom Liberty.
+> Eine persönliche KI-Assistentin für Android. Läuft vollständig lokal — kein Account, keine Cloud, keine Telemetrie. Persönlichkeit angelehnt an Songbird (So-Mi) aus Cyberpunk 2077: Phantom Liberty.
 
-> Vollständige Architektur und Phasenplan: siehe **[SPEC.md](SPEC.md)**.
-> Repo-Konventionen für Claude-Sessions: **[CLAUDE.md](CLAUDE.md)**.
+**Aktuell: v0.47.1 · Phase 3 abgeschlossen · Phase 4 aktiv**
 
 ---
 
-## Status: Phase 1 (Skeleton + Pipeline)
+## Was ist So-Mi?
 
-Phase 1 produziert ein minimales "Hello-Songbird"-APK, das die komplette Build- und Release-Pipeline beweist. Phase 2 (lokales LLM + Chat-UI) baut darauf auf.
+So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell (LLM) direkt auf deinem Gerät ausführt. Alles bleibt auf dem Handy — Gespräche, Erinnerungen, Persönlichkeit. Keine Nutzerdaten verlassen das Gerät, außer du fragst explizit nach Online-Tools wie Web-Suche oder Wetter.
 
-## Setup (10 Minuten)
+**Zielgerät:** HONOR Magic V2 (16 GB RAM) · **Verteilung:** Sideload via GitHub Releases · **Keine Play-Store-Veröffentlichung geplant.**
 
-### Voraussetzungen
+---
 
-- Lokale Toolchain für **Phase 0**: `git`, `keytool` (kommt mit JDK 17/21), `bash`.
-- Für **CI**: nur ein GitHub-Repo. Pipeline läuft auf `ubuntu-latest`.
-- Für **Sideload-Tests**: `adb` und ein Android-14+-Gerät (Ziel: HONOR Magic V2).
-- Optional: GitHub CLI `gh` (für `scripts/install-dev.sh` ohne Auth-Flickerei).
+## Funktionsumfang (v0.47.1)
 
-### Phase 0 — einmalige manuelle Schritte
+### Konversation & Persönlichkeit
+- Lokales LLM via ARM InferenceEngine (llama.cpp, NDK r27, arm64-v8a)
+- Standardmodell: Qwen2.5 7B Q4\_K\_M · weitere Modelle wählbar (bis 12B)
+- Persönlichkeit ausschließlich aus `soul/soul.md` — fest als System-Prefix, nie via RAG überschreibbar
+- Glitch-Shader-Effekte, immersiver Vollbild-Modus
+
+### Gedächtnis & RAG
+- **Erinnerungen speichern:** `"Merk dir, ich bin SRE bei Delos Cloud"` → gespeichert + kategorisiert
+- **LLM-Klassifizierer:** nach dem Speichern klassifiziert das Modell den Fakt (Personen / Vorlieben / Termine / Technik / Notizen)
+- **HNSW-Vektorsuche:** semantisches Recall via ObjectBox wenn Embedder aktiv; Keyword-Fallback sonst
+- **Backfill-Worker:** re-embeddet ältere Fakten automatisch nach Embedder-Installation
+- **Kategorien:** eigene Kategorien mit Keywords, Emoji-safe, per UI oder Slash-Command
+- Embedder: paraphrase-multilingual-MiniLM-L12-v2 (~470 MB, optional)
+
+### Tool-System (Phase 4)
+So-Mi kann Werkzeuge nutzen — sie entscheidet selbst wann ein Tool passt:
+
+| Tool | Beschreibung | Trigger-Beispiele |
+|------|-------------|-------------------|
+| `get_weather` | Open-Meteo (kein API-Key) | "Wetter morgen in Berlin", "Wetter am Wochenende" |
+| `search_web` | SearXNG (kein API-Key) | "@web EU AI Act aktuell" |
+| `search_memory` | Eigene Erinnerungen | "@erinnerung Familie", "Was weißt du über mich?" |
+| `set_alarm` | Android AlarmManager | "Erinner mich in 20 Minuten" |
+| `get_exchange_rate` | Echtzeit-Wechselkurse | "Wie viel sind 100 EUR in USD?" |
+| `news_briefing` | RSS-Feeds (Tagesschau, Spiegel, Heise) | "@news", "Aktuelle Nachrichten" |
+| `read_calendar` | Google Kalender & Systemkalender | "Zeig meine Termine diese Woche" |
+| `create_event` | Kalendertermin anlegen | "Erstelle Termin: Meeting morgen 14 Uhr" |
+
+Jedes Tool ist einzeln de-/aktivierbar in **Settings → So-Mi → Tool-Modus**.
+
+### Chat & UI
+- Multi-Chat: mehrere Gespräche anlegen, umbenennen, archivieren
+- Slash-Commands: `/search`, `/rename`, `/clear`, `/archive` + Autocomplete-Popup
+- Gesprächskontext: letzte 14 Nachrichten als Sliding-Window
+- Chat-Band für Status-Hinweise (Error / Warning / Success / Info)
+
+### Backup & Daten
+- Backup: Erinnerungen, Persönlichkeit, Chat-Verlauf, Einstellungen → ZIP
+- Import mit Bestätigungs-Dialog
+- Data-Browser: alle App-Dateien direkt einsehbar
+- Einstellungen exportierbar
+
+---
+
+## Technologie-Stack
+
+| Komponente | Technologie |
+|-----------|-------------|
+| LLM-Engine | llama.cpp via ARM InferenceEngine (vendored, com.arm.aichat) |
+| Standardmodell | Qwen2.5 7B Q4_K_M (GGUF) |
+| Embedding | paraphrase-multilingual-MiniLM-L12-v2 (ONNX Runtime 1.18) |
+| Vektordatenbank | ObjectBox 4.0.3 mit HNSW-Index (384 Dimensionen, Cosine) |
+| Chat-Persistenz | Room 2.7 (SQLite, WAL-Mode) |
+| UI | Jetpack Compose, Material3, Glitch-Shader |
+| DI | Hilt 2.52 |
+| Build | AGP 8.5.2, Kotlin 2.0.21, NDK r27 |
+| Verteilung | release-please → signierte APK → GitHub Releases |
+
+---
+
+## Architektur
+
+```
+android/
+├── app/                   Compose UI, Navigation, ViewModels, Hilt-Wiring
+├── core-llm/              LlamaContext Interface
+├── core-llm-llama/        ARM InferenceEngine JNI-Wrapper (NDK, llama.cpp)
+├── core-rag/              ObjectBox HNSW, ONNX Embedder, RagOrchestrator
+├── core-tools/            Tool-System: Router (Regex+Embedding), 8 Tools
+├── core-data/             Room, DataStore, BackupManager, StorageRoots
+├── core-ui/               ChatViewModel, Slash-Commands, RAG-Integration
+├── core-common/           Shared Interfaces (TextEmbedder, MemorySearchPort, LlmCaller)
+soul/soul.md               Persönlichkeit — einzige Quelle, nie via RAG
+keystore/ci.keystore       CI-Signatur (im Klartext committed — Sideload-only, Update-Kontinuität)
+```
+
+**Modul-Regel:** `core-*` Module dürfen nur `core-common` importieren. Cross-Modul-Abhängigkeiten gehen über Interfaces in `core-common` oder durch `app/`-Wiring.
+
+---
+
+## Datenschutz & Sicherheit
+
+- **Offline-first:** alle KI-Verarbeitung lokal, keine Nutzerdaten an externe Server
+- **Optional-Online:** Web-Suche, Wetter, Wechselkurs verlassen das Gerät — mit Hinweis im Ergebnis
+- **Kein API-Key erforderlich** für Basisfunktionen
+- **Keine Telemetrie, kein Analytics, kein Crashlytics**
+- Claude API optional: wenn hinterlegt, hinter BiometricPrompt in EncryptedSharedPreferences
+
+---
+
+## Installation
+
+1. [**GitHub Releases**](https://github.com/Labushuya/so-mi/releases/latest) → `app-release.apk` herunterladen
+2. Auf Android: *Unbekannte Quellen erlauben* → APK tippen → installieren
+3. Beim ersten Start: Benachrichtigungs- und Kalender-Berechtigung erlauben (optional)
+4. Modell herunterladen: Settings → Modelle → Qwen2.5 7B (Standard, ~4.5 GB, WLAN empfohlen)
+
+**Updates** installieren sich über die vorherige Version (gleicher Signing-Key, gleiche `applicationId`).
+
+---
+
+## Lokal bauen
 
 ```bash
-git clone <dein-repo>
-cd so-mi
+git clone https://github.com/Labushuya/so-mi
+cd so-mi/android
 
-# 1. CI-Keystore generieren und committen.
-#    Wichtig: dieser Keystore liegt BEWUSST im Klartext im Repo
-#    (Sideload-only, Update-Kontinuität — siehe scripts/init-keystore.sh
-#    und SPEC §5 für die Begründung).
-bash scripts/init-keystore.sh
-git commit -m "chore: add CI keystore (sideload-only)"
+# Android SDK-Pfad setzen
+echo "sdk.dir=/path/to/Android/Sdk" > local.properties
 
-# 2. (Optional) ANTHROPIC_API_KEY als Repo-Secret hinterlegen,
-#    falls du später bootstrap-soul.sh nutzen willst.
+# Debug-Build
+./gradlew :app:assembleDebug
+
+# Release-Build (versionCode muss höher als installierte Version sein)
+./gradlew :app:assembleRelease -PversionCode=99999 -PversionName=local
 ```
 
-### Erster Push und Akzeptanztest
+Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwort `ci-password-public`. Das ist bewusst so — Sideload-only, Update-Kontinuität ist wichtiger als Signing-Geheimhaltung.
 
-```bash
-# Conventional-Commits-Nachricht — release-please reagiert nur auf feat/fix/perf.
-git commit --allow-empty -m "feat: initial Phase 1 skeleton"
-git push origin main
-```
+---
 
-Was passiert:
+## Roadmap
 
-1. `release-please-action` öffnet einen Release-PR. Mit `bump-minor-pre-major: false` (Default für Pre-1.0) bumpt der erste `feat:` von **0.1.0 → 0.2.0** (Titel: `chore(main): release 0.2.0`). Der PR aktualisiert `version.txt` und `CHANGELOG.md`.
-2. Du **mergst** den Release-PR. Das tagged `v0.2.0` und triggert den `build`-Job.
-3. Der Build-Job kompiliert `:app:assembleRelease` mit `versionCode = 10000 + GITHUB_RUN_NUMBER`, signiert mit dem CI-Keystore, prüft die Signatur per `apksigner`, und hängt das APK ans Release.
+| Phase | Stand |
+|-------|-------|
+| Phase 0–2: Bootstrap, Pipeline, LLM + Chat | ✅ Abgeschlossen |
+| Phase 3: RAG + Persona-Memory | ✅ Abgeschlossen |
+| Phase 4: Tool-System | 🟡 8 von 12 Tools implementiert |
+| Phase 5: Voice + In-App-Updater | ❌ Geplant |
 
-> **Versions-Bumping-Regel pre-1.0:** `feat:` → MINOR (0.1.0 → 0.2.0), `fix:` → PATCH (0.2.0 → 0.2.1). Falls du lieber `feat:` zu PATCH bumpen willst, setze in `.release-please-config.json` `"bump-minor-pre-major": true`.
+Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
 
-Phase-1-Akzeptanz erfüllt, sobald:
+---
 
-- [ ] Push auf `main` produziert ein signiertes APK in **GitHub → Releases** (≤ 30 Min Pipeline-Laufzeit).
-- [ ] APK installiert sich auf dem Magic V2 (per `adb install -r` oder `bash scripts/install-dev.sh`).
-- [ ] Eine **Folge-Version** installiert sich **drüber**, ohne `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
-- [ ] App zeigt "So-Mi", den `versionName` und den `versionCode`.
-
-## Lokal bauen (ohne Push)
-
-```bash
-cd android
-./gradlew :app:assembleDebug                  # debug build, signiert mit Release-Keystore
-./gradlew :app:assembleRelease \
-  -PversionCode=10001 -PversionName=0.1.1     # release build mit expliziten Versionen
-```
-
-`-PversionCode` und `-PversionName` sind optional; ohne sie nimmt der Build `1` / `0.0.0-dev`.
-
-## Verzeichnisstruktur
-
-Vollständig in [SPEC.md §4](SPEC.md). Kurzfassung:
-
-```
-android/                       8-Modul-Gradle-Build (app + 7 core-*)
-soul/soul.md                   Persönlichkeit — fester System-Prefix, niemals via RAG
-knowledge/                     ZIMs, Notizen, Seeds für die RAG-Korpora
-keystore/ci.keystore           CI-Signatur (committed, public — siehe SPEC §5)
-scripts/                       init-keystore, download-models, install-dev, release, bootstrap-soul
-.github/workflows/             build-and-release.yml (release-please + signed APK)
-version.txt + CHANGELOG.md     release-please-managed
-```
-
-## Phasenplan
-
-Siehe [SPEC.md §12](SPEC.md). Reihenfolge ist nicht verhandelbar — Phase 2 setzt den grünen Phase-1-Akzeptanztest voraus.
-
-- **Phase 0** — Repo-Bootstrap (manuell, einmalig).
-- **Phase 1** — Skeleton + Pipeline. *Hier sind wir.*
-- **Phase 2** — Lokales LLM + Chat-UI.
-- **Phase 3** — RAG + Persona-Memory.
-- **Phase 4** — Tool-Layer (12 Tools).
-- **Phase 5** — Voice + In-App-Update.
+*So-Mi ist ein persönliches Sideload-Projekt. Kein Play-Store, kein Support-Versprechen.*
