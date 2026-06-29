@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="soul/so-mi-banner.png" alt="So-Mi" width="120" />
+<img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="So-Mi" width="120" />
 
 # So-Mi — Offline-First Android-Assistentin
 
@@ -187,7 +187,7 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 
 ## Lizenz
 
-Copyright © 2024–2026 Christopher Labushuya. Alle Rechte vorbehalten.  
+Copyright © 2024–2026 Christopher Bott (Labushuya | MindsourcesDOTnet). Alle Rechte vorbehalten.  
 Siehe [LICENSE](LICENSE) für Details.
 
 ---
