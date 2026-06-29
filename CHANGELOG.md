@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.2](https://github.com/Labushuya/so-mi/compare/v0.47.1...v0.47.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* rebuild release-please ([68bd6fe](https://github.com/Labushuya/so-mi/commit/68bd6feeae9c1ebc97511e2270578b94d2c81e20))
+
 ## [0.47.0](https://github.com/Labushuya/so-mi/compare/v0.46.12...v0.47.0) (2026-06-24)
 
 
