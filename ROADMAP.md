@@ -12,7 +12,8 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.48.0 | ✅ live | search_notes, save_note, summarize — 11 von 12 Tools |
+| v0.49.0 | ✅ live | Uniforme Commands, Smart Autocomplete, #Kategorie Inline-Routing |
+| v0.48.0 | ✅ stable | search_notes, save_note, summarize — 11 von 12 Tools |
 | v0.47.1 | ✅ stable | Google Kalender unterstützt, Kalender-Name im Ergebnis |
 | v0.47.0 | ✅ stable | Kalender-Integration: read_calendar + create_event |
 | v0.46.12 | ✅ stable | Absturz behoben (shortService/FGS), deaktiviertes Tool zeigt Hinweis |
