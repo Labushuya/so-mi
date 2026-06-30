@@ -8,30 +8,20 @@
 
 ---
 
-## Aktueller Stand (2026-06-17)
+## Aktueller Stand (2026-06-30)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.47.1 | ✅ live | Google Kalender unterstützt, Kalender-Name im Ergebnis |
+| v0.47.1 | ✅ stable | Google Kalender unterstützt, Kalender-Name im Ergebnis |
 | v0.47.0 | ✅ stable | Kalender-Integration: read_calendar + create_event |
 | v0.46.12 | ✅ stable | Absturz behoben (shortService/FGS), deaktiviertes Tool zeigt Hinweis |
-| v0.46.11 | ✅ stable | Alarm Foreground-Worker |
-| v0.46.10 | ✅ stable | Alarm WorkManager, Exchange Rate Currency-Map |
-| v0.46.8 | ✅ stable | Stage-2-Crash, Tool-History-Filter |
-| v0.46.5 | ✅ stable | Stage-3-Crash, set_alarm, Alarm-Hinweis |
-| v0.46.4 | ✅ stable | per-Tool-Toggle, set_alarm, get_exchange_rate, news_briefing |
-| v0.45.1 | ✅ stable | Custom-Kategorien mit Emoji via Dateiname-Matching |
-| v0.45.0 | ✅ stable | Wetter dynamisch (Wochenende/Wochentag/in N Tagen), Erinnerungen Kategorie |
-| v0.44.x | ✅ stable | Tool-System vollständig funktional: Wetter, Web-Suche, Erinnerungen |
-| v0.43.1 | ✅ stable | Phase 4: Tool-System — ToolRouter (3-Stufen), get_weather, search_web, search_memory |
-| v0.42.1 | ✅ stable | Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker, Embedder-Hinweis |
-| v0.41.0 | ✅ stable | HNSW-Recall — semantische Suche wenn Embedder aktiv, .md-Scan als Fallback |
-| v0.40.2 | ✅ stable | LLM-Klassifizierer + Sliding-Window Gesprächskontext |
-| v0.39.0 | ✅ stable | Backup mit Chat-Verlauf, Import-Bestätigung, /search /clear /rename /archive |
-| v0.38.1 | ✅ stable | Chat-Suche, OOM-Crash-Banner, Empty-State-Fix |
-| v0.37.2 | ✅ stable | Multi-Chat Nachrichten-Isolation, letzter Chat löschbar |
-| v0.36.2 | ✅ stable | Pausieren-Button-Fix, Embedder löschen, klarere Labels |
-| v0.33.0 | ✅ stable | Slash-Command-Popup, Band auto-dismiss |
+| v0.46.x | ✅ stable | Tool-System iterativ stabilisiert: Alarm, Wechselkurs, History-Filter |
+| v0.45.x | ✅ stable | Wetter dynamisch, Erinnerungs-Kategorieabfrage, Custom-Kategorien Emoji-safe |
+| v0.43–44 | ✅ stable | Tool-System Grundlage: ToolRouter, 8 Tools, per-Tool-Toggle |
+| v0.42.1 | ✅ stable | Erinnerungs-Rückmeldung mit Kategorie, Backfill-Worker |
+| v0.41.0 | ✅ stable | HNSW-Recall, Sliding-Window Gesprächskontext |
+| v0.39.0 | ✅ stable | Backup mit Chat-Verlauf, Chat-Commands |
+| v0.37.2 | ✅ stable | Multi-Chat vollständig |
 
 ---
 
@@ -56,17 +46,22 @@ Komplett.
 | HNSW-Recall + Backfill | ✅ v0.41.0 / v0.42.1 |
 | KIWIX-AAR | ❌ verschoben auf v1.0 |
 
-### 🟡 Phase 4 — Tools (3 von 12 stabil, ab v0.43.1)
+### 🟡 Phase 4 — Tools (8 von 12 implementiert, ab v0.43.1)
 
 | Tool | Stand |
 |---|---|
-| `get_weather` (Open-Meteo, kein Key) | ✅ v0.43.1+ — dynamische Datumsangaben, stabil |
-| `search_web` (SearXNG) | ✅ v0.43.1+ — stabil, 15s Timeout |
-| `search_memory` (Keyword + Kategorie) | ✅ v0.45.1 — Custom-Kategorien, Emoji-safe |
-| Tool-Modus-Toggle (Kompakt / System-Prompt) | ✅ v0.44.0 |
-| Restliche 9 Tools (SPEC §9) | ❌ v0.46.0+ |
-| Settings → Tools: per-Tool-Toggle | ❌ v0.46.0 |
-| GBNF-Wiring (Stage-3 Constrained Decoding) | ❌ deferred |
+| `get_weather` (Open-Meteo) | ✅ stabil — dynamische Datumsangaben |
+| `search_web` (SearXNG) | ✅ stabil — 15s Timeout |
+| `search_memory` (Keyword + Kategorie) | ✅ stabil — Custom-Kategorien, Emoji-safe |
+| `set_alarm` (WorkManager) | ✅ stabil — Ton + Vibration |
+| `get_exchange_rate` | ✅ stabil — Currency-Map |
+| `news_briefing` (RSS) | ✅ stabil — Tagesschau, Spiegel, Heise |
+| `read_calendar` (CalendarContract) | ✅ stabil — Google Kalender bevorzugt |
+| `create_event` (CalendarContract) | ✅ stabil |
+| Settings → per-Tool-Toggle | ✅ v0.46.4 |
+| Tool-Modus (Kompakt / System-Prompt) | ✅ v0.44.0 |
+| `summarize`, `search_notes`, `save_note` | ❌ v0.48.0 |
+| GBNF Stage-3 Constrained Decoding | ❌ deferred |
 
 ### ❌ Phase 5 — Voice + In-App-Updater
 
@@ -111,18 +106,20 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.46.0 — Settings → Tools + weitere Tools
-- Settings → So-Mi → Tools: per-Tool-Toggle (de-/aktivierbar)
-- `create_reminder` — Android AlarmManager + Notification
-- `get_exchange_rate` — exchangerate.host (kein Key)
-- `news_briefing` — lokale RSS-Feeds
+### v0.48.0 — Tool-Qualität + neue Tools
+- `summarize` — langen Text lokal zusammenfassen (rein lokal, kein Netzwerk)
+- `search_notes` + `save_note` — Notizen-System (Markdown-Dateien)
+- Stage-2-Embedding reaktivieren (sicherer Dispatcher, kein Concurrent-Crash)
+- `get_exchange_rate` robusterer Fallback (zweite API)
 
+### v0.49.0 — Phase-4-Abschluss + UX
+- Restliche SPEC §9 Tools nach Bedarf
+- Settings → Tools: bessere Gruppierung + Status-Indikatoren
 
-
-### v1.0 — Phase-3/4-Abschluss
+### v1.0 — Abschluss
 1. KIWIX-Offline-Lexikon
-2. Tool-System vollständig (alle 12 SPEC §9 Tools)
-3. Phase-3/4-Akzeptanztest erfüllt
+2. Phase 5: Voice (Spracheingabe + TTS)
+3. In-App-Updater
 
 ---
 
