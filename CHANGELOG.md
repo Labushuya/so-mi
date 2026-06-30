@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.0](https://github.com/Labushuya/so-mi/compare/v0.48.0...v0.49.0) (2026-06-30)
+
+
+### Features
+
+* v0.49.0 — Uniforme Commands, Smart Autocomplete, #Kategorie Inline-Routing, natürliche Sprache ([#225](https://github.com/Labushuya/so-mi/issues/225)) ([8ada1ec](https://github.com/Labushuya/so-mi/commit/8ada1ecd614cd91240f31e440e9214510c5a6e57))
+
 ## [0.48.0](https://github.com/Labushuya/so-mi/compare/v0.47.1...v0.48.0) (2026-06-30)
 
 
