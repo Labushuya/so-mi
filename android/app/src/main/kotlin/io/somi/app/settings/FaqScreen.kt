@@ -44,6 +44,10 @@ data class FaqEntry(
 )
 
 val FAQ_ENTRIES = listOf(
+    // Commands & Tools
+    FaqEntry("Commands & Tool-Übersicht",
+        "Erinnerungen speichern:\n• /merke Ich bin SRE bei Delos Cloud\n• /merke Ich liebe Kaffee #Vorlieben kaffee,getränke\n• merk dir: Ich spiele Gitarre #Hobby gitarre,musik\n• Das ist wichtig: [Fakt]\n• FYI: [Fakt]\n→ Mit #Kategorie landet der Fakt dort. Gibt es die Kategorie nicht, erstellt So-Mi sie automatisch. kw1,kw2 danach sind Keywords.\n\nTools mit @-Commands:\n• @wetter Berlin morgen\n• @alarm 15min Fenster schließen\n• @kurs 250 EUR in USD\n• @web KI-Regulierung 2026\n• @kalender diese Woche\n• @termin Meeting morgen 14 Uhr\n• @news (aktuelle Nachrichten)\n• TL;DR: [langer Text]\n\nGespräch verwalten:\n• /suche [Begriff] — Nachrichten durchsuchen\n• /umbenennen — Gespräch umbenennen\n• /archivieren — Gespräch ausblenden\n• /leeren — Alle Nachrichten löschen\n\nTipp: / oder @ tippen öffnet das Command-Popup mit allen verfügbaren Befehlen und Syntax-Vorlagen.",
+        "Commands"),
     // Erinnerungen
     FaqEntry("Wie sage ich So-Mi, dass sie sich etwas merken soll?",
         "Sag einfach 'Merke dir, ...' oder 'Vergiss nicht, ...' oder tippe /note. So-Mi speichert den Fakt automatisch in der richtigen Kategorie.",

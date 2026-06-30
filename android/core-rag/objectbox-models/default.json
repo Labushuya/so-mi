@@ -1,0 +1,95 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:619951223784060673",
+      "lastPropertyId": "9:5381294762650390613",
+      "name": "MemoryFact",
+      "properties": [
+        {
+          "id": "1:257944025866484004",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8923624771966057540",
+          "name": "fact",
+          "type": 9
+        },
+        {
+          "id": "3:846602836571461309",
+          "name": "topic",
+          "indexId": "1:8282379384840891557",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:3891927421053667721",
+          "name": "embedding",
+          "indexId": "2:2588616954394536790",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "5:999828233975432323",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "6:3026281899652707454",
+          "name": "lastSeenAt",
+          "type": 6
+        },
+        {
+          "id": "7:8113540727431743095",
+          "name": "confidence",
+          "type": 7
+        },
+        {
+          "id": "8:870846372191088946",
+          "name": "supersedesId",
+          "type": 6
+        },
+        {
+          "id": "9:5381294762650390613",
+          "name": "tombstoned",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:8934395312372112936",
+      "lastPropertyId": "2:5297822950216209399",
+      "name": "_Bootstrap",
+      "properties": [
+        {
+          "id": "1:4460715521881181360",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5297822950216209399",
+          "name": "sentinel",
+          "type": 9
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "2:8934395312372112936",
+  "lastIndexId": "2:2588616954394536790",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}
