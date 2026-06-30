@@ -239,4 +239,64 @@ object BuiltInToolDefinitions {
             mapOf("title" to title, "start" to "")
         },
     )
+
+    val searchNotes = ToolDefinition(
+        id = "search_notes",
+        description = "In gespeicherten Notizen suchen oder alle Notizen anzeigen",
+        paramSchema = """{"type":"object","properties":{"query":{"type":"string"},"k":{"type":"integer","default":10}},"required":[]}""",
+        regexPatterns = listOf(
+            Regex("""(?:zeig|such)\s+(?:mir\s+)?(?:meine[sn]?\s+)?notizen?"""),
+            Regex("""@notizen?\b"""),
+            Regex("""was\s+habe\s+ich\s+(?:notiert|aufgeschrieben)"""),
+            Regex("""in\s+meinen?\s+notizen?"""),
+        ),
+        paramExtractor = { query ->
+            val clean = query.replace(Regex("@notizen?|zeig mir meine notizen?|such in meinen notizen?"), "").trim()
+            if (clean.isBlank()) emptyMap() else mapOf("query" to clean)
+        },
+    )
+
+    val saveNote = ToolDefinition(
+        id = "save_note",
+        description = "Eine Notiz speichern",
+        paramSchema = """{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}""",
+        regexPatterns = listOf(
+            Regex("""(?:speicher[e]?|notier[e]?|schreib[e]?\s+auf|halt[e]?\s+fest)\s+(?:folgendes|das|mir)?\s*:?"""),
+            Regex("""@notiz\b"""),
+            Regex("""mach\s+(?:eine?\s+)?notiz"""),
+        ),
+        paramExtractor = { query ->
+            val clean = query
+                .replace(Regex("(?i)speicher[e]?\\s+(?:folgendes|das|mir)?\\s*:?"), "")
+                .replace(Regex("(?i)notier[e]?\\s+(?:folgendes|das|mir)?\\s*:?"), "")
+                .replace(Regex("(?i)schreib[e]?\\s+auf\\s*:?"), "")
+                .replace(Regex("(?i)halt[e]?\\s+fest\\s*:?"), "")
+                .replace(Regex("(?i)mach\\s+(?:eine?\\s+)?notiz\\s*:?"), "")
+                .replace(Regex("@notiz"), "")
+                .trim()
+            mapOf("text" to clean.ifBlank { query })
+        },
+    )
+
+    val summarize = ToolDefinition(
+        id = "summarize",
+        description = "Einen Text zusammenfassen",
+        paramSchema = """{"type":"object","properties":{"text":{"type":"string"},"max_words":{"type":"integer","default":100},"style":{"type":"string","enum":["neutral","bullets","short"]}},"required":["text"]}""",
+        regexPatterns = listOf(
+            Regex("""fass[e]?\s+(?:das|den|die|folgend[esr]?|diesen?)\s+(?:text|inhalt|artikel|zusammen)"""),
+            Regex("""(?:kannst|könntest)\s+du\s+(?:das|diesen?|den)\s+(?:zusammen)?fass[etn]"""),
+            Regex("""@zusammenfassung\b"""),
+            Regex("""(?:kurz[e]?\s+)?zusammenfassung\s+von"""),
+            Regex("""TL;DR|tl;dr|tldr"""),
+        ),
+        paramExtractor = { query ->
+            val lower = query.lowercase()
+            val style = when {
+                lower.contains("stichpunkt") || lower.contains("bullet") -> "bullets"
+                lower.contains("ein satz") || lower.contains("kurz") -> "short"
+                else -> "neutral"
+            }
+            mapOf("text" to query, "style" to style, "max_words" to 100)
+        },
+    )
 }

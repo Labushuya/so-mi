@@ -51,6 +51,11 @@ class MemorySearchAdapter @Inject constructor(
                 ?: emptyList()
         }
 
+    override suspend fun saveNote(text: String): String = withContext(Dispatchers.IO) {
+        memoryFiles.append(text, MemoryTopic.NOTES, System.currentTimeMillis())
+        text
+    }
+
     private fun keywordScan(query: String, k: Int): List<String> {
         val tokens = query.lowercase().split(' ').filter { it.length >= 3 }
         return memoryFiles.rootDir
