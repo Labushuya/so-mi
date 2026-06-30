@@ -121,6 +121,29 @@ Komplett.
 2. Phase 5: Voice (Spracheingabe + TTS)
 3. In-App-Updater
 
+### Vorgemerkt — OKF (Open Knowledge Format)
+**User-Vereinbarung 2026-06-30** — für spätere Implementierung vorgemerkt.
+
+OKF ersetzt/ergänzt das aktuelle Flat-Markdown-Erinnerungssystem durch strukturierte Markdown-Dateien mit YAML-Frontmatter und verlinkten Entitäten:
+
+```yaml
+---
+type: Person
+title: Christopher
+tags: [nutzer]
+---
+- arbeitet als: SRE bei Delos Cloud
+- Beziehungen: [Familie](/personen/familie.md)
+```
+
+Vorteile gegenüber aktuellem System:
+- Beziehungen zwischen Fakten (Christopher → Familie → Bruder Markus)
+- Strukturierte Felder statt Freitext (besser maschinenlesbar + Recall)
+- Portierbarkeit und Lesbarkeit des Backups verbessert
+
+So-Mi implementiert OKF bereits zu ~70% (Markdown-Dateien pro Kategorie). Fehlend: YAML-Frontmatter, Verlinkungen, Index-Dateien.
+Spec: https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing
+
 ---
 
 ## Wie diese Datei zu pflegen ist
