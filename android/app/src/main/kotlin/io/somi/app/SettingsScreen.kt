@@ -152,6 +152,9 @@ internal fun SettingsScreen(
                             "news_briefing" to viewModel.isToolEnabledFlow("news_briefing").collectAsState(initial = true).value,
                             "read_calendar" to viewModel.isToolEnabledFlow("read_calendar").collectAsState(initial = true).value,
                             "create_event" to viewModel.isToolEnabledFlow("create_event").collectAsState(initial = true).value,
+                            "search_notes" to viewModel.isToolEnabledFlow("search_notes").collectAsState(initial = true).value,
+                            "save_note" to viewModel.isToolEnabledFlow("save_note").collectAsState(initial = true).value,
+                            "summarize" to viewModel.isToolEnabledFlow("summarize").collectAsState(initial = true).value,
                         ),
                         onToolToggle = { id, enabled -> viewModel.setToolEnabled(id, enabled) },
                     )
@@ -934,6 +937,9 @@ private fun ToolModeSection(
             Triple("news_briefing", "Nachrichten", "RSS-Feeds (verlässt das Gerät)."),
             Triple("read_calendar", "Kalender lesen", "Termine aus dem Kalender abrufen. Benötigt: Kalender-Berechtigung."),
             Triple("create_event", "Termin erstellen", "Neuen Termin im Kalender anlegen. Benötigt: Kalender-Berechtigung."),
+            Triple("search_notes", "Notizen suchen", "In gespeicherten Notizen suchen oder alle anzeigen."),
+            Triple("save_note", "Notiz speichern", "Einen Text als Notiz abspeichern."),
+            Triple("summarize", "Zusammenfassen", "Text lokal zusammenfassen (kein Netzwerk)."),
         )
         toolLabels.forEach { (id, label, desc) ->
             val enabled = toolEnabled[id] ?: true
