@@ -48,6 +48,9 @@ abstract class ToolsModule {
     @Binds @IntoSet abstract fun bindNewsBriefingTool(impl: io.somi.tools.news.NewsBriefingTool): ToolExecutor
     @Binds @IntoSet abstract fun bindCalendarReadTool(impl: io.somi.tools.calendar.CalendarReadTool): ToolExecutor
     @Binds @IntoSet abstract fun bindCalendarCreateTool(impl: io.somi.tools.calendar.CalendarCreateTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindSearchNotesTool(impl: io.somi.tools.notes.SearchNotesTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindSaveNoteTool(impl: io.somi.tools.notes.SaveNoteTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindSummarizeTool(impl: io.somi.tools.summarize.SummarizeTool): ToolExecutor
 
     companion object {
         @Provides @IntoSet
@@ -64,5 +67,8 @@ abstract class ToolsModule {
         @Provides @IntoSet fun provideNewsBriefingDef(): ToolDefinition = BuiltInToolDefinitions.newsBriefing
         @Provides @IntoSet fun provideCalendarReadDef(): ToolDefinition = BuiltInToolDefinitions.readCalendar
         @Provides @IntoSet fun provideCalendarCreateDef(): ToolDefinition = BuiltInToolDefinitions.createEvent
+        @Provides @IntoSet fun provideSearchNotesDef(): ToolDefinition = BuiltInToolDefinitions.searchNotes
+        @Provides @IntoSet fun provideSaveNoteDef(): ToolDefinition = BuiltInToolDefinitions.saveNote
+        @Provides @IntoSet fun provideSummarizeDef(): ToolDefinition = BuiltInToolDefinitions.summarize
     }
 }
