@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.48.0](https://github.com/Labushuya/so-mi/compare/v0.47.1...v0.48.0) (2026-06-30)
+
+
+### Features
+
+* v0.48.0 — search_notes, save_note, summarize Tools ([#223](https://github.com/Labushuya/so-mi/issues/223)) ([75eb529](https://github.com/Labushuya/so-mi/commit/75eb529340965f2fe326f0860ee152031c9f20f2))
+
+
+### Bug Fixes
+
+* rebuild release-please ([68bd6fe](https://github.com/Labushuya/so-mi/commit/68bd6feeae9c1ebc97511e2270578b94d2c81e20))
+* test GitHub Actions billing ([03df866](https://github.com/Labushuya/so-mi/commit/03df866043d628febd01d9d49a15bc4c0d60bef9))
+
 ## [0.47.2](https://github.com/Labushuya/so-mi/compare/v0.47.1...v0.47.2) (2026-06-29)
 
 
