@@ -771,10 +771,29 @@ private fun Composer(
     var input by remember { mutableStateOf(TextFieldValue("")) }
     var showCommandPopup by remember { mutableStateOf(false) }
 
-    // Show command popup when user types "/" at the start
+    // Show command popup when user types "/" or "@" at the start
+    val allCommands = io.somi.ui.chat.SlashCommandRegistry.ALL +
+        io.somi.ui.chat.SlashCommandRegistry.AT_COMMANDS
     val suggestions = remember(input.text) {
-        if (input.text.startsWith("/")) io.somi.ui.chat.SlashCommandRegistry.matching(input.text)
+        if (input.text.startsWith("/") || input.text.startsWith("@"))
+            io.somi.ui.chat.SlashCommandRegistry.matching(input.text)
         else emptyList()
+    }
+    // Inline hint: grey completion text shown after typed characters
+    val inlineHint = remember(input.text) {
+        val txt = input.text
+        if (txt.isBlank()) return@remember null
+        val partial = allCommands.firstOrNull { it.command.startsWith(txt) && it.command != txt }
+        if (partial != null) {
+            val rest = partial.command.removePrefix(txt)
+            return@remember if (partial.placeholder.isNotBlank()) "$rest ${partial.placeholder}" else rest
+        }
+        val matched = allCommands.firstOrNull { txt == it.command || txt.startsWith(it.command + " ") }
+            ?: return@remember null
+        val afterCmd = txt.removePrefix(matched.command).trimStart()
+        val syntaxArgs = matched.syntax.removePrefix(matched.command).trim()
+        if (afterCmd.isEmpty()) syntaxArgs
+        else syntaxArgs.drop(afterCmd.length).takeIf { it.isNotBlank() }
     }
     val effectiveShowPopup = showCommandPopup || suggestions.isNotEmpty()
 
@@ -787,8 +806,8 @@ private fun Composer(
         Column(modifier = Modifier.fillMaxWidth().widthIn(max = 800.dp)) {
             // Slash command popup — floats above composer
             if (effectiveShowPopup) {
-                val cmds = if (input.text.startsWith("/")) suggestions
-                           else io.somi.ui.chat.SlashCommandRegistry.ALL
+                val cmds = if (input.text.startsWith("/") || input.text.startsWith("@")) suggestions
+                           else io.somi.ui.chat.SlashCommandRegistry.ALL + io.somi.ui.chat.SlashCommandRegistry.AT_COMMANDS
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -802,7 +821,7 @@ private fun Composer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Slash-Commands", color = songbird.bone, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text("Commands", color = songbird.bone, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         Box(
                             modifier = Modifier.clickable { showCommandPopup = false; input = TextFieldValue("") }
                                 .padding(4.dp),
@@ -817,16 +836,25 @@ private fun Composer(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        input = TextFieldValue(cmd.command, selection = androidx.compose.ui.text.TextRange(cmd.command.length))
+                                        val insertText = if (cmd.syntax != cmd.command) cmd.command + " " else cmd.command
+                                        input = TextFieldValue(insertText, selection = androidx.compose.ui.text.TextRange(insertText.length))
                                         showCommandPopup = false
                                     }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    .padding(horizontal = 12.dp, vertical = 5.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.Top,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(cmd.command, color = songbird.crimson, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(cmd.command, color = songbird.crimson, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                        if (cmd.syntax != cmd.command) {
+                                            Text(" ${cmd.syntax.removePrefix(cmd.command).trim()}", color = songbird.glass.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
                                     Text(cmd.description, color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+                                    if (cmd.example.isNotBlank()) {
+                                        Text(cmd.example, color = songbird.signal.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
+                                    }
                                 }
                                 Text("↵", color = songbird.glass, style = MaterialTheme.typography.labelSmall)
                             }
@@ -862,6 +890,13 @@ private fun Composer(
                                 Text(
                                     text = stringResource(R.string.composer_placeholder),
                                     color = songbird.glass.copy(alpha = 0.55f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            } else if (inlineHint != null) {
+                                // Inline completion hint: show typed text + greyed hint
+                                Text(
+                                    text = input.text + inlineHint,
+                                    color = songbird.glass.copy(alpha = 0.35f),
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                             }
