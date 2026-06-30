@@ -40,6 +40,36 @@ class RagOrchestrator @Inject constructor(
     private val memoryFiles: MemoryFileRepository,
 ) {
 
+    private data class InlineMeta(val fact: String, val categoryHint: String?, val keywords: List<String>)
+
+    private fun extractInlineMeta(text: String): InlineMeta {
+        var working = text.trim()
+        val keywords = mutableListOf<String>()
+        var categoryHint: String? = null
+
+        // Extract: #Kategorie kw1,kw2,kw3 at end (keywords WITHOUT leading comma)
+        val catKwMatch = Regex("""#(\w[\w\s]{0,30}?)(?:\s+([\w,]+))?$""").find(working)
+        if (catKwMatch != null) {
+            categoryHint = catKwMatch.groupValues[1].trim()
+            val kwString = catKwMatch.groupValues[2]
+            if (kwString.isNotBlank()) {
+                kwString.split(",").filter { it.isNotBlank() }.forEach { keywords += it.trim() }
+            }
+            working = working.removeSuffix(catKwMatch.value).trim()
+        }
+
+        return InlineMeta(working, categoryHint, keywords)
+    }
+
+    private fun normalizeCategoryId(name: String): String =
+        name.trim()
+            .replace("&", "_und_")
+            .replace(Regex("""\s+"""), "_")
+            .replace(Regex("""[^a-zA-Z0-9_äöüÄÖÜß]"""), "")
+            .replace(Regex("_+"), "_")
+            .lowercase()
+            .trimEnd('_')
+
     /**
      * Pre-LLM hook for ChatViewModel.submit().
      *
@@ -91,10 +121,23 @@ class RagOrchestrator @Inject constructor(
         return try {
             val now = System.currentTimeMillis()
 
+            // Extract inline category + keywords from fact text
+            val inlineMeta = extractInlineMeta(match.factText)
+            val factTextForProcessing = inlineMeta.fact
+            val inlineCategoryHint = inlineMeta.categoryHint
+            val inlineKeywords = inlineMeta.keywords
+
+            // Build knownIds for inline category resolution (custom .md files only)
+            val knownIds = memoryFiles.rootDir.listFiles()
+                ?.filter { it.extension == "md" }
+                ?.filter { f -> MemoryTopic.entries.none { it.id == f.nameWithoutExtension } }
+                ?.map { it.nameWithoutExtension }
+                ?: emptyList()
+
             // v0.22.0 M9 — Multi-fact extraction + TopicClassifier.
             // Split the fact text into individual facts (by "und" conjunctions)
             // and classify each into the best-matching topic.
-            val rawFacts = splitIntoFacts(normalizeFact(match.factText))
+            val rawFacts = splitIntoFacts(normalizeFact(factTextForProcessing))
             val classified = rawFacts.map { fact -> fact to classifyFact(fact) }
 
             val embedderReady = runCatching { embedder.isAvailable() }.getOrDefault(false)
@@ -124,6 +167,42 @@ class RagOrchestrator @Inject constructor(
                         } else {
                             Log.i(TAG, "skipped duplicate in custom: '$fact'")
                         }
+                    } else if (inlineCategoryHint != null) {
+                        // Inline #Kategorie annotation: resolve or auto-create
+                        val resolvedInlineId = io.somi.rag.trigger.KeywordCommandDetector.resolveCategory(inlineCategoryHint, knownIds)
+                        val targetId = if (resolvedInlineId != null) {
+                            resolvedInlineId
+                        } else {
+                            // Auto-create new category from the hint
+                            val normalizedId = normalizeCategoryId(inlineCategoryHint)
+                            val newFile = File(memoryFiles.rootDir, "$normalizedId.md")
+                            newFile.parentFile?.mkdirs()
+                            if (!newFile.exists()) {
+                                newFile.writeText("# ${inlineCategoryHint.replaceFirstChar { it.uppercaseChar() }}\n\n<!-- Eigene Kategorie -->\n\n")
+                            }
+                            Log.i(TAG, "auto-created category: $normalizedId")
+                            normalizedId
+                        }
+                        val targetFile = File(memoryFiles.rootDir, "$targetId.md")
+                        targetFile.parentFile?.mkdirs()
+                        if (!targetFile.exists()) {
+                            targetFile.writeText("# ${inlineCategoryHint.replaceFirstChar { it.uppercaseChar() }}\n\n<!-- Eigene Kategorie -->\n\n")
+                        }
+                        val alreadyExists = targetFile.readLines()
+                            .filter { it.trimStart().startsWith("- ") }
+                            .map { it.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim().lowercase() }
+                            .any { it == fact.lowercase() }
+                        if (!alreadyExists) {
+                            val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.GERMAN).format(java.util.Date(now))
+                            targetFile.appendText("- $fact  _(gespeichert: $ts)_\n")
+                            Log.i(TAG, "saved to inline-category: '$fact' → $targetId")
+                        } else {
+                            Log.i(TAG, "skipped duplicate in inline-category: '$fact'")
+                        }
+                        // Register any inline keywords for this category
+                        if (inlineKeywords.isNotEmpty()) {
+                            inlineKeywords.forEach { kw -> addKeyword(targetId, kw) }
+                        }
                     } else {
                         memoryFiles.append(fact, topic, now)
                     }
@@ -146,9 +225,14 @@ class RagOrchestrator @Inject constructor(
             }
 
             val savedText = classified.joinToString(", ") { (f, _) -> f }
+            val ackFactText = if (inlineCategoryHint != null) {
+                "$savedText [→ $inlineCategoryHint]"
+            } else {
+                savedText
+            }
             SaveOutcome.Saved(
                 triggerPhrase = match.triggerPhrase,
-                factText = savedText,
+                factText = ackFactText,
                 topic = classified.firstOrNull()?.second ?: MemoryTopic.NOTES,
             )
         } catch (t: Throwable) {
