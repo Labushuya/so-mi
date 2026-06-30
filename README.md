@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-red?style=flat-square)](LICENSE)
 [![Phase](https://img.shields.io/badge/phase-4%20%E2%80%94%20Tools-blue?style=flat-square)](#roadmap)
 [![LLM](https://img.shields.io/badge/LLM-Qwen2.5%207B-purple?style=flat-square)](https://huggingface.co/Qwen/Qwen2.5-7B)
-[![Build](https://img.shields.io/badge/build-local%20%E2%80%94%20actions%20reset%20Jul%201-yellow?style=flat-square)](https://github.com/Labushuya/so-mi/actions)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](https://github.com/Labushuya/so-mi/actions)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=flat-square&logo=kotlin)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-4285F4?style=flat-square&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![NDK](https://img.shields.io/badge/NDK-r27%20arm64--v8a-orange?style=flat-square)](https://developer.android.com/ndk)
