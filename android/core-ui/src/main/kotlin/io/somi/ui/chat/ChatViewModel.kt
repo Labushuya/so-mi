@@ -571,8 +571,9 @@ class ChatViewModel @Inject constructor(
         }
 
         // v0.39.0 — chat management slash commands
+        // v0.46.12 — German aliases: /leeren, /umbenennen, /archivieren
         when (text.lowercase()) {
-            "/clear" -> {
+            "/clear", "/leeren" -> {
                 viewModelScope.launch {
                     chatRepository.appendUser(text)
                     chatRepository.clearCurrentConversation()
@@ -580,7 +581,7 @@ class ChatViewModel @Inject constructor(
                 }
                 return
             }
-            "/rename" -> {
+            "/rename", "/umbenennen" -> {
                 viewModelScope.launch {
                     chatRepository.appendUser(text)
                     chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Sag mir den neuen Namen.")
@@ -588,7 +589,7 @@ class ChatViewModel @Inject constructor(
                 }
                 return
             }
-            "/archive" -> {
+            "/archive", "/archivieren" -> {
                 viewModelScope.launch {
                     chatRepository.appendUser(text)
                     val id = chatRepository.currentConversationId
@@ -598,8 +599,10 @@ class ChatViewModel @Inject constructor(
                 return
             }
         }
-        if (text.lowercase().startsWith("/search ")) {
-            val query = text.substring(8).trim()
+        // v0.46.12 — /suche as German alias for /search
+        if (text.lowercase().startsWith("/suche ") || text.lowercase().startsWith("/search ")) {
+            val prefixLen = if (text.lowercase().startsWith("/suche ")) 7 else 8
+            val query = text.substring(prefixLen).trim()
             viewModelScope.launch {
                 chatRepository.appendUser(text)
                 if (query.isBlank()) {
@@ -610,6 +613,29 @@ class ChatViewModel @Inject constructor(
                     else "${results.size} Treffer für \"$query\":\n" + results.take(5).joinToString("\n") { "· ${it.text.take(80)}" } +
                         if (results.size > 5) "\n…und ${results.size - 5} weitere." else ""
                     chatRepository.appendAssistant(reply)
+                }
+            }
+            return
+        }
+        // v0.46.12 — /notiz: save directly to NOTES category (bypasses TriggerDetector)
+        if (text.lowercase().startsWith("/notiz ")) {
+            val noteText = text.substring(7).trim()
+            viewModelScope.launch {
+                chatRepository.appendUser(text)
+                if (noteText.isBlank()) {
+                    chatRepository.appendAssistant("Sag mir was ich notieren soll: /notiz <Text>")
+                } else {
+                    val augmented = "#Notizen $noteText"
+                    val outcome = runCatching { ragOrchestrator.maybeSaveOnSubmit(augmented) }
+                        .onFailure { Log.w(TAG, "/notiz rag save failed", it) }
+                        .getOrDefault(io.somi.rag.SaveOutcome.NotTriggered)
+                    if (outcome is io.somi.rag.SaveOutcome.Saved || outcome is io.somi.rag.SaveOutcome.NotTriggered) {
+                        chatRepository.appendAssistant("Notiz gespeichert: \"$noteText\"")
+                    }
+                    // SaveFailed is handled by handleRagTrigger surface path; surface banner here too
+                    if (outcome is io.somi.rag.SaveOutcome.SaveFailed) {
+                        chatRepository.appendAssistant("Notiz konnte nicht gespeichert werden. Prüf den Speicher.")
+                    }
                 }
             }
             return

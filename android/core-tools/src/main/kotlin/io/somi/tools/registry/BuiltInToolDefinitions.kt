@@ -15,6 +15,14 @@ object BuiltInToolDefinitions {
             Regex("""wird\s+es\s+(?:regnen|schneien|sonnig|warm|kalt|bewölkt)"""),
             Regex("""brauche\s+ich\s+(?:einen?\s+)?(?:schirm|regenschirm|jacke)"""),
             Regex("""wie\s+ist\s+(?:das\s+wetter|die\s+temperatur)"""),
+            Regex("""wie\s+ist\s+das\s+wetter"""),
+            Regex("""soll\s+ich\s+(?:einen?\s+)?(?:schirm|regenschirm|jacke|mantel)\s+mitnehmen"""),
+            Regex("""wie\s+kalt\s+ist\s+es\s+(?:gerade|heute|draußen)?"""),
+            Regex("""was\s+für\s+wetter\s+(?:haben\s+wir|ist\s+es)"""),
+            Regex("""wird\s+es\s+heute\s+(?:noch\s+)?regnen"""),
+            Regex("""ist\s+es\s+warm\s+genug"""),
+            Regex("""wettervorhersage\s+(?:für|in)"""),
+            Regex("""@wetter"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
@@ -69,6 +77,11 @@ object BuiltInToolDefinitions {
             Regex("""such\s+online\s+nach"""),
             Regex("""google\s+(?:mal|nach|für\s+mich)"""),
             Regex("""aktuelle[sn]?\s+(?:news|nachrichten|infos?)\s+(?:zu|über)"""),
+            Regex("""schau\s+(?:mal\s+)?nach"""),
+            Regex("""find[e]?\s+heraus\s+(?:ob|was|wie|warum)"""),
+            Regex("""recherchier[e]?"""),
+            Regex("""was\s+(?:findet|weiß)\s+man\s+(?:im\s+netz\s+)?über"""),
+            Regex("""was\s+(?:ist|sind)\s+(?:aktuelle[sn]?\s+)?infos?\s+(?:zu|über|von)"""),
         ),
         paramExtractor = { query ->
             val clean = query
@@ -93,6 +106,11 @@ object BuiltInToolDefinitions {
             Regex("""such\s+(?:in\s+)?(?:meinen?\s+)?(?:erinnerungen?|notizen?|gedächtnis)"""),
             Regex("""@memory\b"""),
             Regex("""@erinnerung\b"""),
+            Regex("""weißt\s+du\s+noch"""),
+            Regex("""kennst\s+du\s+mein[en]?"""),
+            Regex("""was\s+hab[e]?\s+ich\s+dir\s+(?:mal\s+)?erzählt"""),
+            Regex("""hast\s+du\s+notiert\s+(?:dass|das)"""),
+            Regex("""sag\s+mir\s+was\s+du\s+(?:über\s+mich\s+)?weißt"""),
         ),
         paramExtractor = { query ->
             val clean = query.replace(Regex("@memory|@erinnerung"), "").trim()
@@ -111,6 +129,11 @@ object BuiltInToolDefinitions {
             Regex("""@alarm\b"""),
             Regex("""@reminder\b"""),
             Regex("""weck(?:e|)\s+mich"""),
+            Regex("""weck\s+mich\s+(?:bitte\s+)?(?:in|um)"""),
+            Regex("""timer\s+(?:für\s+)?\d"""),
+            Regex("""nach\s+\d+\s+minuten?"""),
+            Regex("""sag\s+mir\s+bescheid\s+in"""),
+            Regex("""in\s+\d+\s+(?:minuten?|stunden?)\s+bescheid"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
@@ -152,6 +175,10 @@ object BuiltInToolDefinitions {
             Regex("""(?:wie\s+viel|was)\s+(?:ist|sind|kostet|kosten)\s+\d"""),
             Regex("""(?:euro|dollar|eur|usd|gbp|chf|jpy|btc)\s+(?:zu|in|nach|umrechnen)"""),
             Regex("""(?:in|nach)\s+(?:euro|dollar|eur|usd|gbp|chf|jpy|btc)\s+umrechnen"""),
+            Regex("""was\s+kostet\s+(?:ein|eine[rn]?)\s+(?:dollar|euro|pfund)"""),
+            Regex("""wie\s+viel\s+(?:euro|dollar|pfund)\s+(?:ist|sind|bekomme\s+ich)"""),
+            Regex("""tausche\s+\d"""),
+            Regex("""währungsrechner"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
@@ -203,6 +230,11 @@ object BuiltInToolDefinitions {
             Regex("""@kalender\b"""),
             Regex("""zeig\s+(?:mir\s+)?(?:meine[sn]?\s+)?termine?"""),
             Regex("""wann\s+(?:habe\s+ich|ist)\s+(?:mein|der)\s+nächste[rn]?\s+termin"""),
+            Regex("""habe\s+ich\s+(?:heute|morgen|diese\s+woche)\s+(?:noch\s+)?(?:was|etwas|einen?\s+termin)"""),
+            Regex("""bin\s+ich\s+(?:heute|morgen)\s+(?:noch\s+)?beschäftigt"""),
+            Regex("""was\s+habe\s+ich\s+(?:diese|nächste)\s+woche\s+vor"""),
+            Regex("""stehen\s+(?:noch\s+)?termine\s+an"""),
+            Regex("""was\s+ist\s+(?:diese\s+woche\s+)?geplant"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
@@ -249,6 +281,8 @@ object BuiltInToolDefinitions {
             Regex("""@notizen?\b"""),
             Regex("""was\s+habe\s+ich\s+(?:notiert|aufgeschrieben)"""),
             Regex("""in\s+meinen?\s+notizen?"""),
+            Regex("""zeig\s+(?:mir\s+)?(?:alle\s+)?(?:meine[sn]?\s+)?notizen?"""),
+            Regex("""was\s+(?:steht|habe\s+ich)\s+(?:in\s+meinen?\s+)?notizen?"""),
         ),
         paramExtractor = { query ->
             val clean = query.replace(Regex("@notizen?|zeig mir meine notizen?|such in meinen notizen?"), "").trim()
@@ -264,6 +298,9 @@ object BuiltInToolDefinitions {
             Regex("""(?:speicher[e]?|notier[e]?|schreib[e]?\s+auf|halt[e]?\s+fest)\s+(?:folgendes|das|mir)?\s*:?"""),
             Regex("""@notiz\b"""),
             Regex("""mach\s+(?:eine?\s+)?notiz"""),
+            Regex("""das\s+möchte\s+ich\s+festhalten"""),
+            Regex("""(?:als\s+)?notiz:\s*\w"""),
+            Regex("""ich\s+notiere:\s*\w"""),
         ),
         paramExtractor = { query ->
             val clean = query
@@ -288,6 +325,11 @@ object BuiltInToolDefinitions {
             Regex("""@zusammenfassung\b"""),
             Regex("""(?:kurz[e]?\s+)?zusammenfassung\s+von"""),
             Regex("""TL;DR|tl;dr|tldr"""),
+            Regex("""fass[e]?\s+(?:das\s+)?kurz\s+zusammen"""),
+            Regex("""(?:kurze\s+)?zusammenfassung\s+(?:von|des|der)"""),
+            Regex("""in\s+kürze:"""),
+            Regex("""(?:was\s+ist\s+die\s+)?hauptaussage\s+(?:von|des|der)"""),
+            Regex("""worum\s+geht\s+es\s+(?:bei|in|dem)"""),
         ),
         paramExtractor = { query ->
             val lower = query.lowercase()
