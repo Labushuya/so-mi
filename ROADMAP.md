@@ -48,7 +48,7 @@ Komplett.
 | HNSW-Recall + Backfill | ✅ v0.41.0 / v0.42.1 |
 | KIWIX-AAR | ❌ verschoben auf v1.0 |
 
-### 🟡 Phase 4 — Tools (8 von 12 implementiert, ab v0.43.1)
+### 🟡 Phase 4 — Tools (11 von 12 implementiert, v0.43–v0.49)
 
 | Tool | Stand |
 |---|---|
@@ -60,9 +60,13 @@ Komplett.
 | `news_briefing` (RSS) | ✅ stabil — Tagesschau, Spiegel, Heise |
 | `read_calendar` (CalendarContract) | ✅ stabil — Google Kalender bevorzugt |
 | `create_event` (CalendarContract) | ✅ stabil |
+| `search_notes` / `save_note` | ✅ v0.48.0 |
+| `summarize` | ✅ v0.48.0 |
+| Uniforme Commands + Smart Autocomplete | ✅ v0.49.0 |
+| `#Kategorie kw1,kw2` Inline-Routing | ✅ v0.49.0 |
 | Settings → per-Tool-Toggle | ✅ v0.46.4 |
-| Tool-Modus (Kompakt / System-Prompt) | ✅ v0.44.0 |
-| `summarize`, `search_notes`, `save_note` | ❌ v0.48.0 |
+| Stage-2-Embedding (Tool-Matching ohne @) | ❌ v0.50.0 — wegen ONNX/LLM-Crash deaktiviert |
+| Settings → Tools UX (Gruppierung, Status) | ❌ v0.50.0 |
 | GBNF Stage-3 Constrained Decoding | ❌ deferred |
 
 ### ❌ Phase 5 — Voice + In-App-Updater
@@ -108,15 +112,15 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.48.0 — Tool-Qualität + neue Tools
-- `summarize` — langen Text lokal zusammenfassen (rein lokal, kein Netzwerk)
-- `search_notes` + `save_note` — Notizen-System (Markdown-Dateien)
-- Stage-2-Embedding reaktivieren (sicherer Dispatcher, kein Concurrent-Crash)
-- `get_exchange_rate` robusterer Fallback (zweite API)
+### v0.50.0 — Phase-4-Abschluss (unmittelbar)
+1. **Stage-2-Embedding reaktivieren** — Tool-Matching per semantischer Ähnlichkeit ohne `@`-Prefix. Sicherung: eigener Dispatcher, kein ONNX/LLM-Konflikt. Fallback auf Stage-1-Regex wenn Embedder nicht bereit.
+2. **`get_exchange_rate` zweite API** — Open Exchange Rates als Fallback wenn exchangerate-api.com nicht erreichbar. Klarer Hinweis an User welche Quelle genutzt wurde.
+3. **Settings → Tools UX** — Visuelle Gruppierung (Erinnerungen / Web / Produktivität), Status-Indikatoren (✅ letzter Erfolg / ⚠️ letzter Fehler / ○ nie genutzt)
 
-### v0.49.0 — Phase-4-Abschluss + UX
-- Restliche SPEC §9 Tools nach Bedarf
-- Settings → Tools: bessere Gruppierung + Status-Indikatoren
+### v0.51.0 — Stabilisierung + OKF-Vorbereitung
+- v0.49.0 Feedback einarbeiten (#Kategorie Routing, Autocomplete)
+- Bekannte UX-Schulden: Scroll-to-Bottom MagicOS, 14B-Ampel-Farbe
+- OKF-Konzept evaluieren (Prototyp für strukturierte Kategorien mit YAML-Frontmatter)
 
 ### v1.0 — Abschluss
 1. KIWIX-Offline-Lexikon
@@ -137,11 +141,6 @@ tags: [nutzer]
 - arbeitet als: SRE bei Delos Cloud
 - Beziehungen: [Familie](/personen/familie.md)
 ```
-
-Vorteile gegenüber aktuellem System:
-- Beziehungen zwischen Fakten (Christopher → Familie → Bruder Markus)
-- Strukturierte Felder statt Freitext (besser maschinenlesbar + Recall)
-- Portierbarkeit und Lesbarkeit des Backups verbessert
 
 So-Mi implementiert OKF bereits zu ~70% (Markdown-Dateien pro Kategorie). Fehlend: YAML-Frontmatter, Verlinkungen, Index-Dateien.
 Spec: https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing
