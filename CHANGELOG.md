@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/Labushuya/so-mi/compare/v0.49.0...v0.50.0) (2026-07-01)
+
+
+### Features
+
+* v0.50.0 — Exchange-Rate-Fallback (Frankfurter), Tools-UX gruppiert; Stage-2 bleibt deaktiviert (Crash-Risiko) ([#227](https://github.com/Labushuya/so-mi/issues/227)) ([532e681](https://github.com/Labushuya/so-mi/commit/532e681ad1b8412440e277c5da466cfe2e752cae))
+
 ## [0.49.0](https://github.com/Labushuya/so-mi/compare/v0.48.0...v0.49.0) (2026-06-30)
 
 
