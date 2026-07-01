@@ -39,8 +39,10 @@ JSON:""".trimIndent()
         if (registry.tools.isEmpty()) return null
         val enabled = registry.tools.filter { tool -> toolPrefs.isToolEnabled(tool.id) }
         if (enabled.isEmpty()) return null
-        // Stage 2 (Embedding) + Stage 3 (LLM) disabled: concurrent ONNX/LLM access causes crashes.
-        // Stage 1 (regex) covers all practical cases with deterministic patterns.
+        // Stage 2 (Embedding) bleibt deaktiviert: ONNX Runtime und llama.cpp haben keinen
+        // gemeinsamen Mutex — gleichzeitige Ausführung auf Adreno/OpenCL crasht auf Magic V2.
+        // Voraussetzung für Re-Aktivierung: SharedMutex zwischen Embedder und LlamaContextLlmCaller.
+        // Stage 3 (LLM-Planpass) ebenfalls deaktiviert: direkter LLM/LLM-Konflikt.
         return stageRegex(query, enabled)
     }
 
