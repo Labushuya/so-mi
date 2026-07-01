@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="So-Mi" width="120" />
+<img src="misc/So-Mi_GitHub_Banner.png" alt="So-Mi" width="100%" />
 
 # So-Mi — Offline-First Android-Assistentin
 
 **Persönliche KI. Vollständig lokal. Kein Account. Keine Cloud.**
 
-[![Version](https://img.shields.io/badge/version-0.47.1-cyan?style=flat-square)](https://github.com/Labushuya/so-mi/releases/latest)
+[![Version](https://img.shields.io/badge/version-0.49.0-cyan?style=flat-square)](https://github.com/Labushuya/so-mi/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%2011+-brightgreen?style=flat-square&logo=android)](https://github.com/Labushuya/so-mi/releases/latest)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-red?style=flat-square)](LICENSE)
 [![Phase](https://img.shields.io/badge/phase-4%20%E2%80%94%20Tools-blue?style=flat-square)](#roadmap)
@@ -49,18 +49,18 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 - Glitch-Shader-Effekte, immersiver Vollbild-Modus
 
 ### 💾 Gedächtnis & RAG
-- `"Merk dir, ich bin SRE"` → automatisch gespeichert & kategorisiert
+- `/merke Ich bin SRE #Arbeit cloud,sre` → gespeichert in Kategorie "Arbeit"
+- Inline-Kategorie mit `#Tag` + Keywords `kw1,kw2` — neue Kategorien auto-erstellt
 - LLM-gestützte Faktklassifizierung (Personen / Vorlieben / Termine / Technik / Notizen)
 - **HNSW-Vektorsuche** (ObjectBox + 384-dim-Embedder)
-- Eigene Kategorien mit Keywords, Emoji-safe
-- Semantischer Recall — findet Fakten ohne exakte Worttreffer
+- 50+ natürlichsprachliche Trigger: "Das ist wichtig:", "FYI:", "Ach ja:" etc.
 
 </td>
 <td width="50%">
 
 ### 🛠 Tool-System
-- **8 aktive Tools**, jedes einzeln de-/aktivierbar
-- Tool-Routing via Regex → Embedding → LLM-Planpass
+- **11 aktive Tools**, jedes einzeln de-/aktivierbar
+- Tool-Routing via Regex (50+ Patterns pro Tool)
 - Klarer Hinweis wenn ein Tool deaktiviert ist
 
 ### 💬 Chat & UI
@@ -114,6 +114,52 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 
 ---
 
+## Command-Referenz
+
+So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@`** für Tools. Beide mit Smart-Autocomplete und Syntax-Hints im Textfeld.
+
+### `/` — App-Funktionen (kein LLM-Call)
+
+```
+/merke [fakt] #Kategorie kw1,kw2   Fakt speichern · Kategorie + Keywords optional
+/merke Ich bin SRE #Arbeit cloud   → In "Arbeit" gespeichert, Keyword "cloud" eingetragen
+/merke Ich spiele Gitarre #Hobby   → Neue Kategorie "Hobby" wird automatisch erstellt
+
+/suche [Begriff]                   Nachrichten im Chat durchsuchen
+/umbenennen                        Gespräch umbenennen
+/archivieren                       Gespräch ausblenden
+/leeren                            Alle Nachrichten löschen
+```
+
+### `@` — Tool-Aufrufe (LLM verarbeitet das Ergebnis)
+
+```
+@wetter [Ort]                      @wetter Berlin morgen
+@web [Anfrage]                     @web KI-Regulierung 2026
+@alarm [Zeit] [Text]               @alarm 15min Fenster schließen
+@kurs [Anfrage]                    @kurs 250 EUR in USD
+@news                              Aktuelle Nachrichten (Tagesschau, Spiegel, Heise)
+@kalender [Zeitraum]               @kalender diese Woche
+@termin [Titel] [Zeit]             @termin Meeting morgen 14 Uhr
+@erinnerung [Begriff]              Erinnerungen semantisch suchen
+@notizen [Begriff]                 Notizen durchsuchen
+@zusammenfassung [Text]            Text lokal zusammenfassen
+```
+
+### Natürliche Sprache (automatisches Tool-Matching)
+
+```
+"Soll ich einen Schirm mitnehmen?"     → Wetter
+"Weck mich in 10 Minuten"              → Alarm
+"Was kostet ein Dollar in Euro?"       → Wechselkurs
+"Das ist wichtig: [Fakt]"              → Erinnerung speichern
+"FYI: [Fakt]" / "Ach ja: [Fakt]"      → Erinnerung speichern
+"TL;DR: [langer Text]"                 → Zusammenfassung
+"Bin ich morgen beschäftigt?"          → Kalender
+```
+
+---
+
 ## Architektur
 
 ```
@@ -122,7 +168,7 @@ android/
 ├── core-llm/          LlamaContext Interface
 ├── core-llm-llama/    ARM InferenceEngine JNI-Wrapper (NDK, llama.cpp)
 ├── core-rag/          ObjectBox HNSW · ONNX Embedder · RagOrchestrator
-├── core-tools/        Tool-Router (Regex+Embedding) · 8 Tools
+├── core-tools/        Tool-Router (Regex) · 11 Tools
 ├── core-data/         Room · DataStore · BackupManager · StorageRoots
 ├── core-ui/           ChatViewModel · Slash-Commands · RAG-Integration
 └── core-common/       Shared Interfaces (TextEmbedder · MemorySearchPort · LlmCaller)
@@ -178,7 +224,7 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 |-------|-------|---------|
 | Phase 0–2: Bootstrap, Pipeline, LLM + Chat | ✅ Abgeschlossen | |
 | Phase 3: RAG + Persona-Memory | ✅ Abgeschlossen | HNSW, Backfill, Multi-Chat, Backup |
-| Phase 4: Tool-System | 🟡 8 von 12 Tools | Kalender, Wetter, Web, Alarm, Nachrichten, Wechselkurs |
+| Phase 4: Tool-System | 🟡 11 von 12 Tools stabil | Kalender, Wetter, Web, Alarm, Nachrichten, Wechselkurs, Notizen, Zusammenfassung |
 | Phase 5: Voice + In-App-Updater | ❌ Geplant | |
 
 → Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
