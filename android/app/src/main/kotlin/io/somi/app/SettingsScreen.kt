@@ -928,30 +928,48 @@ private fun ToolModeSection(
         Spacer(Modifier.height(16.dp))
         Text("Aktive Tools", color = songbird.bone, style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(8.dp))
-        val toolLabels = listOf(
-            Triple("get_weather", "Wetter", "Aktuelles Wetter und Vorhersagen."),
-            Triple("search_web", "Web-Suche", "Im Internet suchen (verlässt das Gerät)."),
-            Triple("search_memory", "Erinnerungen", "In gespeicherten Fakten suchen."),
-            Triple("set_alarm", "Alarm setzen", "Setzt eine Alarm-Benachrichtigung nach X Minuten/Stunden."),
-            Triple("get_exchange_rate", "Wechselkurs", "Aktuelle Währungsumrechnung."),
-            Triple("news_briefing", "Nachrichten", "RSS-Feeds (verlässt das Gerät)."),
-            Triple("read_calendar", "Kalender lesen", "Termine aus dem Kalender abrufen. Benötigt: Kalender-Berechtigung."),
-            Triple("create_event", "Termin erstellen", "Neuen Termin im Kalender anlegen. Benötigt: Kalender-Berechtigung."),
-            Triple("search_notes", "Notizen suchen", "In gespeicherten Notizen suchen oder alle anzeigen."),
-            Triple("save_note", "Notiz speichern", "Einen Text als Notiz abspeichern."),
-            Triple("summarize", "Zusammenfassen", "Text lokal zusammenfassen (kein Netzwerk)."),
+        val toolGroups = listOf(
+            "Erinnerungen & Notizen" to listOf(
+                Triple("search_memory", "Erinnerungen suchen", "Eigene Fakten semantisch suchen."),
+                Triple("search_notes", "Notizen suchen", "Gespeicherte Notizen durchsuchen."),
+                Triple("save_note", "Notiz speichern", "Einen Text als Notiz ablegen."),
+            ),
+            "Web & Nachrichten" to listOf(
+                Triple("search_web", "Web-Suche", "Im Internet suchen (verlässt das Gerät)."),
+                Triple("news_briefing", "Nachrichten", "RSS-Feeds: Tagesschau, Spiegel, Heise."),
+            ),
+            "Produktivität" to listOf(
+                Triple("get_weather", "Wetter", "Aktuelles Wetter und Vorhersagen."),
+                Triple("set_alarm", "Alarm setzen", "Alarm-Benachrichtigung nach X Minuten/Stunden."),
+                Triple("get_exchange_rate", "Wechselkurs", "Währungsumrechnung (exchangerate-api + Fallback)."),
+                Triple("read_calendar", "Kalender lesen", "Termine abrufen. Benötigt: Kalender-Berechtigung."),
+                Triple("create_event", "Termin erstellen", "Kalendertermin anlegen. Benötigt: Kalender-Berechtigung."),
+            ),
+            "Analyse" to listOf(
+                Triple("summarize", "Zusammenfassen", "Text lokal zusammenfassen (kein Netzwerk)."),
+            ),
         )
-        toolLabels.forEach { (id, label, desc) ->
-            val enabled = toolEnabled[id] ?: true
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(label, color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
-                    Text(desc, color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+        toolGroups.forEach { (groupName, tools) ->
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = groupName,
+                color = songbird.glass,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            tools.forEach { (id, label, desc) ->
+                val enabled = toolEnabled[id] ?: true
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(label, color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
+                        Text(desc, color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                    }
+                    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { onToolToggle(id, it) })
                 }
-                androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { onToolToggle(id, it) })
             }
         }
     }
