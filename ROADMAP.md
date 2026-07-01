@@ -12,7 +12,8 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.49.0 | ✅ live | Uniforme Commands, Smart Autocomplete, #Kategorie Inline-Routing |
+| v0.50.0 | ✅ live | Exchange-Rate-Fallback (Frankfurter), Tools gruppiert |
+| v0.49.0 | ✅ stable | Uniforme Commands, Smart Autocomplete, #Kategorie Inline-Routing |
 | v0.48.0 | ✅ stable | search_notes, save_note, summarize — 11 von 12 Tools |
 | v0.47.1 | ✅ stable | Google Kalender unterstützt, Kalender-Name im Ergebnis |
 | v0.47.0 | ✅ stable | Kalender-Integration: read_calendar + create_event |
@@ -65,7 +66,7 @@ Komplett.
 | Uniforme Commands + Smart Autocomplete | ✅ v0.49.0 |
 | `#Kategorie kw1,kw2` Inline-Routing | ✅ v0.49.0 |
 | Settings → per-Tool-Toggle | ✅ v0.46.4 |
-| Stage-2-Embedding (Tool-Matching ohne @) | ❌ v0.50.0 — wegen ONNX/LLM-Crash deaktiviert |
+| Stage-2-Embedding | ❌ deferred — SharedMutex ONNX/llama.cpp nötig, Crash-Risiko |
 | Settings → Tools UX (Gruppierung, Status) | ❌ v0.50.0 |
 | GBNF Stage-3 Constrained Decoding | ❌ deferred |
 
