@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="So-Mi" width="120" />
+<img src="So-Mi_GitHub_Banner.png" alt="So-Mi" />
 
 # So-Mi — Offline-First Android-Assistentin
 
