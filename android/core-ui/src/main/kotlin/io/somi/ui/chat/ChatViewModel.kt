@@ -1029,34 +1029,38 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             _lifecycle.collectLatest { state ->
                 if (state != Lifecycle.Ready) return@collectLatest
-                val mode = uiSettings.state.value.greetingMode
-                if (mode == io.somi.data.settings.GreetingMode.NONE) return@collectLatest
+                maybeGreetNow()
+            }
+        }
+    }
 
-                val now = System.currentTimeMillis()
-                val shouldGreet = when (mode) {
-                    io.somi.data.settings.GreetingMode.COLD_START -> !coldGreetingDone
-                    io.somi.data.settings.GreetingMode.FULL ->
-                        !coldGreetingDone || (now - lastGreetedAt) >= GREETING_GAP_MS
-                    io.somi.data.settings.GreetingMode.NONE -> false
-                }
-                if (!shouldGreet) return@collectLatest
+    /** Called from UI on app foreground (onResume). Greets if mode + gap allow it. */
+    fun checkGreetingOnResume() {
+        if (_lifecycle.value != Lifecycle.Ready) return
+        viewModelScope.launch { maybeGreetNow() }
+    }
 
-                // v0.15.0 — pool load + line pick + persist all on IO.
-                // viewModelScope defaults to Main.immediate; AssetManager
-                // open + JSON parse + Room insert have no business on
-                // the main thread.
-                withContext(Dispatchers.IO) {
-                    val pool = greetingPool ?: runCatching { loadGreetingPool() }
-                        .onSuccess { greetingPool = it }
-                        .getOrNull()
-                    val line = pool?.pick(coldStart = !coldGreetingDone)
-                    if (line != null) {
-                        runCatching { chatRepository.appendAssistant(line) }
-                            .onFailure { Log.w(TAG, "greeting append failed", it) }
-                        coldGreetingDone = true
-                        lastGreetedAt = now
-                    }
-                }
+    private suspend fun maybeGreetNow() {
+        val mode = uiSettings.state.value.greetingMode
+        if (mode == io.somi.data.settings.GreetingMode.NONE) return
+        val now = System.currentTimeMillis()
+        val shouldGreet = when (mode) {
+            io.somi.data.settings.GreetingMode.COLD_START -> !coldGreetingDone
+            io.somi.data.settings.GreetingMode.FULL ->
+                !coldGreetingDone || (now - lastGreetedAt) >= GREETING_GAP_MS
+            io.somi.data.settings.GreetingMode.NONE -> false
+        }
+        if (!shouldGreet) return
+        withContext(Dispatchers.IO) {
+            val pool = greetingPool ?: runCatching { loadGreetingPool() }
+                .onSuccess { greetingPool = it }
+                .getOrNull()
+            val line = pool?.pick(coldStart = !coldGreetingDone)
+            if (line != null) {
+                runCatching { chatRepository.appendAssistant(line) }
+                    .onFailure { Log.w(TAG, "greeting append failed", it) }
+                coldGreetingDone = true
+                lastGreetedAt = now
             }
         }
     }
