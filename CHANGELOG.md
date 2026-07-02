@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.4](https://github.com/Labushuya/so-mi/compare/v0.50.3...v0.50.4) (2026-07-02)
+
+
+### Bug Fixes
+
+* Greeting feuert bei App-Resume (onResume-Hook), nicht nur bei Model-Load ([#235](https://github.com/Labushuya/so-mi/issues/235)) ([e715cd5](https://github.com/Labushuya/so-mi/commit/e715cd53a00614e50f7aaf5b3aaecfea0a592572))
+
 ## [0.50.3](https://github.com/Labushuya/so-mi/compare/v0.50.2...v0.50.3) (2026-07-02)
 
 
