@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.2](https://github.com/Labushuya/so-mi/compare/v0.50.1...v0.50.2) (2026-07-02)
+
+
+### Bug Fixes
+
+* build — snapshotFlow korrekter Namespace, distinctUntilChanged entfernt ([#231](https://github.com/Labushuya/so-mi/issues/231)) ([c0c5646](https://github.com/Labushuya/so-mi/commit/c0c5646ac4c608068922cc52e46c690371ebdb59))
+
 ## [0.50.1](https://github.com/Labushuya/so-mi/compare/v0.50.0...v0.50.1) (2026-07-02)
 
 
