@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.50.5 | ✅ live | Greeting bei App-Resume (onResume-Hook) |
 | v0.50.3 | ✅ live | ANR/Performance behoben, /rename 3 Bugs, Greeting-Retry |
 | v0.50.0 | ✅ live | Exchange-Rate-Fallback (Frankfurter), Tools gruppiert |
 | v0.49.0 | ✅ stable | Uniforme Commands, Smart Autocomplete, #Kategorie Inline-Routing |
