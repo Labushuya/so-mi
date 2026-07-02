@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.5](https://github.com/Labushuya/so-mi/compare/v0.50.4...v0.50.5) (2026-07-02)
+
+
+### Bug Fixes
+
+* build — DisposableEffect korrekt platziert (nach Calendar-LaunchedEffect) ([#237](https://github.com/Labushuya/so-mi/issues/237)) ([65db6e3](https://github.com/Labushuya/so-mi/commit/65db6e3ca9301984033a9e0ed47d0a10d9033a86))
+
 ## [0.50.4](https://github.com/Labushuya/so-mi/compare/v0.50.3...v0.50.4) (2026-07-02)
 
 
