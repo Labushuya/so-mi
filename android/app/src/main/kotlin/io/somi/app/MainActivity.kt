@@ -227,24 +227,25 @@ private fun SoMiAppRoot() {
     // Calendar permissions — requested once, fire-and-forget.
     val calPermLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
-
-    // Greeting on foreground resume — fires when app comes to front.
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                viewModel.checkGreetingOnResume()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
     ) { /* result ignored — tool handles denial gracefully */ }
     LaunchedEffect(Unit) {
         calPermLauncher.launch(arrayOf(
             android.Manifest.permission.READ_CALENDAR,
             android.Manifest.permission.WRITE_CALENDAR,
         ))
+    }
+
+    // Greeting on foreground resume — fires each time app comes to front.
+    // Respects greetingMode (COLD_START/FULL/NONE) and the 5-minute gap.
+    val greetingLifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(greetingLifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.checkGreetingOnResume()
+            }
+        }
+        greetingLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { greetingLifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val instances by viewModel.instances.collectAsStateWithLifecycle()
