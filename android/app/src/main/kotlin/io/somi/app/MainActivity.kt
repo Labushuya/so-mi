@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -455,21 +456,22 @@ private fun ChatShellScreen(
             val target = messages.size + if (isGenerating) 1 else 0
             if (target > 0) listState.animateScrollToItem(target - 1)
         }
-        // Scroll to bottom when keyboard opens — only if already near bottom.
-        // Read IME inset height directly as a Compose state so LaunchedEffect
-        // re-triggers whenever the keyboard appears/disappears.
-        val density = androidx.compose.ui.platform.LocalDensity.current
-        val imeInsetPx = with(density) {
-            androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density)
-        }
-        LaunchedEffect(imeInsetPx) {
-            if (imeInsetPx <= 0) return@LaunchedEffect // keyboard closed
-            val total = listState.layoutInfo.totalItemsCount
-            if (total <= 0) return@LaunchedEffect
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            if (lastVisible >= total - 3) {
-                listState.animateScrollToItem(total - 1)
-            }
+        // Scroll to bottom when keyboard opens on MagicOS (ADJUST_PAN mode).
+        // IME insets are unreliable on MagicOS — use viewport size change as
+        // proxy: when the viewportSize shrinks, the keyboard opened. Scroll
+        // only if we were already near the bottom (last 3 items visible).
+        LaunchedEffect(listState) {
+            kotlinx.coroutines.flow.snapshotFlow { listState.layoutInfo.viewportSize.height }
+                .distinctUntilChanged()
+                .collect { newHeight ->
+                    if (newHeight <= 0) return@collect
+                    val total = listState.layoutInfo.totalItemsCount
+                    if (total <= 0) return@collect
+                    val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    if (lastVisible >= total - 3) {
+                        listState.animateScrollToItem(total - 1)
+                    }
+                }
         }
 
         LazyColumn(
