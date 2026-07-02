@@ -227,6 +227,18 @@ private fun SoMiAppRoot() {
     // Calendar permissions — requested once, fire-and-forget.
     val calPermLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
+
+    // Greeting on foreground resume — fires when app comes to front.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.checkGreetingOnResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     ) { /* result ignored — tool handles denial gracefully */ }
     LaunchedEffect(Unit) {
         calPermLauncher.launch(arrayOf(
