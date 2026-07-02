@@ -37,7 +37,10 @@ JSON:""".trimIndent()
 
     suspend fun route(query: String): ToolCall? {
         if (registry.tools.isEmpty()) return null
-        val enabled = registry.tools.filter { tool -> toolPrefs.isToolEnabled(tool.id) }
+        val enabledIds = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            toolPrefs.enabledToolIds(registry.tools.map { it.id })
+        }
+        val enabled = registry.tools.filter { it.id in enabledIds }
         if (enabled.isEmpty()) return null
         // Stage 2 (Embedding) bleibt deaktiviert: ONNX Runtime und llama.cpp haben keinen
         // gemeinsamen Mutex — gleichzeitige Ausführung auf Adreno/OpenCL crasht auf Magic V2.
