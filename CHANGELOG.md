@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.1](https://github.com/Labushuya/so-mi/compare/v0.50.0...v0.50.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* Scroll-to-Bottom MagicOS — viewport-size statt IME-Inset als Keyboard-Signal ([#229](https://github.com/Labushuya/so-mi/issues/229)) ([4703c6a](https://github.com/Labushuya/so-mi/commit/4703c6af76cd95f5d791cdb3d9e05343767310ac))
+
 ## [0.50.0](https://github.com/Labushuya/so-mi/compare/v0.49.0...v0.50.0) (2026-07-01)
 
 
