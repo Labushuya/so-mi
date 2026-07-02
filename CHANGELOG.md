@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.3](https://github.com/Labushuya/so-mi/compare/v0.50.2...v0.50.3) (2026-07-02)
+
+
+### Bug Fixes
+
+* ANR + Performance (1 DataStore-Read statt 11), /rename 3 Bugs, Greeting-Pool-Retry ([#233](https://github.com/Labushuya/so-mi/issues/233)) ([ad537f0](https://github.com/Labushuya/so-mi/commit/ad537f029b5a592371623fd0ed67bc9cb134530b))
+
 ## [0.50.2](https://github.com/Labushuya/so-mi/compare/v0.50.1...v0.50.2) (2026-07-02)
 
 
