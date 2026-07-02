@@ -37,15 +37,15 @@ JSON:""".trimIndent()
 
     suspend fun route(query: String): ToolCall? {
         if (registry.tools.isEmpty()) return null
-        val enabledIds = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            toolPrefs.enabledToolIds(registry.tools.map { it.id })
-        }
+        // Single DataStore read for all tools (avoids N sequential reads).
+        // No withContext(IO) here — adding dispatcher switches inside the
+        // coroutine call stack while llama.cpp's OpenMP threads are active
+        // causes SuspendThreadByPeer timeouts and SIGABRT on Magic V2.
+        val enabledIds = toolPrefs.enabledToolIds(registry.tools.map { it.id })
         val enabled = registry.tools.filter { it.id in enabledIds }
         if (enabled.isEmpty()) return null
-        // Stage 2 (Embedding) bleibt deaktiviert: ONNX Runtime und llama.cpp haben keinen
-        // gemeinsamen Mutex — gleichzeitige Ausführung auf Adreno/OpenCL crasht auf Magic V2.
-        // Voraussetzung für Re-Aktivierung: SharedMutex zwischen Embedder und LlamaContextLlmCaller.
-        // Stage 3 (LLM-Planpass) ebenfalls deaktiviert: direkter LLM/LLM-Konflikt.
+        // Stage 2 (Embedding) deaktiviert: ONNX/llama.cpp Concurrent-Crash.
+        // Stage 3 (LLM-Planpass) deaktiviert: LLM/LLM-Konflikt.
         return stageRegex(query, enabled)
     }
 
