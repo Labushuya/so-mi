@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.7](https://github.com/Labushuya/so-mi/compare/v0.50.6...v0.50.7) (2026-07-02)
+
+
+### Bug Fixes
+
+* /rename Conversation-ID capture verhindert Message in falscher Conversation ([#241](https://github.com/Labushuya/so-mi/issues/241)) ([aa532c6](https://github.com/Labushuya/so-mi/commit/aa532c61bc946146b2d5c145d4e51afcfe4bfcf8))
+
 ## [0.50.6](https://github.com/Labushuya/so-mi/compare/v0.50.5...v0.50.6) (2026-07-02)
 
 
