@@ -13,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -457,14 +456,17 @@ private fun ChatShellScreen(
             if (target > 0) listState.animateScrollToItem(target - 1)
         }
         // Scroll to bottom when keyboard opens on MagicOS (ADJUST_PAN mode).
-        // IME insets are unreliable on MagicOS — use viewport size change as
-        // proxy: when the viewportSize shrinks, the keyboard opened. Scroll
-        // only if we were already near the bottom (last 3 items visible).
+        // IME insets are unreliable on MagicOS — use viewport height change as
+        // proxy: when viewportSize shrinks, the keyboard opened. Scroll only
+        // if already near bottom (last 3 items visible).
         LaunchedEffect(listState) {
-            kotlinx.coroutines.flow.snapshotFlow { listState.layoutInfo.viewportSize.height }
-                .distinctUntilChanged()
+            var lastHeight = 0
+            androidx.compose.runtime.snapshotFlow { listState.layoutInfo.viewportSize.height }
                 .collect { newHeight ->
-                    if (newHeight <= 0) return@collect
+                    if (newHeight <= 0 || newHeight == lastHeight) return@collect
+                    val shrinking = newHeight < lastHeight
+                    lastHeight = newHeight
+                    if (!shrinking) return@collect // keyboard closed — no scroll needed
                     val total = listState.layoutInfo.totalItemsCount
                     if (total <= 0) return@collect
                     val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
