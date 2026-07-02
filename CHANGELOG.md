@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.6](https://github.com/Labushuya/so-mi/compare/v0.50.5...v0.50.6) (2026-07-02)
+
+
+### Bug Fixes
+
+* KRITISCH — withContext(IO) aus ToolRouter entfernt, verursacht SIGABRT in llama.cpp OpenMP ([#239](https://github.com/Labushuya/so-mi/issues/239)) ([c6b0d51](https://github.com/Labushuya/so-mi/commit/c6b0d51f74dfbc10e0c3942ee68f603b3e761fa3))
+
 ## [0.50.5](https://github.com/Labushuya/so-mi/compare/v0.50.4...v0.50.5) (2026-07-02)
 
 
