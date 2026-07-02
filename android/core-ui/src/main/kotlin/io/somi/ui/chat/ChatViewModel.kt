@@ -585,13 +585,23 @@ class ChatViewModel @Inject constructor(
                 return
             }
             "/rename", "/umbenennen" -> {
-                _awaitingRenameInput.value = true    // synchronous, before coroutine
-                val renameConvId = chatRepository.currentConversationId  // capture NOW
-                viewModelScope.launch {
-                    chatRepository.appendUser(text)
-                    // Use captured ID to ensure message goes to the correct conversation
-                    if (chatRepository.currentConversationId == renameConvId) {
-                        chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Gib den neuen Namen ein.")
+                // If a name is provided inline ("/rename New Name"), rename directly.
+                // Otherwise start two-step dialog.
+                val inlineName = text.removePrefix("/rename").removePrefix("/umbenennen").trim()
+                val convId = chatRepository.currentConversationId
+                if (inlineName.isNotBlank()) {
+                    viewModelScope.launch {
+                        chatRepository.appendUser(text)
+                        conversationRepository.rename(convId, inlineName)
+                        chatRepository.appendAssistant("✅ Umbenannt in \"$inlineName\".")
+                    }
+                } else {
+                    _awaitingRenameInput.value = true
+                    viewModelScope.launch {
+                        chatRepository.appendUser(text)
+                        if (chatRepository.currentConversationId == convId) {
+                            chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Gib den neuen Namen ein.")
+                        }
                     }
                 }
                 return
