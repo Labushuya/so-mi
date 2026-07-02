@@ -31,6 +31,12 @@ class ToolPrefsRepository @Inject constructor(
     suspend fun isToolEnabled(toolId: String): Boolean =
         context.toolPrefsStore.data.first()[toolKey(toolId)] ?: true
 
+    /** Read all tool-enabled states in a single DataStore access instead of N sequential reads. */
+    suspend fun enabledToolIds(allIds: List<String>): Set<String> =
+        context.toolPrefsStore.data.first().let { prefs ->
+            allIds.filter { id -> prefs[toolKey(id)] ?: true }.toSet()
+        }
+
     suspend fun setToolEnabled(toolId: String, enabled: Boolean) {
         context.toolPrefsStore.edit { prefs -> prefs[toolKey(toolId)] = enabled }
     }

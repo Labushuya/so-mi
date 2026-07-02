@@ -213,6 +213,7 @@ class ChatViewModel @Inject constructor(
     /** Switch to an existing conversation — messages Flow re-subscribes automatically. */
     fun switchConversation(id: Long) {
         viewModelScope.launch {
+            _awaitingRenameInput.value = false
             generationJob?.cancel()
             _generation.value = null
             _activeConversationId.value = id
@@ -224,6 +225,7 @@ class ChatViewModel @Inject constructor(
     /** Create a new conversation and switch to it. */
     suspend fun createNewConversation(title: String = "Neues Gespräch"): Long {
         val id = conversationRepository.create(title)
+        _awaitingRenameInput.value = false
         generationJob?.cancel()
         _generation.value = null
         _activeConversationId.value = id
@@ -527,18 +529,6 @@ class ChatViewModel @Inject constructor(
             Log.w(TAG, "submit() ignored — lifecycle=${_lifecycle.value}")
             return
         }
-        // v0.14.0 M6: gate on generationJob.isActive, NOT _generation.value.
-        // _generation.value is set inside runGeneration AFTER appendUser
-        // and handleRagTrigger have already suspended — leaving a
-        // multi-hundred-millisecond window where a double-tap would
-        // launch a parallel pipeline (duplicate USER rows, duplicate
-        // memory saves, KV cache corruption when both runGenerations
-        // serialize on the llama dispatcher). generationJob is assigned
-        // synchronously below so this gate closes the window.
-        if (generationJob?.isActive == true) {
-            Log.w(TAG, "submit() ignored — generation already running (job active)")
-            return
-        }
         val text = userText.trim()
         if (text.isEmpty()) return
 
@@ -551,6 +541,19 @@ class ChatViewModel @Inject constructor(
                 conversationRepository.rename(id, text)
                 chatRepository.appendAssistant("✅ Umbenannt in \"$text\".")
             }
+            return
+        }
+
+        // v0.14.0 M6: gate on generationJob.isActive, NOT _generation.value.
+        // _generation.value is set inside runGeneration AFTER appendUser
+        // and handleRagTrigger have already suspended — leaving a
+        // multi-hundred-millisecond window where a double-tap would
+        // launch a parallel pipeline (duplicate USER rows, duplicate
+        // memory saves, KV cache corruption when both runGenerations
+        // serialize on the llama dispatcher). generationJob is assigned
+        // synchronously below so this gate closes the window.
+        if (generationJob?.isActive == true) {
+            Log.w(TAG, "submit() ignored — generation already running (job active)")
             return
         }
 
@@ -582,10 +585,11 @@ class ChatViewModel @Inject constructor(
                 return
             }
             "/rename", "/umbenennen" -> {
+                _awaitingRenameInput.value = true    // synchronous, before coroutine
                 viewModelScope.launch {
                     chatRepository.appendUser(text)
-                    chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Sag mir den neuen Namen.")
-                    _awaitingRenameInput.value = true
+                    chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Gib den neuen Namen ein.")
+                    // flag already set above
                 }
                 return
             }
@@ -1049,10 +1053,10 @@ class ChatViewModel @Inject constructor(
                     if (line != null) {
                         runCatching { chatRepository.appendAssistant(line) }
                             .onFailure { Log.w(TAG, "greeting append failed", it) }
+                        coldGreetingDone = true
+                        lastGreetedAt = now
                     }
                 }
-                coldGreetingDone = true
-                lastGreetedAt = now
             }
         }
     }
