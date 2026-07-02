@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.50.3 | ✅ live | ANR/Performance behoben, /rename 3 Bugs, Greeting-Retry |
 | v0.50.0 | ✅ live | Exchange-Rate-Fallback (Frankfurter), Tools gruppiert |
 | v0.49.0 | ✅ stable | Uniforme Commands, Smart Autocomplete, #Kategorie Inline-Routing |
 | v0.48.0 | ✅ stable | search_notes, save_note, summarize — 11 von 12 Tools |
@@ -77,7 +78,7 @@ Komplett.
 ## User-Vereinbarungen (bindend wie SPEC)
 
 ### Anzeige & UX
-- **⚠️ TO BE IMPROVED — Scroll-to-Bottom bei Tastatur** *(2026-06-12)* — mehrere Ansätze auf MagicOS gescheitert. Aufgeschoben.
+- **⚠️ TO BE IMPROVED — Scroll-to-Bottom bei Tastatur** *(2026-06-12)* — mehrere Ansätze auf MagicOS gescheitert. Neuer Ansatz: viewport-Größe als Keyboard-Signal (v0.50.2). Noch nicht verifiziert.
 - **⚠️ TO BE IMPROVED — 14B/12B-Ampel-Farbe** *(2026-06-12)* — StatFs auf MagicOS gibt App-Quota statt physischen Speicher. Aufgeschoben.
 - **Chat-Band** *(v0.33.0)* — 4 Typen, 5s Auto-Dismiss, WhatsApp-Style Pill
 - **Slash-Command-Popup** *(v0.33.0)* — Autocomplete + /-Button
