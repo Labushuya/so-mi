@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.8](https://github.com/Labushuya/so-mi/compare/v0.50.7...v0.50.8) (2026-07-02)
+
+
+### Bug Fixes
+
+* /rename [name] benennt direkt um, kein zweistufiger Dialog ([#243](https://github.com/Labushuya/so-mi/issues/243)) ([793fd49](https://github.com/Labushuya/so-mi/commit/793fd4976117ac4317e2ec475e7aecd188e6493a))
+
 ## [0.50.7](https://github.com/Labushuya/so-mi/compare/v0.50.6...v0.50.7) (2026-07-02)
 
 
