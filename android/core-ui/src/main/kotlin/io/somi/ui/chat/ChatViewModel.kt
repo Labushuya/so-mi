@@ -1068,6 +1068,10 @@ class ChatViewModel @Inject constructor(
             io.somi.data.settings.GreetingMode.NONE -> false
         }
         if (!shouldGreet) return
+        // Ensure chatRepository targets the currently active conversation,
+        // not a stale ID from a previous session or Activity recreation.
+        val activeId = _activeConversationId.value
+        chatRepository.setConversation(activeId)
         withContext(Dispatchers.IO) {
             val pool = greetingPool ?: runCatching { loadGreetingPool() }
                 .onSuccess { greetingPool = it }
