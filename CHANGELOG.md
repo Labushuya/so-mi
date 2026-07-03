@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.7](https://github.com/Labushuya/so-mi/compare/v0.55.6...v0.55.7) (2026-07-03)
+
+
+### Bug Fixes
+
+* ChannelResult.getOrNull() statt getOrElse ([b6a8781](https://github.com/Labushuya/so-mi/commit/b6a87818e8646849eadadb926fb7964d40e5227f))
+
 ## [0.55.6](https://github.com/Labushuya/so-mi/compare/v0.55.5...v0.55.6) (2026-07-03)
 
 
