@@ -140,6 +140,13 @@ internal fun SettingsScreen(
                         },
                     )
                     Spacer(Modifier.height(16.dp))
+                    TtsSection(
+                        autoTts = uiSettings.autoTts,
+                        onToggle = { v ->
+                            coroutineScope.launch { viewModel.uiSettings.setAutoTts(v) }
+                        },
+                    )
+                    Spacer(Modifier.height(16.dp))
                     ToolModeSection(
                         mode = uiSettings.toolMode,
                         onModeChange = { m ->
@@ -989,6 +996,37 @@ private fun GreetingSection(
             selected = mode == io.somi.data.settings.GreetingMode.NONE,
             onSelect = { onModeChange(io.somi.data.settings.GreetingMode.NONE) },
         )
+    }
+}
+
+@Composable
+private fun TtsSection(
+    autoTts: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val songbird = LocalSongbirdColors.current
+    SectionCard(title = "Sprachausgabe") {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Antworten vorlesen",
+                    color = songbird.bone,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "Android TTS — kein Download nötig",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            androidx.compose.material3.Switch(
+                checked = autoTts,
+                onCheckedChange = onToggle,
+            )
+        }
     }
 }
 
