@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1](https://github.com/Labushuya/so-mi/compare/v0.51.0...v0.51.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* okhttp dependency für UpdateChecker in app-Modul ergänzt ([7775f65](https://github.com/Labushuya/so-mi/commit/7775f6539763863f93b277a5b34e1d349edb3375))
+
 ## [0.51.0](https://github.com/Labushuya/so-mi/compare/v0.50.9...v0.51.0) (2026-07-03)
 
 
