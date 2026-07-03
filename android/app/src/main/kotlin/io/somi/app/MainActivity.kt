@@ -56,11 +56,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -879,38 +881,55 @@ private fun Composer(
     val voiceContext = androidx.compose.ui.platform.LocalContext.current
     var isListening by remember { mutableStateOf(false) }
     var isReady by remember { mutableStateOf(false) }
-    val recordPermLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            voiceScope.launch {
-                isListening = true
-                isReady = false
-                try {
-                    val result = io.somi.voice.VoiceInputHelper.listen(
-                        voiceContext,
-                        onReady = { isReady = true },
-                    )
-                    if (result != null) {
-                        input = TextFieldValue(text = result, selection = androidx.compose.ui.text.TextRange(result.length))
-                    }
-                } finally {
-                    isListening = false
-                    isReady = false
+
+    // Pre-warm SpeechRecognizer on first composition to hide IPC bind latency.
+    LaunchedEffect(Unit) { io.somi.voice.VoiceInputHelper.warmUp(voiceContext) }
+    DisposableEffect(Unit) { onDispose { io.somi.voice.VoiceInputHelper.tearDown() } }
+
+    // Shared voice-start logic: re-warm after session ends automatically.
+    val startVoice: () -> Unit = {
+        voiceScope.launch {
+            isListening = true
+            isReady = false
+            try {
+                val result = io.somi.voice.VoiceInputHelper.listen(
+                    voiceContext,
+                    onReady = { isReady = true },
+                )
+                if (result != null) {
+                    input = TextFieldValue(text = result, selection = TextRange(result.length))
                 }
+            } finally {
+                isListening = false
+                isReady = false
             }
         }
     }
 
-    // Show command popup when user types "/" or "@" at the start
-    val allCommands = io.somi.ui.chat.SlashCommandRegistry.ALL +
-        io.somi.ui.chat.SlashCommandRegistry.AT_COMMANDS
+    val recordPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) startVoice() }
+
+    // Skip launcher round-trip when permission already held — saves ~1 Recomposition.
+    val onMicClick: () -> Unit = {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                voiceContext, android.Manifest.permission.RECORD_AUDIO,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            startVoice()
+        } else {
+            recordPermLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    val allCommands = remember {
+        io.somi.ui.chat.SlashCommandRegistry.ALL + io.somi.ui.chat.SlashCommandRegistry.AT_COMMANDS
+    }
     val suggestions = remember(input.text) {
         if (input.text.startsWith("/") || input.text.startsWith("@"))
             io.somi.ui.chat.SlashCommandRegistry.matching(input.text)
         else emptyList()
     }
-    // Inline hint: grey completion text shown after typed characters
     val inlineHint = remember(input.text) {
         val txt = input.text
         if (txt.isBlank()) return@remember null
@@ -935,10 +954,9 @@ private fun Composer(
         contentAlignment = Alignment.Center,
     ) {
         Column(modifier = Modifier.fillMaxWidth().widthIn(max = 800.dp)) {
-            // Slash command popup — floats above composer
             if (effectiveShowPopup) {
                 val cmds = if (input.text.startsWith("/") || input.text.startsWith("@")) suggestions
-                           else io.somi.ui.chat.SlashCommandRegistry.ALL + io.somi.ui.chat.SlashCommandRegistry.AT_COMMANDS
+                           else allCommands
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -968,7 +986,7 @@ private fun Composer(
                                     .fillMaxWidth()
                                     .clickable {
                                         val insertText = if (cmd.syntax != cmd.command) cmd.command + " " else cmd.command
-                                        input = TextFieldValue(insertText, selection = androidx.compose.ui.text.TextRange(insertText.length))
+                                        input = TextFieldValue(insertText, selection = TextRange(insertText.length))
                                         showCommandPopup = false
                                     }
                                     .padding(horizontal = 12.dp, vertical = 5.dp),
@@ -995,7 +1013,6 @@ private fun Composer(
                 Spacer(Modifier.height(4.dp))
             }
 
-            // Composer input card
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1024,7 +1041,6 @@ private fun Composer(
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                             } else if (inlineHint != null) {
-                                // Inline completion hint: show typed text + greyed hint
                                 Text(
                                     text = input.text + inlineHint,
                                     color = songbird.glass.copy(alpha = 0.35f),
@@ -1037,10 +1053,9 @@ private fun Composer(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // "/" button — öffnet Slash-Command-Liste
+                    // "/" button — links
                     Box(
                         modifier = Modifier
                             .size(30.dp)
@@ -1053,50 +1068,54 @@ private fun Composer(
                         Text("/", color = songbird.glass, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
 
-                    // Mikrofon-Button — immer sichtbar, disabled während Generation
-                    // Drei Zustände: neutral / warten (isListening) / aufnahme (isReady)
-                    val micBg = when {
-                        isReady     -> songbird.signal.copy(alpha = 0.4f)
-                        isListening -> songbird.signal.copy(alpha = 0.15f)
-                        isGenerating -> songbird.bubbleBorder.copy(alpha = 0.1f)
-                        else        -> songbird.bubbleBorder.copy(alpha = 0.3f)
-                    }
-                    val micGlyph = when {
-                        isReady     -> "◉"
-                        isListening -> "◌"
-                        else        -> "🎤"
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(micBg)
-                            .clickable(enabled = !isListening && !isGenerating) {
-                                recordPermLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                            }
-                            .padding(4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = micGlyph,
-                            color = if (isListening || isReady) songbird.signal
-                                    else songbird.glass.copy(alpha = if (isGenerating) 0.3f else 1f),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                    }
+                    Spacer(Modifier.weight(1f))
 
-                    if (isGenerating) {
-                        StopButton(onClick = onStop)
-                    } else {
-                        SendButton(
-                            enabled = enabled && input.text.isNotBlank(),
-                            onClick = {
-                                val text = input.text
-                                input = TextFieldValue("")
-                                showCommandPopup = false
-                                onSubmit(text)
-                            },
-                        )
+                    // Mic + Send/Stop — kompakte Gruppe rechts
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val micBg = when {
+                            isReady      -> songbird.signal.copy(alpha = 0.4f)
+                            isListening  -> songbird.signal.copy(alpha = 0.15f)
+                            isGenerating -> songbird.bubbleBorder.copy(alpha = 0.1f)
+                            else         -> songbird.bubbleBorder.copy(alpha = 0.3f)
+                        }
+                        val micGlyph = when {
+                            isReady     -> "◉"
+                            isListening -> "◌"
+                            else        -> "🎤"
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(micBg)
+                                .clickable(enabled = !isListening && !isGenerating, onClick = onMicClick)
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = micGlyph,
+                                color = if (isListening || isReady) songbird.signal
+                                        else songbird.glass.copy(alpha = if (isGenerating) 0.3f else 1f),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                        }
+
+                        if (isGenerating) {
+                            StopButton(onClick = onStop)
+                        } else {
+                            SendButton(
+                                enabled = enabled && input.text.isNotBlank(),
+                                onClick = {
+                                    val text = input.text
+                                    input = TextFieldValue("")
+                                    showCommandPopup = false
+                                    onSubmit(text)
+                                },
+                            )
+                        }
                     }
                 }
             }
