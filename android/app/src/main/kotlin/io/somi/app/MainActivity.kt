@@ -268,10 +268,13 @@ private fun SoMiAppRoot() {
                 } else {
                     Surface(
                         onClick = {
-                            updateDownloading = true
                             updateScope.launch {
-                                UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
-                                updateDownloading = false
+                                updateDownloading = true
+                                try {
+                                    UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
+                                } finally {
+                                    updateDownloading = false
+                                }
                             }
                         },
                         shape = RoundedCornerShape(6.dp),
