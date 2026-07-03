@@ -12,9 +12,10 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.53.0 | ✅ live | OKF-Memory: YAML-Frontmatter, EntityExtractor, RelationIndex, 1-Hop Recall, Supersedes |
 | v0.52.0 | ✅ stable | Manueller Update-Check in Einstellungen → Diagnose |
-| v0.51.1 | ✅ live | okhttp-Dep fix für UpdateChecker |
-| v0.51.0 | ✅ live | Greeting in aktiver Konversation + In-App-Update-Banner |
+| v0.51.1 | ✅ stable | okhttp-Dep fix für UpdateChecker |
+| v0.51.0 | ✅ stable | Greeting in aktiver Konversation + In-App-Update-Banner |
 | v0.50.6 | ✅ live | KRITISCH: withContext(IO) Crash entfernt |
 | v0.50.5 | ✅ live | Greeting bei App-Resume (onResume-Hook) |
 | v0.50.3 | ✅ live | ANR/Performance behoben, /rename 3 Bugs, Greeting-Retry |
