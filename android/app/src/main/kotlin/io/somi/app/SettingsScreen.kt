@@ -79,6 +79,7 @@ internal fun SettingsScreen(
     onOpenModelCatalog: () -> Unit,
     onOpenDataBrowser: () -> Unit,
     onOpenFaq: () -> Unit,
+    onCheckUpdate: (suspend () -> UpdateChecker.UpdateInfo?)? = null,
 ) {
     val songbird = LocalSongbirdColors.current
     val instances by viewModel.instances.collectAsStateWithLifecycle()
@@ -113,6 +114,7 @@ internal fun SettingsScreen(
                     boot = boot,
                     versionName = BuildConfig.VERSION_NAME,
                     versionCode = BuildConfig.VERSION_CODE,
+                    onCheckUpdate = onCheckUpdate ?: { null },
                 )
             }
             // 2. So-Mi — Erinnerungen ZUERST, dann Persönlichkeit, Verhalten, Begrüßung, Lernen
@@ -544,9 +546,92 @@ private fun DiagnosticsSection(
     boot: ChatViewModel.BootSnapshot?,
     versionName: String,
     versionCode: Int,
+    onCheckUpdate: suspend () -> UpdateChecker.UpdateInfo?,
 ) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var checking by remember { mutableStateOf(false) }
+    var updateResult by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var checked by remember { mutableStateOf(false) }
+    var checkFailed by remember { mutableStateOf(false) }
+
     SectionCard(title = "Diagnose") {
         SettingsRow(label = "App-Version", value = "v$versionName ($versionCode)")
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Update",
+                color = LocalSongbirdColors.current.bone,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            when {
+                checking -> {
+                    Text(
+                        text = "Prüfe…",
+                        color = LocalSongbirdColors.current.glass,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                checked && checkFailed -> {
+                    Text(
+                        text = "Fehler — Netz prüfen",
+                        color = LocalSongbirdColors.current.signal,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                checked && updateResult?.isNewer == true -> {
+                    val result = updateResult!!
+                    Text(
+                        text = "v${result.latestVersion} verfügbar",
+                        color = Color(0xFF4CAF50),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable { UpdateChecker.openInstallPage(ctx, result.apkUrl) }
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+                checked -> {
+                    Text(
+                        text = "Aktuell ✓",
+                        color = Color(0xFF4CAF50),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                else -> {
+                    SongbirdButton(
+                        label = "Jetzt prüfen",
+                        kind = SongbirdButtonKind.Ghost,
+                        minHeight = 32.dp,
+                        onClick = {
+                            coroutineScope.launch {
+                                checking = true
+                                checked = false
+                                checkFailed = false
+                                updateResult = null
+                                try {
+                                    val result = onCheckUpdate()
+                                    updateResult = result
+                                    if (result == null) checkFailed = true
+                                } finally {
+                                    checking = false
+                                    checked = true
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+        }
+
         if (boot != null) {
             val device = boot.deviceInfo
             SettingsRow(label = "RAM", value = "%.1f GB".format(device.totalRamGB))

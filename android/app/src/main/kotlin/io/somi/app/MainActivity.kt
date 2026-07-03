@@ -318,6 +318,7 @@ private fun SoMiAppRoot() {
                 onOpenModelCatalog = { settingsRoute = SettingsRoute.ModelCatalog },
                 onOpenDataBrowser = { settingsRoute = SettingsRoute.DataBrowser },
                 onOpenFaq = { settingsRoute = SettingsRoute.Faq },
+                onCheckUpdate = { UpdateChecker.checkManually(BuildConfig.VERSION_NAME) },
             )
             return
         }
