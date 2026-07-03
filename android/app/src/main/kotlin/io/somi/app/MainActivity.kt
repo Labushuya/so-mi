@@ -298,7 +298,7 @@ private fun SoMiAppRoot() {
                         }
                     }
                     else -> {
-                        // Idle / AlreadyRunning
+                        // Idle
                         Surface(
                             onClick = {
                                 updateScope.launch {

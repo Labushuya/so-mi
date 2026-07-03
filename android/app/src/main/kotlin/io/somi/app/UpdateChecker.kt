@@ -69,7 +69,6 @@ object UpdateChecker {
         data class Progress(val percent: Int) : DownloadState
         data object Done : DownloadState
         data object Failed : DownloadState
-        data object AlreadyRunning : DownloadState
     }
 
     suspend fun check(currentVersionName: String): UpdateInfo? =
@@ -107,9 +106,12 @@ object UpdateChecker {
      */
     fun downloadAndInstall(context: Context, apkUrl: String, versionName: String): Flow<DownloadState> =
         flow {
-            if (!activeDownloadId.compareAndSet(-1L, 0L)) {
-                emit(DownloadState.AlreadyRunning)
-                return@flow
+            // Cancel any stale download from a previous session or crash.
+            val prev = activeDownloadId.getAndSet(0L)
+            if (prev > 0L) {
+                val dm0 = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                runCatching { dm0.remove(prev) }
+                Log.d(TAG, "cancelled stale download id=$prev")
             }
 
             val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
