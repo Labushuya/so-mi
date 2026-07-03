@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.1](https://github.com/Labushuya/so-mi/compare/v0.53.0...v0.53.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* In-App-Updater — DownloadManager statt Browser, Install-Button sichtbar ([#253](https://github.com/Labushuya/so-mi/issues/253)) ([9f6b92d](https://github.com/Labushuya/so-mi/commit/9f6b92dd695e282e5d047b9c6ef7c4f9ae8b97e2))
+
 ## [0.53.0](https://github.com/Labushuya/so-mi/compare/v0.52.0...v0.53.0) (2026-07-03)
 
 
