@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/Labushuya/so-mi/compare/v0.50.9...v0.51.0) (2026-07-03)
+
+
+### Features
+
+* Greeting in aktiver Konversation + In-App-Update-Banner ([#247](https://github.com/Labushuya/so-mi/issues/247)) ([33d2773](https://github.com/Labushuya/so-mi/commit/33d2773d4088f991de8e08d1a61c03672c79b075))
+
 ## [0.50.9](https://github.com/Labushuya/so-mi/compare/v0.50.8...v0.50.9) (2026-07-03)
 
 
