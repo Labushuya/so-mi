@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.8](https://github.com/Labushuya/so-mi/compare/v0.55.7...v0.55.8) (2026-07-03)
+
+
+### Bug Fixes
+
+* Done-Button nicht mehr klickbar + FAQ-Hinweis zu Scan-Einstellung ([#273](https://github.com/Labushuya/so-mi/issues/273)) ([ded3ac7](https://github.com/Labushuya/so-mi/commit/ded3ac79a08aad6ad4b91aab7716f2ead0af6192))
+
 ## [0.55.7](https://github.com/Labushuya/so-mi/compare/v0.55.6...v0.55.7) (2026-07-03)
 
 
