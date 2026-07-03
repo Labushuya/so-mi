@@ -177,7 +177,9 @@ object UpdateChecker {
                 DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PAUSED -> {
                     val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
                     val done  = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                    if (total <= 0L) 0 else ((done * 100L) / total).toInt().coerceIn(0, 99)
+                    // Allow 100 here — receiver fires after STATUS_SUCCESSFUL, which
+                    // may lag behind the bytes count. Showing 100% while waiting is correct.
+                    if (total <= 0L) 0 else ((done * 100L) / total).toInt().coerceIn(0, 100)
                 }
                 // STATUS_SUCCESSFUL / STATUS_FAILED / STATUS_PENDING:
                 // don't emit — let the BroadcastReceiver close the channel.
@@ -187,23 +189,55 @@ object UpdateChecker {
     }
 
     private fun launchInstaller(context: Context, apkFile: File) {
-        // ACTION_INSTALL_PACKAGE + FileProvider URI is the correct path on Android 8+
-        // when REQUEST_INSTALL_PACKAGES is declared. ACTION_VIEW with a DM content://
-        // URI is routed to the media browser on many OEM ROMs (MagicOS included) and
-        // never reaches the PackageInstaller — "Ohne Scan installieren" is unreachable.
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            apkFile,
-        )
-        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
-            putExtra(Intent.EXTRA_RETURN_RESULT, false)
+        val fileProviderUri = runCatching {
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile,
+            )
+        }.getOrNull()
+
+        // Try three intents in order — one of them will work depending on OEM/Android version.
+        // MagicOS blocks ACTION_INSTALL_PACKAGE silently for non-system apps on some builds,
+        // so we fall back to ACTION_VIEW + FileProvider URI which opens the system file-picker
+        // or PackageInstaller directly.
+
+        // Attempt 1: ACTION_INSTALL_PACKAGE (standard Android 8+ sideload path)
+        if (fileProviderUri != null) {
+            val i1 = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                setDataAndType(fileProviderUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+            }
+            if (runCatching { context.startActivity(i1) }.isSuccess) {
+                Log.i(TAG, "installer launched via ACTION_INSTALL_PACKAGE + FileProvider")
+                return
+            }
         }
-        runCatching { context.startActivity(intent) }
-            .onFailure { Log.e(TAG, "launchInstaller failed: $it") }
+
+        // Attempt 2: ACTION_VIEW + FileProvider URI (MagicOS fallback)
+        if (fileProviderUri != null) {
+            val i2 = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(fileProviderUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+            if (runCatching { context.startActivity(i2) }.isSuccess) {
+                Log.i(TAG, "installer launched via ACTION_VIEW + FileProvider")
+                return
+            }
+        }
+
+        // Attempt 3: ACTION_VIEW + DownloadManager content:// URI (last resort)
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+        // We don't have the downloadId here — use file:// via Uri.fromFile as last resort.
+        val fileUri = Uri.fromFile(apkFile)
+        val i3 = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(fileUri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        runCatching { context.startActivity(i3) }
+            .onSuccess { Log.i(TAG, "installer launched via ACTION_VIEW + file:// URI") }
+            .onFailure { Log.e(TAG, "all installer attempts failed: $it") }
     }
 
     private suspend fun fetchLatest(currentVersionName: String): UpdateInfo? =
