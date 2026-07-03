@@ -12,6 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.52.0 | ✅ live | Manueller Update-Check in Einstellungen → Diagnose |
 | v0.51.1 | ✅ live | okhttp-Dep fix für UpdateChecker |
 | v0.51.0 | ✅ live | Greeting in aktiver Konversation + In-App-Update-Banner |
 | v0.50.6 | ✅ live | KRITISCH: withContext(IO) Crash entfernt |
@@ -77,6 +78,7 @@ Komplett.
 
 ### ✅ Phase 5 (teilweise) — In-App-Updater
 - **UpdateChecker** ✅ v0.51.1 — GitHub Releases API, semantisches Versions-Vergleich, dismissbares Banner
+- **Manueller Update-Check** ✅ v0.52.0 — Settings → Diagnose → "Jetzt prüfen" mit Throttle + Fehlerstate
 - **Voice** ❌ noch ausstehend
 
 ---
