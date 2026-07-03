@@ -588,18 +588,21 @@ private fun DiagnosticsSection(
                 }
                 checked && updateResult?.isNewer == true -> {
                     val result = updateResult!!
+                    var downloadProgress by remember { mutableStateOf<Int?>(null) }
                     SongbirdButton(
-                        label = if (checking) "Laden…" else "⬆ v${result.latestVersion} installieren",
+                        label = when {
+                            downloadProgress != null -> "⬆ ${downloadProgress}%"
+                            else -> "⬆ v${result.latestVersion} installieren"
+                        },
                         kind = SongbirdButtonKind.Ghost,
                         minHeight = 32.dp,
                         onClick = {
+                            if (downloadProgress != null) return@SongbirdButton
                             coroutineScope.launch {
-                                checking = true
-                                try {
-                                    UpdateChecker.downloadAndInstall(ctx, result.apkUrl, result.latestVersion)
-                                } finally {
-                                    checking = false
-                                }
+                                UpdateChecker.downloadAndInstall(ctx, result.apkUrl, result.latestVersion)
+                                    .collect { p ->
+                                        downloadProgress = p
+                                    }
                             }
                         },
                     )

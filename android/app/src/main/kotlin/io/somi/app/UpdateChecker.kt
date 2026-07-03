@@ -8,7 +8,11 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
@@ -19,14 +23,25 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.coroutines.resume
 
+/**
+ * Checks GitHub Releases and handles download + install.
+ *
+ * [downloadAndInstall] returns a Flow<Int?> that emits:
+ *   0..100  — download progress in percent
+ *   null    — terminal: installer opened (success) or failed/cancelled
+ *
+ * This lets the UI show live progress without relying on local remember{} state
+ * that gets reset on recomposition. The Flow is hot via callbackFlow and tied to
+ * the caller's coroutine scope.
+ */
 object UpdateChecker {
     private const val TAG = "UpdateChecker"
     private const val RELEASES_URL =
         "https://api.github.com/repos/Labushuya/so-mi/releases/latest"
     private const val CACHE_TTL_MS = 30_000L
     private const val DOWNLOAD_TIMEOUT_MS = 120_000L
+    private const val PROGRESS_POLL_MS = 500L
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -36,8 +51,6 @@ object UpdateChecker {
 
     private val lastCheckTime = AtomicLong(0L)
     private val lastResult = AtomicReference<UpdateInfo?>(null)
-
-    // Prevents concurrent downloads from multiple taps.
     private val downloadInFlight = AtomicBoolean(false)
 
     data class UpdateInfo(
@@ -67,94 +80,98 @@ object UpdateChecker {
     }
 
     /**
-     * Downloads the APK via DownloadManager and opens it with ACTION_VIEW using
-     * the DownloadManager's own content:// URI — no FileProvider needed, works
-     * on all OEM variants including MagicOS.
-     *
-     * Guarded by [downloadInFlight] so that rapid taps only start one download.
-     * Returns false immediately if a download is already running.
-     *
-     * Caller should show a "Laden…" state while this suspends and reset it in finally.
+     * Downloads the APK and emits progress (0–100), then null as terminal.
+     * Guarded by [downloadInFlight] — concurrent calls close immediately with null.
+     * Collect this Flow in a coroutine scope tied to the UI lifecycle.
      */
-    suspend fun downloadAndInstall(context: Context, apkUrl: String, versionName: String): Boolean {
-        // Debounce: reject concurrent calls
-        if (!downloadInFlight.compareAndSet(false, true)) {
-            Log.d(TAG, "download already in flight, ignoring tap")
-            return false
-        }
-        return try {
-            withContext(Dispatchers.IO) {
-                val updatesDir = File(context.getExternalFilesDir(null), "updates")
-                    .also { it.mkdirs() }
-                val destFile = File(updatesDir, "so-mi-$versionName.apk")
-                if (destFile.exists()) destFile.delete()
+    fun downloadAndInstall(context: Context, apkUrl: String, versionName: String): Flow<Int?> =
+        callbackFlow {
+            if (!downloadInFlight.compareAndSet(false, true)) {
+                Log.d(TAG, "download already in flight, ignoring")
+                trySend(null)
+                close()
+                return@callbackFlow
+            }
 
-                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                val req = DownloadManager.Request(Uri.parse(apkUrl)).apply {
-                    setTitle("So-Mi v$versionName")
-                    setDescription("Update wird heruntergeladen…")
-                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    setDestinationUri(Uri.fromFile(destFile))
-                    setAllowedNetworkTypes(
-                        DownloadManager.Request.NETWORK_WIFI or
-                        DownloadManager.Request.NETWORK_MOBILE
-                    )
-                    // Prevent DownloadManager from notifying before we open the installer
-                    setMimeType("application/vnd.android.package-archive")
-                }
-                val downloadId = dm.enqueue(req)
-                Log.i(TAG, "download enqueued id=$downloadId")
+            val updatesDir = File(context.getExternalFilesDir(null), "updates").also { it.mkdirs() }
+            val destFile = File(updatesDir, "so-mi-$versionName.apk")
+            if (destFile.exists()) destFile.delete()
 
-                val success = withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) {
-                    suspendCancellableCoroutine { cont ->
-                        val receiver = object : BroadcastReceiver() {
-                            override fun onReceive(ctx: Context, intent: Intent) {
-                                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                                if (id != downloadId) return
-                                runCatching { ctx.unregisterReceiver(this) }
-                                val cursor = dm.query(
-                                    DownloadManager.Query().setFilterById(downloadId)
-                                )
-                                val ok = cursor?.use { c ->
-                                    c.moveToFirst() &&
-                                    c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
-                                        DownloadManager.STATUS_SUCCESSFUL
-                                } ?: false
-                                if (cont.isActive) cont.resume(ok)
-                            }
-                        }
-                        context.registerReceiver(
-                            receiver,
-                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                            Context.RECEIVER_NOT_EXPORTED,
-                        )
-                        cont.invokeOnCancellation {
-                            runCatching { context.unregisterReceiver(receiver) }
-                            dm.remove(downloadId)
-                        }
+            val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val req = DownloadManager.Request(Uri.parse(apkUrl)).apply {
+                setTitle("So-Mi v$versionName")
+                setDescription("Update wird heruntergeladen…")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationUri(Uri.fromFile(destFile))
+                setAllowedNetworkTypes(
+                    DownloadManager.Request.NETWORK_WIFI or
+                    DownloadManager.Request.NETWORK_MOBILE
+                )
+                setMimeType("application/vnd.android.package-archive")
+            }
+            val downloadId = dm.enqueue(req)
+            Log.i(TAG, "download enqueued id=$downloadId")
+
+            // BroadcastReceiver for completion signal
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(ctx: Context, intent: Intent) {
+                    val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    if (id != downloadId) return
+                    runCatching { ctx.unregisterReceiver(this) }
+
+                    val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
+                    val ok = cursor?.use { c ->
+                        c.moveToFirst() &&
+                        c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
+                            DownloadManager.STATUS_SUCCESSFUL
+                    } ?: false
+
+                    if (ok) {
+                        val installerUri = dm.getUriForDownloadedFile(downloadId)
+                        if (installerUri != null) launchInstaller(ctx, installerUri)
+                        else Log.e(TAG, "null URI from DM for $downloadId")
                     }
-                } ?: run {
-                    Log.w(TAG, "download timed out")
-                    dm.remove(downloadId)
-                    false
-                }
-
-                if (success) {
-                    // Use DownloadManager's own content:// URI — avoids FileProvider
-                    // incompatibilities on HONOR/MagicOS and opens PackageInstaller directly.
-                    val installerUri = dm.getUriForDownloadedFile(downloadId)
-                    if (installerUri != null) {
-                        launchInstaller(context, installerUri)
-                    } else {
-                        Log.e(TAG, "DownloadManager returned null URI for $downloadId")
-                    }
-                    true
-                } else {
-                    false
+                    trySend(null)   // terminal — success or failure
+                    close()
                 }
             }
-        } finally {
-            downloadInFlight.set(false)
+            context.registerReceiver(
+                receiver,
+                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                Context.RECEIVER_NOT_EXPORTED,
+            )
+
+            // Progress polling loop — runs until channel closes
+            withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) {
+                while (!isClosedForSend) {
+                    val progress = queryProgress(dm, downloadId)
+                    if (progress != null) trySend(progress)
+                    delay(PROGRESS_POLL_MS)
+                }
+            } ?: run {
+                Log.w(TAG, "download timed out, cancelling")
+                runCatching { context.unregisterReceiver(receiver) }
+                dm.remove(downloadId)
+                trySend(null)
+                close()
+            }
+
+            awaitClose {
+                downloadInFlight.set(false)
+                runCatching { context.unregisterReceiver(receiver) }
+            }
+        }.flowOn(Dispatchers.IO)
+
+    private fun queryProgress(dm: DownloadManager, downloadId: Long): Int? {
+        val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId)) ?: return null
+        return cursor.use { c ->
+            if (!c.moveToFirst()) return@use null
+            val status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            if (status != DownloadManager.STATUS_RUNNING &&
+                status != DownloadManager.STATUS_PAUSED) return@use null
+            val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+            val done = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+            if (total <= 0) 0 else ((done * 100L) / total).toInt().coerceIn(0, 99)
         }
     }
 
