@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.1](https://github.com/Labushuya/so-mi/compare/v0.54.0...v0.54.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* Updater-Debounce, DownloadManager-URI für Installer, Mikrofon-Debounce ([#257](https://github.com/Labushuya/so-mi/issues/257)) ([e8d03ba](https://github.com/Labushuya/so-mi/commit/e8d03ba9a163ddf37c071c5de0ee1bd26b8763fe))
+
 ## [0.54.0](https://github.com/Labushuya/so-mi/compare/v0.53.1...v0.54.0) (2026-07-03)
 
 
