@@ -12,4 +12,8 @@ exotischen Gerät null zurückgibt (StorageRoots fällt darauf zurück).
     <files-path
         name="somi-root-fallback"
         path="SoMi/" />
+    <!-- UpdateChecker: APK download target for in-app updater. -->
+    <external-files-path
+        name="somi-updates"
+        path="updates/" />
 </paths>

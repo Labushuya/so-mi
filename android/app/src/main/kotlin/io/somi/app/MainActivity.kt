@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Card
@@ -52,6 +53,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -229,6 +231,8 @@ private fun SoMiAppRoot() {
 
     // In-app update check — runs once at startup, shows banner if newer version available.
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var updateDownloading by remember { mutableStateOf(false) }
+    val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         updateInfo = UpdateChecker.check(BuildConfig.VERSION_NAME)
     }
@@ -238,28 +242,62 @@ private fun SoMiAppRoot() {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-                .clickable { UpdateChecker.openInstallPage(ctx, info.apkUrl) },
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1A2A1A),
-            ),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A1A)),
             shape = RoundedCornerShape(8.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E5E2E)),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    "⬆ v${info.latestVersion} verfügbar — tippen zum Installieren",
-                    color = Color(0xFF4CAF50),
-                    style = MaterialTheme.typography.labelSmall,
+                    "So-Mi v${info.latestVersion} verfügbar",
+                    color = Color(0xFF81C784),
+                    style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.weight(1f),
                 )
-                Box(modifier = Modifier
-                    .clickable { updateInfo = null }
-                    .padding(4.dp)) {
-                    Text("✕", color = Color(0xFF4CAF50),
-                        style = MaterialTheme.typography.labelSmall)
+                // Install button — clearly tappable
+                if (updateDownloading) {
+                    Text(
+                        "Laden…",
+                        color = Color(0xFF81C784),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                } else {
+                    Surface(
+                        onClick = {
+                            updateDownloading = true
+                            updateScope.launch {
+                                UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
+                                updateDownloading = false
+                            }
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF2E5E2E),
+                        modifier = Modifier.padding(0.dp),
+                    ) {
+                        Text(
+                            "⬆ Installieren",
+                            color = Color(0xFFB9F6CA),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        )
+                    }
+                }
+                // Dismiss
+                Surface(
+                    onClick = { updateInfo = null },
+                    shape = RoundedCornerShape(4.dp),
+                    color = Color.Transparent,
+                ) {
+                    Text(
+                        "✕",
+                        color = Color(0xFF81C784),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+                    )
                 }
             }
         }
