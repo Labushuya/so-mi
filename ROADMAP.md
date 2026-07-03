@@ -8,10 +8,12 @@
 
 ---
 
-## Aktueller Stand (2026-06-30)
+## Aktueller Stand (2026-07-03)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.51.1 | ✅ live | okhttp-Dep fix für UpdateChecker |
+| v0.51.0 | ✅ live | Greeting in aktiver Konversation + In-App-Update-Banner |
 | v0.50.6 | ✅ live | KRITISCH: withContext(IO) Crash entfernt |
 | v0.50.5 | ✅ live | Greeting bei App-Resume (onResume-Hook) |
 | v0.50.3 | ✅ live | ANR/Performance behoben, /rename 3 Bugs, Greeting-Retry |
@@ -73,7 +75,9 @@ Komplett.
 | Settings → Tools UX (Gruppierung, Status) | ❌ v0.50.0 |
 | GBNF Stage-3 Constrained Decoding | ❌ deferred |
 
-### ❌ Phase 5 — Voice + In-App-Updater
+### ✅ Phase 5 (teilweise) — In-App-Updater
+- **UpdateChecker** ✅ v0.51.1 — GitHub Releases API, semantisches Versions-Vergleich, dismissbares Banner
+- **Voice** ❌ noch ausstehend
 
 ---
 
@@ -116,20 +120,31 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.50.0 — Phase-4-Abschluss (unmittelbar)
-1. **Stage-2-Embedding reaktivieren** — Tool-Matching per semantischer Ähnlichkeit ohne `@`-Prefix. Sicherung: eigener Dispatcher, kein ONNX/LLM-Konflikt. Fallback auf Stage-1-Regex wenn Embedder nicht bereit.
-2. **`get_exchange_rate` zweite API** — Open Exchange Rates als Fallback wenn exchangerate-api.com nicht erreichbar. Klarer Hinweis an User welche Quelle genutzt wurde.
-3. **Settings → Tools UX** — Visuelle Gruppierung (Erinnerungen / Web / Produktivität), Status-Indikatoren (✅ letzter Erfolg / ⚠️ letzter Fehler / ○ nie genutzt)
+### v0.52.0 — OKF-Memory (Agentic Memory Flywheel)
+**Grundlage:** So-Mi speichert Fakten als Flat-Markdown. OKF ergänzt strukturierte YAML-Frontmatter + verlinkte Entitäten.
 
-### v0.51.0 — Stabilisierung + OKF-Vorbereitung
-- v0.49.0 Feedback einarbeiten (#Kategorie Routing, Autocomplete)
-- Bekannte UX-Schulden: Scroll-to-Bottom MagicOS, 14B-Ampel-Farbe
-- OKF-Konzept evaluieren (Prototyp für strukturierte Kategorien mit YAML-Frontmatter)
+Kernkonzept (Patrick / Agentic Memory Flywheel):
+- Jede gespeicherte Information bekommt `type`, `title`, `tags`, `relations` im YAML-Header
+- Beim Speichern: LLM extrahiert Entitäten + Beziehungen aus dem Fakt automatisch (1-2s overhead)
+- Verlinkte Entitäten: `[Christopher](/personen/christopher.md)` statt freier Text
+- Beim Recall: Nicht nur semantische Suche, sondern auch Graph-Traversal (verlinkten Entitäten folgen)
+- "Supersedes"-Semantik: Widersprüche erkennen → altes Fact als `superseded_by` markieren, neues anlegen
+
+Deliverables:
+1. `extractEntitiesFromFact()` im RagOrchestrator — LLM-basiert, 1-Pass, gibt `{entities, relations}` zurück
+2. Frontmatter-Writer: beim Speichern YAML-Header in .md einfügen
+3. Relation-Index: `_index.json` pro Kategorie mit {factId → linkedEntities}
+4. Recall-Erweiterung: wenn semantisch gefundener Fakt auf andere Entität linkt → diese nachladen (1 Hop)
+5. Duplikat-Erkennung erweitern: inhaltliche Überschneidung → `superseded_by` statt Duplikat-Abweisung
+
+### v0.53.0 — Voice (Spracheingabe)
+- SpeechRecognizer API (Android native, kein Modell-Download)
+- Mikrofon-Button im Composer
+- Whisper-tiny als Offline-Fallback (sherpa-onnx)
 
 ### v1.0 — Abschluss
 1. KIWIX-Offline-Lexikon
-2. Phase 5: Voice (Spracheingabe + TTS)
-3. In-App-Updater
+2. Piper TTS mit so-mi Voice-Profil
 
 ### Vorgemerkt — OKF (Open Knowledge Format)
 **User-Vereinbarung 2026-06-30** — für spätere Implementierung vorgemerkt.
