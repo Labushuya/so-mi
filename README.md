@@ -6,10 +6,10 @@
 
 **Persönliche KI. Vollständig lokal. Kein Account. Keine Cloud.**
 
-[![Version](https://img.shields.io/badge/version-0.49.0-cyan?style=flat-square)](https://github.com/Labushuya/so-mi/releases/latest)
+[![Version](https://img.shields.io/badge/version-0.54.0-cyan?style=flat-square)](https://github.com/Labushuya/so-mi/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%2011+-brightgreen?style=flat-square&logo=android)](https://github.com/Labushuya/so-mi/releases/latest)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-red?style=flat-square)](LICENSE)
-[![Phase](https://img.shields.io/badge/phase-4%20%E2%80%94%20Tools-blue?style=flat-square)](#roadmap)
+[![Phase](https://img.shields.io/badge/phase-5%20%E2%80%94%20Voice-blue?style=flat-square)](#roadmap)
 [![LLM](https://img.shields.io/badge/LLM-Qwen2.5%207B-purple?style=flat-square)](https://huggingface.co/Qwen/Qwen2.5-7B)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](https://github.com/Labushuya/so-mi/actions)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=flat-square&logo=kotlin)](https://kotlinlang.org)
@@ -54,6 +54,12 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 - LLM-gestützte Faktklassifizierung (Personen / Vorlieben / Termine / Technik / Notizen)
 - **HNSW-Vektorsuche** (ObjectBox + 384-dim-Embedder)
 - 50+ natürlichsprachliche Trigger: "Das ist wichtig:", "FYI:", "Ach ja:" etc.
+- **Strukturiertes Gedächtnis (OKF):** YAML-Frontmatter, automatische Entitäts-Extraktion, 1-Hop Graph-Recall
+- **Supersedes-Semantik:** Widersprüche erkennen — ähnliche Fakten werden überschrieben statt abgelehnt
+
+### 🎙 Voice
+- Spracheingabe via Android SpeechRecognizer (de-DE, kein Modell-Download)
+- Mikrofon-Button im Composer — Ergebnis ins Textfeld zur Kontrolle vor dem Senden
 
 </td>
 <td width="50%">
@@ -65,9 +71,13 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 
 ### 💬 Chat & UI
 - Multi-Chat: mehrere Gespräche, umbenennen / archivieren
-- Slash-Commands mit Autocomplete: `/search`, `/rename`, `/clear`
+- Slash-Commands mit Autocomplete: `/merke`, `/suche`, `/umbenennen`, `/leeren`
 - Status-Bänder (Error / Warning / Success / Info)
 - Backup & Import als ZIP (Erinnerungen + Chat-Verlauf)
+
+### 🔄 In-App-Updater
+- Update-Banner beim Start, manueller Check in Einstellungen → Diagnose
+- DownloadManager-basiert: kein Browser-Umweg, direkte PackageInstaller-Integration
 
 ### 🔒 Datenschutz
 - 100 % lokale Verarbeitung — standardmäßig kein Netzwerk
@@ -92,6 +102,9 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 | 📰 `news_briefing` | RSS-Feeds (Tagesschau, Spiegel, Heise) | *"@news"*, *"Aktuelle Nachrichten"* |
 | 📅 `read_calendar` | Google Kalender & Systemkalender | *"Zeig meine Termine diese Woche"* |
 | ➕ `create_event` | Kalendertermin anlegen | *"Meeting morgen 14 Uhr eintragen"* |
+| 🔎 `search_notes` | Notizen semantisch durchsuchen | *"@notizen Rezept"*, *"Meine Notizen zu Kotlin"* |
+| 📝 `save_note` | Notiz speichern | *"Notiz: [Text]"*, *"Schreib auf: [Text]"* |
+| 📋 `summarize` | Text lokal zusammenfassen | *"TL;DR: [langer Text]"*, *"@zusammenfassung [Text]"* |
 
 ---
 
@@ -116,7 +129,7 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 
 ## Command-Referenz
 
-So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@`** für Tools. Beide mit Smart-Autocomplete und Syntax-Hints im Textfeld.
+So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@`** für Tools. Beide mit Smart-Autocomplete und Syntax-Hints im Textfeld. Spracheingabe via 🎤-Button im Composer.
 
 ### `/` — App-Funktionen (kein LLM-Call)
 
@@ -165,9 +178,11 @@ So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@
 ```
 android/
 ├── app/               Compose UI · Navigation · ViewModels · Hilt-Wiring
+│                      Voice: VoiceInputHelper (SpeechRecognizer)
 ├── core-llm/          LlamaContext Interface
 ├── core-llm-llama/    ARM InferenceEngine JNI-Wrapper (NDK, llama.cpp)
 ├── core-rag/          ObjectBox HNSW · ONNX Embedder · RagOrchestrator
+│                      OKF-Memory: FrontmatterWriter · EntityExtractor · RelationIndex
 ├── core-tools/        Tool-Router (Regex) · 11 Tools
 ├── core-data/         Room · DataStore · BackupManager · StorageRoots
 ├── core-ui/           ChatViewModel · Slash-Commands · RAG-Integration
@@ -189,12 +204,12 @@ keystore/ci.keystore   CI-Signatur (öffentlich committed — Sideload, Update-K
 
 # 2. Auf Android: Unbekannte Quellen erlauben → APK tippen
 
-# 3. Beim ersten Start: Benachrichtigungs- & Kalender-Berechtigung erlauben
+# 3. Beim ersten Start: Benachrichtigungs-, Kalender- & Mikrofon-Berechtigung erlauben
 
 # 4. Modell laden: Settings → Modelle → Qwen2.5 7B (WLAN empfohlen, ~4.5 GB)
 ```
 
-**Updates** installieren sich über die vorherige Version — gleicher Signing-Key, gleiche `applicationId`.
+**Updates** werden automatisch via In-App-Banner angezeigt — tippe "⬆ Installieren" und So-Mi lädt die neue APK direkt herunter.
 
 ---
 
@@ -224,8 +239,9 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 |-------|-------|---------|
 | Phase 0–2: Bootstrap, Pipeline, LLM + Chat | ✅ Abgeschlossen | |
 | Phase 3: RAG + Persona-Memory | ✅ Abgeschlossen | HNSW, Backfill, Multi-Chat, Backup |
-| Phase 4: Tool-System | 🟡 11 von 12 Tools stabil | Kalender, Wetter, Web, Alarm, Nachrichten, Wechselkurs, Notizen, Zusammenfassung |
-| Phase 5: Voice + In-App-Updater | ❌ Geplant | |
+| Phase 4: Tool-System + OKF-Memory | ✅ Abgeschlossen | 11 Tools · YAML-Frontmatter · Graph-Recall · Supersedes |
+| Phase 5: In-App-Updater | ✅ Abgeschlossen | DownloadManager · PackageInstaller · Update-Banner |
+| Phase 5: Voice | 🟡 In Arbeit | SpeechRecognizer (de-DE) · Mikrofon-Button im Composer |
 
 → Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
 

@@ -22,6 +22,8 @@
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <!-- Required for APK install from DownloadManager (Android 8+). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- SpeechRecognizer: Mikrofon-Eingabe für Voice-Modus. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".SoMiApp"
