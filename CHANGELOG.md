@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/Labushuya/so-mi/compare/v0.51.1...v0.52.0) (2026-07-03)
+
+
+### Features
+
+* Manueller Update-Check in Einstellungen → Diagnose ([699bfce](https://github.com/Labushuya/so-mi/commit/699bfce6b0be8351f1c4225095759589b13479ec))
+
 ## [0.51.1](https://github.com/Labushuya/so-mi/compare/v0.51.0...v0.51.1) (2026-07-03)
 
 
