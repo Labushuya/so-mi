@@ -80,7 +80,8 @@ Komplett.
 ### ✅ Phase 5 (teilweise) — In-App-Updater
 - **UpdateChecker** ✅ v0.51.1 — GitHub Releases API, semantisches Versions-Vergleich, dismissbares Banner
 - **Manueller Update-Check** ✅ v0.52.0 — Settings → Diagnose → "Jetzt prüfen" mit Throttle + Fehlerstate
-- **Voice** ❌ noch ausstehend
+- **Updater-Fix** ✅ v0.53.1 — DownloadManager statt Browser, REQUEST_INSTALL_PACKAGES, sichtbarer Install-Button
+- **Voice** 🟡 v0.54.0 — SpeechRecognizer (de-DE), Mikrofon-Button im Composer
 
 ---
 

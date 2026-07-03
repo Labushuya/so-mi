@@ -867,6 +867,26 @@ private fun Composer(
     val songbird = LocalSongbirdColors.current
     var input by remember { mutableStateOf(TextFieldValue("")) }
     var showCommandPopup by remember { mutableStateOf(false) }
+    val voiceScope = rememberCoroutineScope()
+    val voiceContext = androidx.compose.ui.platform.LocalContext.current
+    var isListening by remember { mutableStateOf(false) }
+    val recordPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            voiceScope.launch {
+                isListening = true
+                try {
+                    val result = io.somi.voice.VoiceInputHelper.listen(voiceContext)
+                    if (result != null) {
+                        input = TextFieldValue(text = result, selection = androidx.compose.ui.text.TextRange(result.length))
+                    }
+                } finally {
+                    isListening = false
+                }
+            }
+        }
+    }
 
     // Show command popup when user types "/" or "@" at the start
     val allCommands = io.somi.ui.chat.SlashCommandRegistry.ALL +
@@ -1006,7 +1026,7 @@ private fun Composer(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // ? button to open slash command list
+                    // "/" button — öffnet Slash-Command-Liste
                     Box(
                         modifier = Modifier
                             .size(30.dp)
@@ -1018,6 +1038,28 @@ private fun Composer(
                     ) {
                         Text("/", color = songbird.glass, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
+
+                    if (!isGenerating) {
+                        // Mikrofon-Button — nur sichtbar wenn nicht generiert wird
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isListening) songbird.signal.copy(alpha = 0.3f) else songbird.bubbleBorder.copy(alpha = 0.3f))
+                                .clickable(enabled = !isListening) {
+                                    recordPermLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                                }
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = if (isListening) "◉" else "🎤",
+                                color = if (isListening) songbird.signal else songbird.glass,
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                        }
+                    }
+
                     if (isGenerating) {
                         StopButton(onClick = onStop)
                     } else {
