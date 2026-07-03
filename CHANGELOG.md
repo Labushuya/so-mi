@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.1](https://github.com/Labushuya/so-mi/compare/v0.55.0...v0.55.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* Mikrofon-Lag (Pre-warm + Permission-Bypass) + Repositionierung rechts vom Send ([#261](https://github.com/Labushuya/so-mi/issues/261)) ([3c29322](https://github.com/Labushuya/so-mi/commit/3c293227c8fc6ed4460356a1a32b5d03e427c4ed))
+
 ## [0.55.0](https://github.com/Labushuya/so-mi/compare/v0.54.1...v0.55.0) (2026-07-03)
 
 
