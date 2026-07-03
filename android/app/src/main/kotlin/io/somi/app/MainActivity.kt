@@ -269,6 +269,7 @@ private fun SoMiAppRoot() {
                         )
                     }
                     is UpdateChecker.DownloadState.Done -> {
+                        // Not clickable — show instruction only, ✕ to dismiss
                         Text(
                             "✓ Benachrichtigung antippen zum Installieren",
                             color = Color(0xFF81C784),
@@ -277,14 +278,27 @@ private fun SoMiAppRoot() {
                         )
                     }
                     is UpdateChecker.DownloadState.Failed -> {
-                        Text(
-                            "Fehler — nochmal versuchen",
-                            color = Color(0xFFFF6B6B),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
+                        Surface(
+                            onClick = {
+                                updateScope.launch {
+                                    downloadState = null
+                                    UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
+                                        .collect { state -> downloadState = state }
+                                }
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF3E1A1A),
+                        ) {
+                            Text(
+                                "⟳ Nochmal",
+                                color = Color(0xFFFF6B6B),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            )
+                        }
                     }
                     else -> {
-                        // Idle oder AlreadyRunning → Install-Button
+                        // Idle / AlreadyRunning
                         Surface(
                             onClick = {
                                 updateScope.launch {
@@ -306,7 +320,7 @@ private fun SoMiAppRoot() {
                         }
                     }
                 }
-                // Dismiss (kein Download aktiv)
+                // Dismiss: only when not actively downloading
                 if (downloadState !is UpdateChecker.DownloadState.Progress) {
                     Surface(
                         onClick = { updateInfo = null; downloadState = null },
