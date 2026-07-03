@@ -46,10 +46,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -221,6 +224,44 @@ private fun SoMiAppRoot() {
         ) { /* result ignored — denial is fine */ }
         LaunchedEffect(Unit) {
             permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // In-app update check — runs once at startup, shows banner if newer version available.
+    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    LaunchedEffect(Unit) {
+        updateInfo = UpdateChecker.check(BuildConfig.VERSION_NAME)
+    }
+    if (updateInfo?.isNewer == true) {
+        val info = updateInfo!!
+        val ctx = context
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .clickable { UpdateChecker.openInstallPage(ctx, info.apkUrl) },
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A2A1A),
+            ),
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "⬆ v${info.latestVersion} verfügbar — tippen zum Installieren",
+                    color = Color(0xFF4CAF50),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(modifier = Modifier
+                    .clickable { updateInfo = null }
+                    .padding(4.dp)) {
+                    Text("✕", color = Color(0xFF4CAF50),
+                        style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 
