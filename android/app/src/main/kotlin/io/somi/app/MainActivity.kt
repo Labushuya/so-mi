@@ -233,8 +233,9 @@ private fun SoMiAppRoot() {
 
     // In-app update check — runs once at startup, shows banner if newer version available.
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
-    // downloadProgress: null = idle, 0..99 = downloading, terminates when Flow closes
+    // downloadProgress: null = idle, 0..100 = downloading/done
     var downloadProgress by remember { mutableStateOf<Int?>(null) }
+    var downloadDone by remember { mutableStateOf(false) }
     val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         updateInfo = UpdateChecker.check(BuildConfig.VERSION_NAME)
@@ -261,10 +262,10 @@ private fun SoMiAppRoot() {
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.weight(1f),
                 )
-                if (downloadProgress != null) {
-                    // Live progress — nicht anklickbar während Download läuft
+                if (downloadProgress != null || downloadDone) {
+                    // Live progress or "Installer geöffnet"
                     Text(
-                        "⬆ ${downloadProgress}%",
+                        if (downloadDone) "Installer geöffnet ✓" else "⬆ ${downloadProgress}%",
                         color = Color(0xFF81C784),
                         style = MaterialTheme.typography.labelMedium,
                     )
@@ -272,12 +273,14 @@ private fun SoMiAppRoot() {
                     Surface(
                         onClick = {
                             updateScope.launch {
+                                downloadDone = false
                                 UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
                                     .collect { p ->
                                         downloadProgress = p
                                         if (p == null) {
-                                            // Terminal — installer opened or failed
-                                            updateInfo = null
+                                            // Terminal — installer opened (or failed silently)
+                                            downloadProgress = null
+                                            downloadDone = true
                                         }
                                     }
                             }
@@ -297,7 +300,7 @@ private fun SoMiAppRoot() {
                 // Dismiss (nur wenn kein Download läuft)
                 if (downloadProgress == null) {
                     Surface(
-                        onClick = { updateInfo = null },
+                        onClick = { updateInfo = null; downloadDone = false },
                         shape = RoundedCornerShape(4.dp),
                         color = Color.Transparent,
                     ) {
