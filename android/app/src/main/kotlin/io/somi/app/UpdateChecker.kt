@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -25,23 +24,31 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Checks GitHub Releases and handles download + install.
+ * Checks GitHub Releases and handles APK download + install.
  *
  * [downloadAndInstall] returns a Flow<Int?> that emits:
- *   0..100  — download progress in percent
- *   null    — terminal: installer opened (success) or failed/cancelled
+ *   0..99  — live download progress (polled every 500 ms)
+ *   null   — terminal: installer intent fired (success) or error
  *
- * This lets the UI show live progress without relying on local remember{} state
- * that gets reset on recomposition. The Flow is hot via callbackFlow and tied to
- * the caller's coroutine scope.
+ * Design notes:
+ *  - The BroadcastReceiver is the sole authority for "download done" — it closes
+ *    the channel and fires the installer. The progress-polling loop only emits
+ *    percentage values; it never closes the channel itself. This fixes the
+ *    "stuck at 60%" issue where the polling loop saw STATUS != RUNNING after
+ *    the download finished but before the receiver fired, and stopped emitting
+ *    without closing the channel.
+ *  - Installer uses ACTION_INSTALL_PACKAGE (not ACTION_VIEW) — required for
+ *    REQUEST_INSTALL_PACKAGES to take effect on Android 8+ / MagicOS. ACTION_VIEW
+ *    with a DM content:// URI routes to the media browser on some OEM variants
+ *    instead of the PackageInstaller, causing the "no reaction" bug.
  */
 object UpdateChecker {
     private const val TAG = "UpdateChecker"
     private const val RELEASES_URL =
         "https://api.github.com/repos/Labushuya/so-mi/releases/latest"
     private const val CACHE_TTL_MS = 30_000L
-    private const val DOWNLOAD_TIMEOUT_MS = 120_000L
-    private const val PROGRESS_POLL_MS = 500L
+    private const val DOWNLOAD_TIMEOUT_MS = 180_000L
+    private const val PROGRESS_POLL_MS = 600L
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -79,11 +86,6 @@ object UpdateChecker {
         }
     }
 
-    /**
-     * Downloads the APK and emits progress (0–100), then null as terminal.
-     * Guarded by [downloadInFlight] — concurrent calls close immediately with null.
-     * Collect this Flow in a coroutine scope tied to the UI lifecycle.
-     */
     fun downloadAndInstall(context: Context, apkUrl: String, versionName: String): Flow<Int?> =
         callbackFlow {
             if (!downloadInFlight.compareAndSet(false, true)) {
@@ -110,28 +112,31 @@ object UpdateChecker {
                 setMimeType("application/vnd.android.package-archive")
             }
             val downloadId = dm.enqueue(req)
-            Log.i(TAG, "download enqueued id=$downloadId")
+            Log.i(TAG, "download enqueued id=$downloadId dest=${destFile.absolutePath}")
 
-            // BroadcastReceiver for completion signal
+            // ── BroadcastReceiver: sole authority for "done" ──────────────────────
+            // It closes the channel and fires the installer. Progress loop only emits
+            // percentage; it never closes the channel on its own (fixes "stuck at X%").
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(ctx: Context, intent: Intent) {
-                    val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
                     if (id != downloadId) return
                     runCatching { ctx.unregisterReceiver(this) }
 
                     val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
-                    val ok = cursor?.use { c ->
+                    val success = cursor?.use { c ->
                         c.moveToFirst() &&
                         c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
                             DownloadManager.STATUS_SUCCESSFUL
                     } ?: false
 
-                    if (ok) {
-                        val installerUri = dm.getUriForDownloadedFile(downloadId)
-                        if (installerUri != null) launchInstaller(ctx, installerUri)
-                        else Log.e(TAG, "null URI from DM for $downloadId")
+                    if (success && destFile.exists()) {
+                        Log.i(TAG, "download complete, launching installer")
+                        launchInstaller(ctx, destFile)
+                    } else {
+                        Log.e(TAG, "download failed or file missing (success=$success)")
                     }
-                    trySend(null)   // terminal — success or failure
+                    trySend(null)  // terminal
                     close()
                 }
             }
@@ -141,19 +146,21 @@ object UpdateChecker {
                 Context.RECEIVER_NOT_EXPORTED,
             )
 
-            // Progress polling loop — runs until channel closes
-            withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) {
-                while (!isClosedForSend) {
-                    val progress = queryProgress(dm, downloadId)
-                    if (progress != null) trySend(progress)
-                    delay(PROGRESS_POLL_MS)
+            // ── Progress polling — emit only, never close ─────────────────────────
+            var timeoutMs = 0L
+            while (!isClosedForSend) {
+                val p = queryProgress(dm, downloadId)
+                if (p != null) trySend(p)
+                delay(PROGRESS_POLL_MS)
+                timeoutMs += PROGRESS_POLL_MS
+                if (timeoutMs >= DOWNLOAD_TIMEOUT_MS) {
+                    Log.w(TAG, "download timed out after ${timeoutMs}ms, cancelling")
+                    runCatching { context.unregisterReceiver(receiver) }
+                    dm.remove(downloadId)
+                    trySend(null)
+                    close()
+                    break
                 }
-            } ?: run {
-                Log.w(TAG, "download timed out, cancelling")
-                runCatching { context.unregisterReceiver(receiver) }
-                dm.remove(downloadId)
-                trySend(null)
-                close()
             }
 
             awaitClose {
@@ -162,23 +169,38 @@ object UpdateChecker {
             }
         }.flowOn(Dispatchers.IO)
 
-    private fun queryProgress(dm: DownloadManager, downloadId: Long): Int? {
-        val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId)) ?: return null
+    private fun queryProgress(dm: DownloadManager, id: Long): Int? {
+        val cursor = dm.query(DownloadManager.Query().setFilterById(id)) ?: return null
         return cursor.use { c ->
             if (!c.moveToFirst()) return@use null
-            val status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            if (status != DownloadManager.STATUS_RUNNING &&
-                status != DownloadManager.STATUS_PAUSED) return@use null
-            val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-            val done = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-            if (total <= 0) 0 else ((done * 100L) / total).toInt().coerceIn(0, 99)
+            when (c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PAUSED -> {
+                    val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                    val done  = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    if (total <= 0L) 0 else ((done * 100L) / total).toInt().coerceIn(0, 99)
+                }
+                // STATUS_SUCCESSFUL / STATUS_FAILED / STATUS_PENDING:
+                // don't emit — let the BroadcastReceiver close the channel.
+                else -> null
+            }
         }
     }
 
-    private fun launchInstaller(context: Context, uri: Uri) {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
+    private fun launchInstaller(context: Context, apkFile: File) {
+        // ACTION_INSTALL_PACKAGE + FileProvider URI is the correct path on Android 8+
+        // when REQUEST_INSTALL_PACKAGES is declared. ACTION_VIEW with a DM content://
+        // URI is routed to the media browser on many OEM ROMs (MagicOS included) and
+        // never reaches the PackageInstaller — "Ohne Scan installieren" is unreachable.
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apkFile,
+        )
+        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+            putExtra(Intent.EXTRA_RETURN_RESULT, false)
         }
         runCatching { context.startActivity(intent) }
             .onFailure { Log.e(TAG, "launchInstaller failed: $it") }

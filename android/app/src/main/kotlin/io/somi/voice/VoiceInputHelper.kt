@@ -87,16 +87,20 @@ object VoiceInputHelper {
                     val best = results
                         ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         ?.firstOrNull()
-                    recognizer.destroy()
-                    // Pre-warm the next session immediately after this one ends.
-                    warmUp(context)
+                    // Resume before destroy() — destroy() can block 100-300ms on MagicOS,
+                    // which would delay the AtomicBoolean reset and make the button lag.
                     if (cont.isActive) cont.resume(best)
+                    recognizer.destroy()
+                    warmUp(context)
                 }
 
                 override fun onError(error: Int) {
-                    recognizer.destroy()
-                    warmUp(context)
-                    if (!cont.isActive) return
+                    if (!cont.isActive) {
+                        recognizer.destroy()
+                        warmUp(context)
+                        return
+                    }
+                    // Resume before destroy() for the same reason as onResults.
                     when (error) {
                         SpeechRecognizer.ERROR_NO_MATCH,
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
@@ -116,6 +120,8 @@ object VoiceInputHelper {
                             cont.resume(null)
                         }
                     }
+                    recognizer.destroy()
+                    warmUp(context)
                 }
 
                 override fun onReadyForSpeech(params: Bundle?) { onReady?.invoke() }
