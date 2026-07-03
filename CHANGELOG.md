@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.9](https://github.com/Labushuya/so-mi/compare/v0.55.8...v0.55.9) (2026-07-03)
+
+
+### Bug Fixes
+
+* Guard-Check entfernt — stale activeDownloadId blockierte jeden neuen Download ([#275](https://github.com/Labushuya/so-mi/issues/275)) ([bf1a8c6](https://github.com/Labushuya/so-mi/commit/bf1a8c64250a5fe1140c9335333552a0d3a381d0))
+
 ## [0.55.8](https://github.com/Labushuya/so-mi/compare/v0.55.7...v0.55.8) (2026-07-03)
 
 
