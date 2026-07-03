@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.5](https://github.com/Labushuya/so-mi/compare/v0.55.4...v0.55.5) (2026-07-03)
+
+
+### Bug Fixes
+
+* Channel-Bridge BroadcastReceiver + Polling — behebt hängendes Download bei 97% ([#269](https://github.com/Labushuya/so-mi/issues/269)) ([b23cc15](https://github.com/Labushuya/so-mi/commit/b23cc15d0d23c720a5d8ae12286816f7dd00e196))
+
 ## [0.55.4](https://github.com/Labushuya/so-mi/compare/v0.55.3...v0.55.4) (2026-07-03)
 
 
