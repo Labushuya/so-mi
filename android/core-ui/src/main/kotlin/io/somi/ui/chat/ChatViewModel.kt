@@ -575,34 +575,38 @@ class ChatViewModel @Inject constructor(
 
         // v0.39.0 — chat management slash commands
         // v0.46.12 — German aliases: /leeren, /umbenennen, /archivieren
-        when (text.lowercase()) {
+        // v0.50.9 — /rename and /umbenennen use startsWith to support inline names
+        val lc = text.lowercase()
+        if (lc.startsWith("/rename") || lc.startsWith("/umbenennen")) {
+            val inlineName = when {
+                lc.startsWith("/umbenennen") -> text.substring(11).trim()
+                else -> text.substring(7).trim()
+            }
+            val convId = chatRepository.currentConversationId
+            if (inlineName.isNotBlank()) {
+                viewModelScope.launch {
+                    chatRepository.appendUser(text)
+                    conversationRepository.rename(convId, inlineName)
+                    chatRepository.appendAssistant("✅ Umbenannt in \"$inlineName\".")
+                }
+            } else {
+                _awaitingRenameInput.value = true
+                viewModelScope.launch {
+                    chatRepository.appendUser(text)
+                    if (chatRepository.currentConversationId == convId) {
+                        chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Gib den neuen Namen ein.")
+                    }
+                }
+            }
+            return
+        }
+
+        when (lc) {
             "/clear", "/leeren" -> {
                 viewModelScope.launch {
                     chatRepository.appendUser(text)
                     chatRepository.clearCurrentConversation()
                     chatRepository.appendAssistant("✅ Gespräch geleert.")
-                }
-                return
-            }
-            "/rename", "/umbenennen" -> {
-                // If a name is provided inline ("/rename New Name"), rename directly.
-                // Otherwise start two-step dialog.
-                val inlineName = text.removePrefix("/rename").removePrefix("/umbenennen").trim()
-                val convId = chatRepository.currentConversationId
-                if (inlineName.isNotBlank()) {
-                    viewModelScope.launch {
-                        chatRepository.appendUser(text)
-                        conversationRepository.rename(convId, inlineName)
-                        chatRepository.appendAssistant("✅ Umbenannt in \"$inlineName\".")
-                    }
-                } else {
-                    _awaitingRenameInput.value = true
-                    viewModelScope.launch {
-                        chatRepository.appendUser(text)
-                        if (chatRepository.currentConversationId == convId) {
-                            chatRepository.appendAssistant("Wie soll dieses Gespräch heißen? Gib den neuen Namen ein.")
-                        }
-                    }
                 }
                 return
             }
