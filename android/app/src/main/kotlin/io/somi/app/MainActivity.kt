@@ -462,6 +462,15 @@ private fun SoMiAppRoot() {
                     onOpenSettings = { settingsRoute = SettingsRoute.Root },
                 )
             } else {
+                val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
+                val autoTts = uiSettings.autoTts
+                // Init TTS when entering chat; shutdown handled in DisposableEffect.
+                LaunchedEffect(Unit) {
+                    io.somi.voice.TtsHelper.init(context)
+                }
+                DisposableEffect(Unit) {
+                    onDispose { io.somi.voice.TtsHelper.shutdown() }
+                }
                 ChatShellScreen(
                     state = state,
                     messages = messages,
@@ -470,6 +479,7 @@ private fun SoMiAppRoot() {
                     versionCode = BuildConfig.VERSION_CODE,
                     embedderStatus = viewModel.embedderStatus.collectAsStateWithLifecycle().value,
                     activeToolHint = viewModel.activeToolHint.collectAsStateWithLifecycle().value,
+                    autoTts = autoTts,
                     onSubmit = viewModel::submit,
                     onCancelGeneration = viewModel::cancelGeneration,
                     onRetry = viewModel::retry,
@@ -491,6 +501,7 @@ private fun ChatShellScreen(
     versionCode: Int,
     embedderStatus: io.somi.ui.chat.ChatViewModel.EmbedderStatus,
     activeToolHint: String? = null,
+    autoTts: Boolean = false,
     onSubmit: (String) -> Unit,
     onCancelGeneration: () -> Unit,
     onRetry: (() -> Unit)? = null,
@@ -635,11 +646,18 @@ private fun ChatShellScreen(
             }
             items(messages, key = { it.id }) { msg ->
                 if (msg.author == Author.USER) UserBubble(text = msg.text)
-                else AssistantBubble(text = msg.text)
+                else AssistantBubble(
+                    text = msg.text,
+                    autoTts = autoTts,
+                    onSpeakRequest = { io.somi.voice.TtsHelper.speak(it) },
+                )
             }
             if (isGenerating) {
                 item(key = "live-$partialPromptId") {
-                    AssistantBubble(text = partial.ifEmpty { "…" })
+                    AssistantBubble(
+                        text = partial.ifEmpty { "…" },
+                        onSpeakRequest = { io.somi.voice.TtsHelper.speak(it) },
+                    )
                 }
             }
         }
@@ -799,14 +817,20 @@ private fun ErrorBanner(message: String, onRetry: (() -> Unit)?, kind: BannerKin
 }
 
 @Composable
-private fun AssistantBubble(text: String) {
+private fun AssistantBubble(
+    text: String,
+    autoTts: Boolean = false,
+    onSpeakRequest: ((String) -> Unit)? = null,
+) {
     val songbird = LocalSongbirdColors.current
     val shape = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 18.dp,
-        bottomEnd = 18.dp,
-        bottomStart = 0.dp,
+        topStart = 18.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 0.dp,
     )
+
+    LaunchedEffect(text) {
+        if (autoTts && onSpeakRequest != null) onSpeakRequest.invoke(text)
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
@@ -851,6 +875,20 @@ private fun AssistantBubble(text: String) {
                 color = songbird.bone.copy(alpha = 0.92f),
                 style = MaterialTheme.typography.bodyLarge,
             )
+            if (onSpeakRequest != null) {
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(songbird.bubbleBorder.copy(alpha = 0.3f))
+                        .clickable { onSpeakRequest.invoke(text) }
+                        .padding(3.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("🔊", style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }
