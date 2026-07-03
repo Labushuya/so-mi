@@ -233,9 +233,7 @@ private fun SoMiAppRoot() {
 
     // In-app update check — runs once at startup, shows banner if newer version available.
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
-    // downloadProgress: null = idle, 0..100 = downloading/done
-    var downloadProgress by remember { mutableStateOf<Int?>(null) }
-    var downloadDone by remember { mutableStateOf(false) }
+    var downloadState by remember { mutableStateOf<UpdateChecker.DownloadState?>(null) }
     val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         updateInfo = UpdateChecker.check(BuildConfig.VERSION_NAME)
@@ -262,45 +260,56 @@ private fun SoMiAppRoot() {
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.weight(1f),
                 )
-                if (downloadProgress != null || downloadDone) {
-                    // Live progress or "Installer geöffnet"
-                    Text(
-                        if (downloadDone) "Installer geöffnet ✓" else "⬆ ${downloadProgress}%",
-                        color = Color(0xFF81C784),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                } else {
-                    Surface(
-                        onClick = {
-                            updateScope.launch {
-                                downloadDone = false
-                                UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
-                                    .collect { p ->
-                                        downloadProgress = p
-                                        if (p == null) {
-                                            // Terminal — installer opened (or failed silently)
-                                            downloadProgress = null
-                                            downloadDone = true
-                                        }
-                                    }
-                            }
-                        },
-                        shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF2E5E2E),
-                        modifier = Modifier.padding(0.dp),
-                    ) {
+                when (val ds = downloadState) {
+                    is UpdateChecker.DownloadState.Progress -> {
                         Text(
-                            "⬆ Installieren",
-                            color = Color(0xFFB9F6CA),
+                            "⬆ ${ds.percent}%",
+                            color = Color(0xFF81C784),
                             style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         )
                     }
+                    is UpdateChecker.DownloadState.Done -> {
+                        Text(
+                            "✓ Benachrichtigung antippen zum Installieren",
+                            color = Color(0xFF81C784),
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    is UpdateChecker.DownloadState.Failed -> {
+                        Text(
+                            "Fehler — nochmal versuchen",
+                            color = Color(0xFFFF6B6B),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                    else -> {
+                        // Idle oder AlreadyRunning → Install-Button
+                        Surface(
+                            onClick = {
+                                updateScope.launch {
+                                    downloadState = null
+                                    UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
+                                        .collect { state -> downloadState = state }
+                                }
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF2E5E2E),
+                            modifier = Modifier.padding(0.dp),
+                        ) {
+                            Text(
+                                "⬆ Installieren",
+                                color = Color(0xFFB9F6CA),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            )
+                        }
+                    }
                 }
-                // Dismiss (nur wenn kein Download läuft)
-                if (downloadProgress == null) {
+                // Dismiss (kein Download aktiv)
+                if (downloadState !is UpdateChecker.DownloadState.Progress) {
                     Surface(
-                        onClick = { updateInfo = null; downloadDone = false },
+                        onClick = { updateInfo = null; downloadState = null },
                         shape = RoundedCornerShape(4.dp),
                         color = Color.Transparent,
                     ) {
