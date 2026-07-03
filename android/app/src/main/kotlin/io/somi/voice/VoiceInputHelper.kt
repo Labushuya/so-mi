@@ -9,21 +9,36 @@ import android.speech.SpeechRecognizer
 import android.util.Log
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Thin wrapper around Android SpeechRecognizer for voice input in the Composer.
  *
  * Must be called from the Main thread — SpeechRecognizer requires a Looper.
  * Returns the highest-confidence result, or null on any error / cancellation.
+ * [listening] prevents stacking multiple recognizer instances from rapid taps.
  */
 object VoiceInputHelper {
 
     private const val TAG = "VoiceInputHelper"
+    private val listening = AtomicBoolean(false)
 
     fun isAvailable(context: Context): Boolean =
         SpeechRecognizer.isRecognitionAvailable(context)
 
-    suspend fun listen(context: Context): String? =
+    suspend fun listen(context: Context): String? {
+        if (!listening.compareAndSet(false, true)) {
+            Log.d(TAG, "already listening, ignoring tap")
+            return null
+        }
+        return try {
+            listenInternal(context)
+        } finally {
+            listening.set(false)
+        }
+    }
+
+    private suspend fun listenInternal(context: Context): String? =
         suspendCancellableCoroutine { cont ->
             val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
 

@@ -6,9 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
-import android.os.Environment
 import android.util.Log
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -18,24 +16,11 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 
-/**
- * Checks GitHub Releases for a newer version of So-Mi and handles the full
- * download + install flow via DownloadManager + ACTION_INSTALL_PACKAGE.
- *
- * Why DownloadManager instead of ACTION_VIEW:
- *  - GitHub APK URLs redirect. ACTION_VIEW in the browser triggers two
- *    download attempts (one for the redirect, one for the final URL) and
- *    leaves a dangling partial file every time.
- *  - DownloadManager follows redirects natively, shows system progress,
- *    and lands the file in the app's external files dir where FileProvider
- *    can serve it to the PackageInstaller — no browser required.
- *  - REQUEST_INSTALL_PACKAGES permission is declared in the manifest so the
- *    "Install without scan" prompt works (the button was dead without it).
- */
 object UpdateChecker {
     private const val TAG = "UpdateChecker"
     private const val RELEASES_URL =
@@ -52,6 +37,9 @@ object UpdateChecker {
     private val lastCheckTime = AtomicLong(0L)
     private val lastResult = AtomicReference<UpdateInfo?>(null)
 
+    // Prevents concurrent downloads from multiple taps.
+    private val downloadInFlight = AtomicBoolean(false)
+
     data class UpdateInfo(
         val latestVersion: String,
         val apkUrl: String,
@@ -60,14 +48,12 @@ object UpdateChecker {
         val isUpToDate: Boolean,
     )
 
-    /** Auto-check on app start — always fresh, bypasses throttle. */
     suspend fun check(currentVersionName: String): UpdateInfo? =
         fetchLatest(currentVersionName).also {
             lastResult.set(it)
             lastCheckTime.set(System.currentTimeMillis())
         }
 
-    /** Manual "Jetzt prüfen" button — throttled to one call per 30s. */
     suspend fun checkManually(currentVersionName: String): UpdateInfo? {
         val age = System.currentTimeMillis() - lastCheckTime.get()
         if (age < CACHE_TTL_MS) {
@@ -81,89 +67,104 @@ object UpdateChecker {
     }
 
     /**
-     * Downloads the APK via DownloadManager into the app's external files
-     * dir, then launches ACTION_INSTALL_PACKAGE once the download completes.
+     * Downloads the APK via DownloadManager and opens it with ACTION_VIEW using
+     * the DownloadManager's own content:// URI — no FileProvider needed, works
+     * on all OEM variants including MagicOS.
      *
-     * This avoids the double-download bug from using ACTION_VIEW + browser
-     * (GitHub redirects confuse Chrome's download manager) and ensures the
-     * "Install without scan" button is tappable (needs REQUEST_INSTALL_PACKAGES).
+     * Guarded by [downloadInFlight] so that rapid taps only start one download.
+     * Returns false immediately if a download is already running.
+     *
+     * Caller should show a "Laden…" state while this suspends and reset it in finally.
      */
-    suspend fun downloadAndInstall(context: Context, apkUrl: String, versionName: String) {
-        withContext(Dispatchers.IO) {
-            val updatesDir = File(context.getExternalFilesDir(null), "updates").also { it.mkdirs() }
-            val destFile = File(updatesDir, "so-mi-$versionName.apk")
-            // Remove stale file from a previous failed attempt.
-            if (destFile.exists()) destFile.delete()
+    suspend fun downloadAndInstall(context: Context, apkUrl: String, versionName: String): Boolean {
+        // Debounce: reject concurrent calls
+        if (!downloadInFlight.compareAndSet(false, true)) {
+            Log.d(TAG, "download already in flight, ignoring tap")
+            return false
+        }
+        return try {
+            withContext(Dispatchers.IO) {
+                val updatesDir = File(context.getExternalFilesDir(null), "updates")
+                    .also { it.mkdirs() }
+                val destFile = File(updatesDir, "so-mi-$versionName.apk")
+                if (destFile.exists()) destFile.delete()
 
-            val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val req = DownloadManager.Request(Uri.parse(apkUrl)).apply {
-                setTitle("So-Mi Update")
-                setDescription("v$versionName wird heruntergeladen…")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationUri(Uri.fromFile(destFile))
-                setAllowedNetworkTypes(
-                    DownloadManager.Request.NETWORK_WIFI or
-                    DownloadManager.Request.NETWORK_MOBILE
-                )
-            }
-            val downloadId = dm.enqueue(req)
-            Log.i(TAG, "download enqueued id=$downloadId dest=${destFile.path}")
+                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val req = DownloadManager.Request(Uri.parse(apkUrl)).apply {
+                    setTitle("So-Mi v$versionName")
+                    setDescription("Update wird heruntergeladen…")
+                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    setDestinationUri(Uri.fromFile(destFile))
+                    setAllowedNetworkTypes(
+                        DownloadManager.Request.NETWORK_WIFI or
+                        DownloadManager.Request.NETWORK_MOBILE
+                    )
+                    // Prevent DownloadManager from notifying before we open the installer
+                    setMimeType("application/vnd.android.package-archive")
+                }
+                val downloadId = dm.enqueue(req)
+                Log.i(TAG, "download enqueued id=$downloadId")
 
-            // Wait for the download to complete (or time out after 2 min).
-            val success = withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) {
-                suspendCancellableCoroutine { cont ->
-                    val receiver = object : BroadcastReceiver() {
-                        override fun onReceive(ctx: Context, intent: Intent) {
-                            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                            if (id != downloadId) return
-                            ctx.unregisterReceiver(this)
-                            // Verify the download succeeded before resuming.
-                            val query = DownloadManager.Query().setFilterById(downloadId)
-                            val cursor = dm.query(query)
-                            val ok = cursor?.use { c ->
-                                c.moveToFirst() &&
-                                c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
-                                    DownloadManager.STATUS_SUCCESSFUL
-                            } ?: false
-                            cont.resume(ok)
+                val success = withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) {
+                    suspendCancellableCoroutine { cont ->
+                        val receiver = object : BroadcastReceiver() {
+                            override fun onReceive(ctx: Context, intent: Intent) {
+                                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                                if (id != downloadId) return
+                                runCatching { ctx.unregisterReceiver(this) }
+                                val cursor = dm.query(
+                                    DownloadManager.Query().setFilterById(downloadId)
+                                )
+                                val ok = cursor?.use { c ->
+                                    c.moveToFirst() &&
+                                    c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
+                                        DownloadManager.STATUS_SUCCESSFUL
+                                } ?: false
+                                if (cont.isActive) cont.resume(ok)
+                            }
+                        }
+                        context.registerReceiver(
+                            receiver,
+                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                            Context.RECEIVER_NOT_EXPORTED,
+                        )
+                        cont.invokeOnCancellation {
+                            runCatching { context.unregisterReceiver(receiver) }
+                            dm.remove(downloadId)
                         }
                     }
-                    context.registerReceiver(
-                        receiver,
-                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                        Context.RECEIVER_NOT_EXPORTED,
-                    )
-                    cont.invokeOnCancellation {
-                        runCatching { context.unregisterReceiver(receiver) }
-                        dm.remove(downloadId)
-                    }
+                } ?: run {
+                    Log.w(TAG, "download timed out")
+                    dm.remove(downloadId)
+                    false
                 }
-            } ?: run {
-                Log.w(TAG, "download timed out, cancelling")
-                dm.remove(downloadId)
-                false
-            }
 
-            if (success && destFile.exists()) {
-                launchInstaller(context, destFile)
-            } else {
-                Log.e(TAG, "download failed or file missing after completion")
+                if (success) {
+                    // Use DownloadManager's own content:// URI — avoids FileProvider
+                    // incompatibilities on HONOR/MagicOS and opens PackageInstaller directly.
+                    val installerUri = dm.getUriForDownloadedFile(downloadId)
+                    if (installerUri != null) {
+                        launchInstaller(context, installerUri)
+                    } else {
+                        Log.e(TAG, "DownloadManager returned null URI for $downloadId")
+                    }
+                    true
+                } else {
+                    false
+                }
             }
+        } finally {
+            downloadInFlight.set(false)
         }
     }
 
-    private fun launchInstaller(context: Context, apkFile: File) {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            apkFile,
-        )
-        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+    private fun launchInstaller(context: Context, uri: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
         runCatching { context.startActivity(intent) }
-            .onFailure { Log.e(TAG, "launchInstaller failed", it) }
+            .onFailure { Log.e(TAG, "launchInstaller failed: $it") }
     }
 
     private suspend fun fetchLatest(currentVersionName: String): UpdateInfo? =
