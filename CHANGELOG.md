@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.3](https://github.com/Labushuya/so-mi/compare/v0.55.2...v0.55.3) (2026-07-03)
+
+
+### Bug Fixes
+
+* Progress cap 100%, Installer-Fallback-Kette, Banner zeigt Status nach Abschluss ([#265](https://github.com/Labushuya/so-mi/issues/265)) ([8e95c00](https://github.com/Labushuya/so-mi/commit/8e95c0039a799451955c92286a483f83facf8398))
+
 ## [0.55.2](https://github.com/Labushuya/so-mi/compare/v0.55.1...v0.55.2) (2026-07-03)
 
 
