@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.4](https://github.com/Labushuya/so-mi/compare/v0.55.3...v0.55.4) (2026-07-03)
+
+
+### Bug Fixes
+
+* Updater-Neuschreibung — kein AtomicBoolean-Singleton, System-Notification für Install ([#267](https://github.com/Labushuya/so-mi/issues/267)) ([3e96c08](https://github.com/Labushuya/so-mi/commit/3e96c088f4c5f0306c189971979d45eadfdcb855))
+
 ## [0.55.3](https://github.com/Labushuya/so-mi/compare/v0.55.2...v0.55.3) (2026-07-03)
 
 
