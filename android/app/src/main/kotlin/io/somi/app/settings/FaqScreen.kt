@@ -92,6 +92,9 @@ val FAQ_ENTRIES = listOf(
         "/note — Fakt direkt speichern\n/merke — Fakt speichern (Deutsch)\n/remember — Fakt speichern (English)\n/trigger_error — Test-Band (rot)\n/trigger_warning — Test-Band (gelb)\n/trigger_success — Test-Band (grün)\n/trigger_info — Test-Band (grau)",
         "Slash-Commands"),
     // System
+    FaqEntry("Warum muss ich die APK beim Update scannen lassen?",
+        "Das ist eine MagicOS-Systemeinstellung, kein App-Problem.\n\nEinmalige Lösung:\nEinstellungen → Datenschutz → Besondere App-Zugriffe → Unbekannte Apps installieren → So-Mi → 'Dieser Quelle vertrauen' aktivieren.\n\nDanach erscheint 'Ohne Scan installieren' und ist tippbar.",
+        "System"),
     FaqEntry("Was bedeutet das gelbe Band 'Gedächtnis-Modell fehlt'?",
         "Das Embedder-Modell (~470 MB) ist noch nicht heruntergeladen. So-Mi kann sich noch nichts merken. Einstellungen → Modelle & Abhängigkeiten → Gedächtnis-Modell (Embedder) → 'Erneut laden'.",
         "System"),
