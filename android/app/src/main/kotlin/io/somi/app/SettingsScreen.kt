@@ -588,15 +588,15 @@ private fun DiagnosticsSection(
                 }
                 checked && updateResult?.isNewer == true -> {
                     val result = updateResult!!
-                    Text(
-                        text = "v${result.latestVersion} verfügbar",
-                        color = Color(0xFF4CAF50),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable { UpdateChecker.openInstallPage(ctx, result.apkUrl) }
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    SongbirdButton(
+                        label = "⬆ v${result.latestVersion} installieren",
+                        kind = SongbirdButtonKind.Ghost,
+                        minHeight = 32.dp,
+                        onClick = {
+                            coroutineScope.launch {
+                                UpdateChecker.downloadAndInstall(ctx, result.apkUrl, result.latestVersion)
+                            }
+                        },
                     )
                 }
                 checked -> {
