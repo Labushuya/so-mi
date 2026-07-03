@@ -67,6 +67,8 @@ class UiSettingsRepository @Inject constructor(
 
     suspend fun setToolMode(mode: ToolMode) = save(_state.value.copy(toolMode = mode))
 
+    suspend fun setAutoTts(enabled: Boolean) = save(_state.value.copy(autoTts = enabled))
+
     suspend fun save(settings: UiSettings) = withContext(Dispatchers.IO) {
         _state.value = settings
         try {
@@ -74,6 +76,7 @@ class UiSettingsRepository @Inject constructor(
                 put("immersive", settings.immersive)
                 put("greetingMode", settings.greetingMode.name)
                 put("toolMode", settings.toolMode.name)
+                put("autoTts", settings.autoTts)
             }
             file.writeText(json.toString())
         } catch (t: Throwable) {
@@ -96,6 +99,7 @@ class UiSettingsRepository @Inject constructor(
                 toolMode = runCatching {
                     ToolMode.valueOf(json.optString("toolMode", UiSettings.DEFAULTS.toolMode.name))
                 }.getOrDefault(UiSettings.DEFAULTS.toolMode),
+                autoTts = json.optBoolean("autoTts", false),
             )
         } catch (t: Throwable) {
             Log.w(TAG, "load failed; using defaults", t)
@@ -115,6 +119,7 @@ data class UiSettings(
     val immersive: Boolean = true,
     val greetingMode: GreetingMode = GreetingMode.COLD_START,
     val toolMode: ToolMode = ToolMode.COMPACT,
+    val autoTts: Boolean = false,
 ) {
     companion object {
         val DEFAULTS = UiSettings()
