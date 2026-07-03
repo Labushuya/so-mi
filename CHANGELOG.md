@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.0](https://github.com/Labushuya/so-mi/compare/v0.54.1...v0.55.0) (2026-07-03)
+
+
+### Features
+
+* Download-Fortschritt in-app, zweistufiges Mikrofon-Feedback, Mic immer sichtbar ([#259](https://github.com/Labushuya/so-mi/issues/259)) ([c5fb4db](https://github.com/Labushuya/so-mi/commit/c5fb4db9176c1db99a6cfce2aed6d4a095db3780))
+
 ## [0.54.1](https://github.com/Labushuya/so-mi/compare/v0.54.0...v0.54.1) (2026-07-03)
 
 
