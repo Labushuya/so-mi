@@ -736,6 +736,20 @@ class ChatViewModel @Inject constructor(
                         chatRepository.updateAssistantMessage(ackId, "\"${outcome.factText}\" gespeichert.")
                     }
                 }
+
+                // D2 OKF — fire-and-forget entity extraction AFTER reclassify.
+                // Runs on IO dispatcher; never blocks the main response.
+                // Resolves the .md file from the topic to pass to RagOrchestrator.
+                viewModelScope.launch(Dispatchers.IO) {
+                    runCatching {
+                        val root = ragOrchestrator.memoryFilesRootDir
+                        val categoryId = outcome.topic.id
+                        val factFile = java.io.File(root, "$categoryId.md")
+                        if (factFile.exists()) {
+                            ragOrchestrator.extractAndLinkEntities(outcome.factText, categoryId, factFile)
+                        }
+                    }.onFailure { Log.w(TAG, "OKF extractAndLink failed", it) }
+                }
             }
             is io.somi.rag.SaveOutcome.SaveFailed -> {
                 val msg = when (outcome.reason) {
