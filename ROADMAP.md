@@ -12,7 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.52.0 | ✅ live | Manueller Update-Check in Einstellungen → Diagnose |
+| v0.52.0 | ✅ stable | Manueller Update-Check in Einstellungen → Diagnose |
 | v0.51.1 | ✅ live | okhttp-Dep fix für UpdateChecker |
 | v0.51.0 | ✅ live | Greeting in aktiver Konversation + In-App-Update-Banner |
 | v0.50.6 | ✅ live | KRITISCH: withContext(IO) Crash entfernt |
@@ -122,7 +122,7 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.52.0 — OKF-Memory (Agentic Memory Flywheel)
+### v0.53.0 — OKF-Memory (Agentic Memory Flywheel)
 **Grundlage:** So-Mi speichert Fakten als Flat-Markdown. OKF ergänzt strukturierte YAML-Frontmatter + verlinkte Entitäten.
 
 Kernkonzept (Patrick / Agentic Memory Flywheel):
@@ -139,7 +139,7 @@ Deliverables:
 4. Recall-Erweiterung: wenn semantisch gefundener Fakt auf andere Entität linkt → diese nachladen (1 Hop)
 5. Duplikat-Erkennung erweitern: inhaltliche Überschneidung → `superseded_by` statt Duplikat-Abweisung
 
-### v0.53.0 — Voice (Spracheingabe)
+### v0.54.0 — Voice (Spracheingabe)
 - SpeechRecognizer API (Android native, kein Modell-Download)
 - Mikrofon-Button im Composer
 - Whisper-tiny als Offline-Fallback (sherpa-onnx)
