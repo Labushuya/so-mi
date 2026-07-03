@@ -15,6 +15,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * D5 — Supersedes-Semantik für sich widersprechende Fakten.
+ *
+ * Wenn ein neuer Fakt einem bestehenden Fakt ähnelt (Levenshtein 3–10,
+ * beide ≤ 60 Zeichen), wird der alte Fakt als ~~überschrieben~~ markiert
+ * statt den neuen Eintrag einfach anzuhängen. Exakte Duplikate (≤ 2)
+ * werden wie bisher übersprungen.
+ *
+ * @see SimilarityResult
+ */
+
+/**
  * v0.14.0 M4 — Markdown mirror of the conversational memory.
  *
  * Disk layout:
@@ -44,6 +55,29 @@ import javax.inject.Singleton
  *     - Christopher heißt Christopher (gespeichert: 2026-06-08 15:14)
  *     - Hat einen Bruder namens Stefan (gespeichert: 2026-06-08 15:30)
  */
+// ---------------------------------------------------------------------------
+// D5 Similarity contract
+// ---------------------------------------------------------------------------
+
+sealed interface SimilarityResult {
+    /** Kein ähnlicher Fakt gefunden — neuen Fakt normal anhängen. */
+    data object None : SimilarityResult
+
+    /** Levenshtein ≤ 2 oder exakt gleich — neuen Fakt verwerfen. */
+    data object Duplicate : SimilarityResult
+
+    /**
+     * Levenshtein 3–10, beide Strings ≤ 60 Zeichen — alter Fakt wird als
+     * überschrieben markiert, neuer Fakt wird angehängt.
+     *
+     * @param existingLine  Die vollständige Markdown-Zeile (inkl. "- " Prefix und Timestamp)
+     * @param existingFact  Nur der normalisierte Faktteil (ohne Timestamp, ohne "- ")
+     */
+    data class Similar(val existingLine: String, val existingFact: String) : SimilarityResult
+}
+
+// ---------------------------------------------------------------------------
+
 @Singleton
 class MemoryFileRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -63,10 +97,13 @@ class MemoryFileRepository @Inject constructor(
         File(rootDir, "${topic.id}.md")
 
     /**
-     * Append a single fact to its topic file. Idempotent at the
-     * filesystem level (we never check for duplicates — the
-     * ObjectBox row id is the source of truth, the `.md` is just a
-     * mirror).
+     * Append a single fact to its topic file.
+     *
+     * D5 Supersedes-Semantik:
+     * - [SimilarityResult.Duplicate]: überspringen
+     * - [SimilarityResult.Similar]: alten Fakt als ~~überschrieben~~ markieren,
+     *   neuen Fakt anhängen
+     * - [SimilarityResult.None]: normal anhängen
      */
     suspend fun append(
         fact: String,
@@ -77,30 +114,58 @@ class MemoryFileRepository @Inject constructor(
             val file = fileFor(topic)
             file.parentFile?.mkdirs()
             if (!file.exists()) writeHeader(file, topic)
-            // Deduplicate: skip if a very similar fact already exists
-            if (!isDuplicate(fact, file)) {
-                file.appendText(formatBullet(fact, createdAt))
-                Log.i(TAG, "appended: $fact")
-            } else {
-                Log.i(TAG, "skipped duplicate: $fact")
+            when (val result = findSimilarFact(fact, file)) {
+                is SimilarityResult.Duplicate -> {
+                    Log.i(TAG, "skipped duplicate: $fact")
+                }
+                is SimilarityResult.Similar -> {
+                    // Alte Zeile durch Strikethrough-Marker ersetzen.
+                    // Line-by-line rebuild ist CRLF-safe (readLines() stripped endings).
+                    val supersededLine = "~~${result.existingFact}~~ _(überschrieben)_"
+                    val rebuilt = file.readLines().joinToString("\n") { line ->
+                        if (line.trimEnd() == result.existingLine) supersededLine else line
+                    } + "\n"
+                    file.writeText(rebuilt)
+                    file.appendText(formatBullet(fact, createdAt))
+                    Log.i(TAG, "superseded: '${result.existingFact}' → '$fact'")
+                }
+                SimilarityResult.None -> {
+                    file.appendText(formatBullet(fact, createdAt))
+                    Log.i(TAG, "appended: $fact")
+                }
             }
         }
     }
 
     /**
-     * v0.29.0 — Duplikat-Erkennung. Gibt true zurück wenn [newFact] bereits
-     * in [file] enthalten ist (exakt oder fast gleich — normalisierter Text
-     * mit Levenshtein-Distanz ≤ 2 bei Fakten bis 30 Zeichen).
+     * D5 — Ähnlichkeitsklassifikation für [newFact] gegen alle Fakten in [file].
+     *
+     * Rückgabe:
+     * - [SimilarityResult.Duplicate]  wenn Levenshtein ≤ 2 oder exakter Match
+     * - [SimilarityResult.Similar]    wenn Levenshtein 3–10 UND beide Strings ≤ 60 Zeichen
+     * - [SimilarityResult.None]       sonst
      */
-    private fun isDuplicate(newFact: String, file: File): Boolean {
-        if (!file.exists()) return false
+    private fun findSimilarFact(newFact: String, file: File): SimilarityResult {
+        if (!file.exists()) return SimilarityResult.None
         val normalized = newFact.trim().lowercase()
-        val existing = file.readLines()
-            .filter { it.trimStart().startsWith("- ") }
-            .map { it.trimStart().removePrefix("- ").replace(Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$"), "").trim().lowercase() }
-        return existing.any { ex ->
-            ex == normalized || levenshtein(ex, normalized) <= 2
+        val bulletPattern = Regex("\\s+_\\(gespeichert:.*?\\)_\\s*$")
+        for (line in file.readLines()) {
+            if (!line.trimStart().startsWith("- ")) continue
+            // Überspringe bereits überschriebene Zeilen
+            if (line.trimStart().startsWith("- ~~")) continue
+            val existingFact = line.trimStart().removePrefix("- ").replace(bulletPattern, "").trim()
+            val existingNorm = existingFact.lowercase()
+            val dist = levenshtein(existingNorm, normalized)
+            when {
+                dist <= 2 -> return SimilarityResult.Duplicate
+                dist <= 10 && existingNorm.length <= 60 && normalized.length <= 60 ->
+                    return SimilarityResult.Similar(
+                        existingLine = line.trimEnd(),
+                        existingFact = existingFact,
+                    )
+            }
         }
+        return SimilarityResult.None
     }
 
     private fun levenshtein(a: String, b: String): Int {
