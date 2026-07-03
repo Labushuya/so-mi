@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.0](https://github.com/Labushuya/so-mi/compare/v0.55.9...v0.56.0) (2026-07-03)
+
+
+### Features
+
+* TTS — 🔊-Button an jeder Antwort + Auto-Vorlesen-Toggle in Einstellungen ([#277](https://github.com/Labushuya/so-mi/issues/277)) ([bc026e5](https://github.com/Labushuya/so-mi/commit/bc026e54d35efbe4a4aead760346e0bc44304140))
+
 ## [0.55.9](https://github.com/Labushuya/so-mi/compare/v0.55.8...v0.55.9) (2026-07-03)
 
 
