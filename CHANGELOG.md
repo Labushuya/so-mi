@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.9](https://github.com/Labushuya/so-mi/compare/v0.50.8...v0.50.9) (2026-07-03)
+
+
+### Bug Fixes
+
+* /rename startsWith statt exact-match — /rename The Legacy funktioniert jetzt ([#245](https://github.com/Labushuya/so-mi/issues/245)) ([32cba1f](https://github.com/Labushuya/so-mi/commit/32cba1f63b81564941cdead4d2d9229e23d92be0))
+
 ## [0.50.8](https://github.com/Labushuya/so-mi/compare/v0.50.7...v0.50.8) (2026-07-02)
 
 
