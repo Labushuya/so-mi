@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/Labushuya/so-mi/compare/v0.52.0...v0.53.0) (2026-07-03)
+
+
+### Features
+
+* OKF-Memory — YAML-Frontmatter, Entitäts-Extraktion, 1-Hop Recall, Supersedes ([#251](https://github.com/Labushuya/so-mi/issues/251)) ([4a50b54](https://github.com/Labushuya/so-mi/commit/4a50b54a66f3b90e415ce4d84f0d43b273848fa9))
+
 ## [0.52.0](https://github.com/Labushuya/so-mi/compare/v0.51.1...v0.52.0) (2026-07-03)
 
 
