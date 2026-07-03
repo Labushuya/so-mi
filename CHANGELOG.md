@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.2](https://github.com/Labushuya/so-mi/compare/v0.55.1...v0.55.2) (2026-07-03)
+
+
+### Bug Fixes
+
+* Updater hängt bei X% + PackageInstaller reagiert nicht + Mic-Stop-Lag ([#263](https://github.com/Labushuya/so-mi/issues/263)) ([9802f56](https://github.com/Labushuya/so-mi/commit/9802f56f3317414ef75fe40e6879398a11924c24))
+
 ## [0.55.1](https://github.com/Labushuya/so-mi/compare/v0.55.0...v0.55.1) (2026-07-03)
 
 
