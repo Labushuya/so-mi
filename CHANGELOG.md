@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.6](https://github.com/Labushuya/so-mi/compare/v0.55.5...v0.55.6) (2026-07-03)
+
+
+### Bug Fixes
+
+* ChannelResult.getOrElse statt getOrDefault (compile error) ([aa5b609](https://github.com/Labushuya/so-mi/commit/aa5b609d9d13acdf28205d17923ca0d034189147))
+
 ## [0.55.5](https://github.com/Labushuya/so-mi/compare/v0.55.4...v0.55.5) (2026-07-03)
 
 
