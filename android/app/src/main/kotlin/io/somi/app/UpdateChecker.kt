@@ -168,7 +168,7 @@ object UpdateChecker {
                     // Check for receiver signal (non-blocking).
                     val done = doneChannel.tryReceive()
                     if (done.isSuccess) {
-                        val success = done.getOrElse { false }
+                        val success = done.getOrNull() ?: false
                         emit(if (success) DownloadState.Progress(100) else DownloadState.Failed)
                         emit(if (success) DownloadState.Done else DownloadState.Failed)
                         terminated = true
