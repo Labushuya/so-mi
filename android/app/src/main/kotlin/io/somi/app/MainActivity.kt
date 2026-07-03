@@ -231,7 +231,8 @@ private fun SoMiAppRoot() {
 
     // In-app update check — runs once at startup, shows banner if newer version available.
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
-    var updateDownloading by remember { mutableStateOf(false) }
+    // downloadProgress: null = idle, 0..99 = downloading, terminates when Flow closes
+    var downloadProgress by remember { mutableStateOf<Int?>(null) }
     val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         updateInfo = UpdateChecker.check(BuildConfig.VERSION_NAME)
@@ -245,7 +246,7 @@ private fun SoMiAppRoot() {
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1A2A1A)),
             shape = RoundedCornerShape(8.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E5E2E)),
+            border = BorderStroke(1.dp, Color(0xFF2E5E2E)),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -258,23 +259,25 @@ private fun SoMiAppRoot() {
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.weight(1f),
                 )
-                // Install button — clearly tappable
-                if (updateDownloading) {
+                if (downloadProgress != null) {
+                    // Live progress — nicht anklickbar während Download läuft
                     Text(
-                        "Laden…",
+                        "⬆ ${downloadProgress}%",
                         color = Color(0xFF81C784),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                     )
                 } else {
                     Surface(
                         onClick = {
                             updateScope.launch {
-                                updateDownloading = true
-                                try {
-                                    UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
-                                } finally {
-                                    updateDownloading = false
-                                }
+                                UpdateChecker.downloadAndInstall(ctx, info.apkUrl, info.latestVersion)
+                                    .collect { p ->
+                                        downloadProgress = p
+                                        if (p == null) {
+                                            // Terminal — installer opened or failed
+                                            updateInfo = null
+                                        }
+                                    }
                             }
                         },
                         shape = RoundedCornerShape(6.dp),
@@ -289,18 +292,20 @@ private fun SoMiAppRoot() {
                         )
                     }
                 }
-                // Dismiss
-                Surface(
-                    onClick = { updateInfo = null },
-                    shape = RoundedCornerShape(4.dp),
-                    color = Color.Transparent,
-                ) {
-                    Text(
-                        "✕",
-                        color = Color(0xFF81C784),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
-                    )
+                // Dismiss (nur wenn kein Download läuft)
+                if (downloadProgress == null) {
+                    Surface(
+                        onClick = { updateInfo = null },
+                        shape = RoundedCornerShape(4.dp),
+                        color = Color.Transparent,
+                    ) {
+                        Text(
+                            "✕",
+                            color = Color(0xFF81C784),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+                        )
+                    }
                 }
             }
         }
@@ -873,19 +878,25 @@ private fun Composer(
     val voiceScope = rememberCoroutineScope()
     val voiceContext = androidx.compose.ui.platform.LocalContext.current
     var isListening by remember { mutableStateOf(false) }
+    var isReady by remember { mutableStateOf(false) }
     val recordPermLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
             voiceScope.launch {
                 isListening = true
+                isReady = false
                 try {
-                    val result = io.somi.voice.VoiceInputHelper.listen(voiceContext)
+                    val result = io.somi.voice.VoiceInputHelper.listen(
+                        voiceContext,
+                        onReady = { isReady = true },
+                    )
                     if (result != null) {
                         input = TextFieldValue(text = result, selection = androidx.compose.ui.text.TextRange(result.length))
                     }
                 } finally {
                     isListening = false
+                    isReady = false
                 }
             }
         }
@@ -1042,25 +1053,36 @@ private fun Composer(
                         Text("/", color = songbird.glass, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
 
-                    if (!isGenerating) {
-                        // Mikrofon-Button — nur sichtbar wenn nicht generiert wird
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (isListening) songbird.signal.copy(alpha = 0.3f) else songbird.bubbleBorder.copy(alpha = 0.3f))
-                                .clickable(enabled = !isListening) {
-                                    recordPermLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                                }
-                                .padding(4.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = if (isListening) "◉" else "🎤",
-                                color = if (isListening) songbird.signal else songbird.glass,
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                        }
+                    // Mikrofon-Button — immer sichtbar, disabled während Generation
+                    // Drei Zustände: neutral / warten (isListening) / aufnahme (isReady)
+                    val micBg = when {
+                        isReady     -> songbird.signal.copy(alpha = 0.4f)
+                        isListening -> songbird.signal.copy(alpha = 0.15f)
+                        isGenerating -> songbird.bubbleBorder.copy(alpha = 0.1f)
+                        else        -> songbird.bubbleBorder.copy(alpha = 0.3f)
+                    }
+                    val micGlyph = when {
+                        isReady     -> "◉"
+                        isListening -> "◌"
+                        else        -> "🎤"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(micBg)
+                            .clickable(enabled = !isListening && !isGenerating) {
+                                recordPermLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                            }
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = micGlyph,
+                            color = if (isListening || isReady) songbird.signal
+                                    else songbird.glass.copy(alpha = if (isGenerating) 0.3f else 1f),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
                     }
 
                     if (isGenerating) {

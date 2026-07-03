@@ -26,19 +26,19 @@ object VoiceInputHelper {
     fun isAvailable(context: Context): Boolean =
         SpeechRecognizer.isRecognitionAvailable(context)
 
-    suspend fun listen(context: Context): String? {
+    suspend fun listen(context: Context, onReady: (() -> Unit)? = null): String? {
         if (!listening.compareAndSet(false, true)) {
             Log.d(TAG, "already listening, ignoring tap")
             return null
         }
         return try {
-            listenInternal(context)
+            listenInternal(context, onReady)
         } finally {
             listening.set(false)
         }
     }
 
-    private suspend fun listenInternal(context: Context): String? =
+    private suspend fun listenInternal(context: Context, onReady: (() -> Unit)?): String? =
         suspendCancellableCoroutine { cont ->
             val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
 
@@ -82,7 +82,9 @@ object VoiceInputHelper {
                     }
                 }
 
-                override fun onReadyForSpeech(params: Bundle?) = Unit
+                override fun onReadyForSpeech(params: Bundle?) {
+                    onReady?.invoke()
+                }
                 override fun onBeginningOfSpeech() = Unit
                 override fun onRmsChanged(rmsdB: Float) = Unit
                 override fun onBufferReceived(buffer: ByteArray?) = Unit
