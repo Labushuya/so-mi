@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.0](https://github.com/Labushuya/so-mi/compare/v0.53.1...v0.54.0) (2026-07-03)
+
+
+### Features
+
+* Spracheingabe via SpeechRecognizer + README aktualisiert ([#255](https://github.com/Labushuya/so-mi/issues/255)) ([40b7c5d](https://github.com/Labushuya/so-mi/commit/40b7c5d7e53c87f115d92b5f706b923b4af2075c))
+
 ## [0.53.1](https://github.com/Labushuya/so-mi/compare/v0.53.0...v0.53.1) (2026-07-03)
 
 
