@@ -2,9 +2,14 @@ package io.somi.rag
 
 import android.util.Log
 import io.somi.rag.embed.Embedder
+import io.somi.rag.entity.EntityExtractor
+import io.somi.rag.memory.FrontmatterWriter
 import io.somi.rag.memory.MemoryFileRepository
 import io.somi.rag.memory.MemoryStore
 import io.somi.rag.memory.MemoryTopic
+import io.somi.rag.memory.OkfIndexEntry
+import io.somi.rag.memory.OkfRelation
+import io.somi.rag.memory.RelationIndex
 import io.somi.rag.trigger.TriggerDetector
 import io.somi.rag.trigger.TriggerMatch
 import java.io.File
@@ -38,9 +43,13 @@ class RagOrchestrator @Inject constructor(
     private val embedder: Embedder,
     private val memoryStore: MemoryStore,
     private val memoryFiles: MemoryFileRepository,
+    private val entityExtractor: EntityExtractor,
 ) {
 
     private data class InlineMeta(val fact: String, val categoryHint: String?, val keywords: List<String>)
+
+    /** Exposed for ChatViewModel to resolve .md file paths for OKF extraction. */
+    val memoryFilesRootDir: java.io.File get() = memoryFiles.rootDir
 
     private fun extractInlineMeta(text: String): InlineMeta {
         var working = text.trim()
@@ -455,23 +464,101 @@ class RagOrchestrator @Inject constructor(
      * @return formatted context string, or null if no facts exist.
      */
     suspend fun recallForPrompt(userText: String = ""): String? {
-        // If embedder is available and we have a query, use semantic HNSW recall
         if (userText.isNotBlank() && runCatching { embedder.isAvailable() }.getOrDefault(false)) {
             return withContext(Dispatchers.IO) {
                 runCatching {
                     val queryEmbedding = embedder.embed(userText)
                     val ranked = memoryStore.topK(queryEmbedding, k = MAX_RECALL_FACTS)
                     if (ranked.isEmpty()) return@runCatching recallFallback()
+
+                    val root = memoryFiles.rootDir
+                    val primaryFacts = ranked.map { it.fact.fact }
+
+                    // D4: 1-Hop — collect all relations from the RelationIndex entries
+                    // for each ranked fact's topic. RelationIndex is per-fact, not per-file,
+                    // so this is authoritative regardless of how many facts share a file.
+                    val allRelations = mutableListOf<OkfRelation>()
+                    val seenTopics = HashSet<String>()
+                    for (rf in ranked) {
+                        val topicId = rf.fact.topic
+                        if (!seenTopics.add(topicId)) continue
+                        allRelations += RelationIndex.loadFor(root, topicId)
+                            .flatMap { it.relations }
+                    }
+
+                    val linkedFacts = if (allRelations.isNotEmpty()) {
+                        loadLinkedFacts(root, allRelations, limit = MAX_LINKED_FACTS)
+                    } else emptyList()
+
                     buildString {
                         append("Was du über deinen Nutzer weißt (diese Fakten kennt der Nutzer — nutze sie natürlich im Gespräch, wiederhole sie nicht einfach):\n")
-                        ranked.forEach { append("- ${it.fact.fact}\n") }
+                        primaryFacts.forEach { append("- $it\n") }
+                        if (linkedFacts.isNotEmpty()) {
+                            append("\nVerknüpfte Informationen:\n")
+                            linkedFacts.forEach { append("- $it\n") }
+                        }
                         append("\n")
                     }
                 }.getOrElse { recallFallback() }
             }
         }
-        // Fallback: .md scan (no embedder or no query text)
         return recallFallback()
+    }
+
+    private fun loadLinkedFacts(root: File, relations: List<OkfRelation>, limit: Int): List<String> {
+        if (relations.isEmpty()) return emptyList()
+        val seen = LinkedHashSet<String>()
+        val result = ArrayList<String>(limit)
+        for (rel in relations) {
+            if (result.size >= limit) break
+            val linkedFiles = runCatching {
+                RelationIndex.findLinkedFiles(root, rel.target)
+            }.getOrElse {
+                val f = File(root, "${rel.target}.md")
+                if (f.exists()) listOf(f) else emptyList()
+            }
+            for (f in linkedFiles) {
+                if (result.size >= limit || !f.exists()) break
+                runCatching {
+                    f.readLines()
+                        .filter { it.trimStart().startsWith("- ") && !it.trimStart().startsWith("- ~~") }
+                        .mapNotNull { line ->
+                            line.trimStart().removePrefix("- ")
+                                .replace(Regex("""\s+_\(gespeichert:.*?\)_\s*$"""), "").trim()
+                                .takeIf { it.isNotBlank() }
+                        }.take(3)
+                }.getOrElse { emptyList() }.forEach { fact ->
+                    if (result.size < limit && seen.add(fact.lowercase())) result += fact
+                }
+            }
+        }
+        return result
+    }
+
+    /**
+     * D2 — Post-response entity extraction + OKF index update.
+     * Must be called from a background coroutine AFTER the main LLM response.
+     * Never blocks the main thread; all errors are swallowed silently.
+     */
+    suspend fun extractAndLinkEntities(factText: String, categoryId: String, factFile: File) {
+        runCatching {
+            val result = entityExtractor.extractEntities(factText) ?: return
+            withContext(Dispatchers.IO) {
+                FrontmatterWriter.updateRelations(factFile, result.relations)
+                val factId = FrontmatterWriter.readId(factFile)
+                RelationIndex.upsert(
+                    rootDir = memoryFiles.rootDir,
+                    categoryId = categoryId,
+                    entry = OkfIndexEntry(
+                        factId = factId,
+                        file = factFile.name,
+                        entities = result.entities,
+                        relations = result.relations,
+                    ),
+                )
+            }
+            Log.i(TAG, "OKF linked: \"${factText.take(30)}\" entities=${result.entities}")
+        }.onFailure { Log.e(TAG, "extractAndLinkEntities failed for '${factText.take(30)}'", it) }
     }
 
     /**
@@ -494,6 +581,7 @@ class RagOrchestrator @Inject constructor(
     private companion object {
         const val TAG = "RagOrchestrator"
         const val MAX_RECALL_FACTS = 20
+        const val MAX_LINKED_FACTS = 5
 
         private val LEADING_CONJUNCTIONS = listOf(
             "dass ", "das ", "weil ", "ob ", "damit ", "obwohl ", "obgleich ",
