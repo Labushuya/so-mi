@@ -91,7 +91,7 @@ object PiperTtsEngine {
     }
 
     /** Sample rate of the generated audio (16000 Hz for eva_k x_low). */
-    val sampleRate: Int get() = tts?.sampleRate ?: 16000
+    val sampleRate: Int get() = tts?.sampleRate() ?: 16000
 
     fun shutdown() {
         tts?.release()
