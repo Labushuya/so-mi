@@ -78,7 +78,9 @@ object TtsHelper {
     }
 
     fun initPiper(context: Context, preferredVoice: PiperTtsEngine.Voice? = null) {
-        if (piperReady || piperInitJob?.isActive == true) return
+        // Block if reinit is running — two concurrent init jobs on piperDispatcher
+        // both write PiperTtsEngine.tts, causing Use-After-Free.
+        if (isReinitialising || piperReady || piperInitJob?.isActive == true) return
         piperInitJob = piperScope.launch {
             delay(500)
             val ok = PiperTtsEngine.init(context.applicationContext, preferredVoice)
