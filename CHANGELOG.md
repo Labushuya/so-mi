@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.0](https://github.com/Labushuya/so-mi/compare/v0.56.0...v0.57.0) (2026-07-04)
+
+
+### Features
+
+* TTS UX-Fixes + Stimme anpassbar (Tonhöhe + Geschwindigkeit) ([#279](https://github.com/Labushuya/so-mi/issues/279)) ([55901e7](https://github.com/Labushuya/so-mi/commit/55901e78f732058ef859ea755ad77d986509918f))
+
 ## [0.56.0](https://github.com/Labushuya/so-mi/compare/v0.55.9...v0.56.0) (2026-07-03)
 
 
