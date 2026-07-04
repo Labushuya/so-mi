@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.2](https://github.com/Labushuya/so-mi/compare/v0.58.1...v0.58.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* AAR in app/libs statt core-voice/libs (AAR-in-AAR nicht erlaubt) ([49a547c](https://github.com/Labushuya/so-mi/commit/49a547cae2ca00a8eb084cdc0cef1b0c2654be85))
+
 ## [0.58.1](https://github.com/Labushuya/so-mi/compare/v0.58.0...v0.58.1) (2026-07-04)
 
 
