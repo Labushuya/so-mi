@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.0](https://github.com/Labushuya/so-mi/compare/v0.57.2...v0.58.0) (2026-07-04)
+
+
+### Features
+
+* Piper TTS (natürliche Offline-Stimme) via sherpa-onnx ([#286](https://github.com/Labushuya/so-mi/issues/286)) ([26a6401](https://github.com/Labushuya/so-mi/commit/26a640107bc832a51da8669d8a6b5b8db3e46c59))
+
 ## [0.57.2](https://github.com/Labushuya/so-mi/compare/v0.57.1...v0.57.2) (2026-07-04)
 
 
