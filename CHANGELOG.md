@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.1](https://github.com/Labushuya/so-mi/compare/v0.57.0...v0.57.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* TTS erst nach Generierung + soul.md Hangul-Sperre + kürzere Antworten ([#281](https://github.com/Labushuya/so-mi/issues/281)) ([8df416f](https://github.com/Labushuya/so-mi/commit/8df416fedc67b17ae417c71e158b15cf8cb056c9))
+
 ## [0.57.0](https://github.com/Labushuya/so-mi/compare/v0.56.0...v0.57.0) (2026-07-04)
 
 
