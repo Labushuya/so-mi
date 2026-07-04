@@ -1521,11 +1521,10 @@ class ChatViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "ChatViewModel"
-        // 4096: soul.md hat ~4400 Zeichen (~1260 Tokens). Bei n_ctx=4096 passt
-        // soul.md vollständig mit ~2800 Token Puffer für Kontext. Der alte Wert
-        // 1200 truncated alles ab dem Codeswitching-Bullet — Hangul-Verbot,
-        // Längenregel und Beispieldialoge erreichten das Modell nie.
-        const val MAX_SYSTEM_PROMPT_CHARS = 4096
+        // 2000: soul.md "Harte Regeln" liegen bei Char ~700, alle kritischen Constraints
+        // bis Char ~1600. ~570 Tokens Prefill = ~15-20s auf erstem Turn, gecacht danach.
+        // 4096 wäre vollständig aber ~1100 Token Prefill = 40-80s — zu lang für jeden Turn.
+        const val MAX_SYSTEM_PROMPT_CHARS = 2000
         const val LOAD_TIMEOUT_MS = 180_000L
 
         /**
