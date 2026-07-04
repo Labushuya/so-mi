@@ -19,25 +19,18 @@ import java.util.Locale
 /**
  * Unified TTS interface — Piper (natural voice) when available, Android TTS fallback.
  *
- * CRASH FIX (v0.58.5):
- * Piper (sherpa-onnx) initialises a native ONNX thread-pool on first use.
- * Running it on Dispatchers.Default or Dispatchers.IO while llama.cpp is active
- * causes native thread-pool contention → SIGABRT.
+ * All Piper operations run on piperDispatcher (limitedParallelism(1)) to isolate
+ * the sherpa-onnx native thread-pool from llama.cpp's OpenMP threads.
  *
- * Fix: dedicated single-thread dispatcher (limitedParallelism(1)) for ALL Piper
- * operations — init, synthesise, and AudioTrack playback. This is the same
- * isolation pattern used for llama.cpp (llamaDispatcher), guaranteeing that
- * the two C++ engines never share a thread.
- *
- * Additionally: speak() is a no-op when piperReady is false (engine still
- * initialising) to prevent calling synthesise() before OfflineTts is ready.
+ * RE-INIT RACE FIX (v0.58.6):
+ * isReinitialising=true blocks speak() for the ~2-4s window during reinitPiper().
+ * No native object is touched while shutdown/init is in progress.
  */
 object TtsHelper {
 
     private const val TAG = "TtsHelper"
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // Dedicated single-thread dispatcher — Piper C++ threads stay isolated from LLM.
     private val piperDispatcher = Dispatchers.IO.limitedParallelism(1)
     private val piperScope = CoroutineScope(SupervisorJob() + piperDispatcher)
 
@@ -46,9 +39,9 @@ object TtsHelper {
     private val pendingQueue = ArrayDeque<String>()
 
     @Volatile private var piperReady = false
+    @Volatile private var isReinitialising = false
     private var piperInitJob: Job? = null
     private var activeTrack: AudioTrack? = null
-
     @Volatile private var currentRate: Float = 1.0f
 
     val isPiperReady: Boolean get() = piperReady
@@ -81,41 +74,41 @@ object TtsHelper {
     fun initPiper(context: Context) {
         if (piperReady || piperInitJob?.isActive == true) return
         piperInitJob = piperScope.launch {
-            // Small delay on first init to let llama.cpp finish its own startup.
-            // Avoids native thread-pool collision during cold-start when greeting fires.
-            delay(500)
+            delay(500) // let llama.cpp finish startup first
             val ok = PiperTtsEngine.init(context.applicationContext)
             piperReady = ok
-            if (ok) Log.i(TAG, "Piper ready on dedicated dispatcher")
+            if (ok) Log.i(TAG, "Piper ready (${PiperTtsEngine.availableModelQuality(context)})")
             else Log.w(TAG, "Piper init failed — Android TTS fallback")
         }
     }
 
     /**
-     * Tear down and re-initialise the Piper engine without re-downloading the model.
-     * Useful after an in-app model update or when the engine is in a bad state.
+     * Restarts the Piper engine without re-downloading the model (~2-4s).
+     * Speak calls are silently dropped during the restart window.
      */
     fun reinitPiper(context: Context) {
         piperInitJob?.cancel()
         piperInitJob = null
         piperReady = false
+        isReinitialising = true
         piperScope.launch {
-            PiperTtsEngine.shutdown()
+            runCatching { PiperTtsEngine.shutdown() }
             delay(200)
-            val ok = PiperTtsEngine.init(context.applicationContext)
+            val ok = runCatching { PiperTtsEngine.init(context.applicationContext) }.getOrElse { e ->
+                Log.e(TAG, "Piper re-init threw", e)
+                false
+            }
             piperReady = ok
+            isReinitialising = false
             Log.i(TAG, "Piper re-init complete: ok=$ok")
         }
     }
 
-    fun setSpeechRate(rate: Float) {
-        currentRate = rate.coerceIn(0.25f, 4.0f)
-    }
+    fun setSpeechRate(rate: Float) { currentRate = rate.coerceIn(0.25f, 4.0f) }
 
     fun speak(text: String) {
         if (text.isBlank()) return
-        // Guard: do not attempt Piper synthesis until engine is fully ready.
-        // Calling synthesise() before OfflineTts is initialised crashes the process.
+        if (isReinitialising) return  // engine in undefined state — drop silently
         if (piperReady) speakWithPiper(text) else speakWithAndroid(text)
     }
 
@@ -185,7 +178,7 @@ object TtsHelper {
         activeTrack?.playState == AudioTrack.PLAYSTATE_PLAYING || androidTts?.isSpeaking == true
 
     fun shutdown() {
-        piperScope.launch { stopActiveTrack(); PiperTtsEngine.shutdown(); piperReady = false }
+        piperScope.launch { stopActiveTrack(); PiperTtsEngine.shutdown(); piperReady = false; isReinitialising = false }
         mainHandler.post {
             pendingQueue.clear()
             androidTts?.shutdown(); androidTts = null

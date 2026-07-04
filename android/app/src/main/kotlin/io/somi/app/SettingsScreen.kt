@@ -1028,11 +1028,23 @@ private fun TtsSection(
     val coroutineScope = rememberCoroutineScope()
 
     var piperAvailable by remember { mutableStateOf(io.somi.voice.PiperTtsEngine.isModelAvailable(ctx)) }
-    var piperDownloading by remember { mutableStateOf(false) }
     var piperDownloadProgress by remember { mutableStateOf<Int?>(null) }
+    var reinitRunning by remember { mutableStateOf(false) }
+
+    // Shows which quality tier is installed (x_low is what the download button provides)
+    val piperQualityLabel = remember(piperAvailable) {
+        if (!piperAvailable) ""
+        else {
+            val dir = io.somi.voice.PiperTtsEngine.modelDir(ctx)
+            if (java.io.File(dir, "de_DE-eva_k-medium.onnx").exists())
+                "de_DE-eva_k-medium · offline"
+            else
+                "de_DE-eva_k-x_low · offline"
+        }
+    }
 
     SectionCard(title = "Sprachausgabe") {
-        // ── Piper-Status + Download ──────────────────────────────────────
+        // ── Piper-Status + Re-Init / Download ───────────────────────────
         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -1042,20 +1054,34 @@ private fun TtsSection(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    if (piperAvailable) "de_DE-eva_k · offline" else "nicht installiert",
+                    if (piperAvailable) piperQualityLabel else "nicht installiert",
                     color = songbird.glass,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             if (piperAvailable) {
-                // Re-Init ohne erneuten Download — behebt Crash nach Update/Neustart
                 Spacer(Modifier.height(4.dp))
-                SongbirdButton(
-                    label = "Engine neu starten",
-                    kind = SongbirdButtonKind.Ghost,
-                    minHeight = 28.dp,
-                    onClick = { io.somi.voice.TtsHelper.reinitPiper(ctx) },
-                )
+                if (reinitRunning) {
+                    Text(
+                        "Neustart läuft… (~2-4s)",
+                        color = songbird.glass,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                } else {
+                    SongbirdButton(
+                        label = "Engine neu starten",
+                        kind = SongbirdButtonKind.Ghost,
+                        minHeight = 28.dp,
+                        onClick = {
+                            reinitRunning = true
+                            io.somi.voice.TtsHelper.reinitPiper(ctx)
+                            coroutineScope.launch {
+                                kotlinx.coroutines.delay(4_000)
+                                reinitRunning = false
+                            }
+                        },
+                    )
+                }
             }
             if (!piperAvailable) {
                 Spacer(Modifier.height(6.dp))
@@ -1074,20 +1100,15 @@ private fun TtsSection(
                             minHeight = 32.dp,
                             onClick = {
                                 coroutineScope.launch {
-                                    piperDownloading = true
                                     downloadPiperModel(ctx).collect { state ->
                                         when (state) {
                                             is PiperDownloadState.Progress -> piperDownloadProgress = state.percent
                                             is PiperDownloadState.Done -> {
                                                 piperDownloadProgress = null
                                                 piperAvailable = true
-                                                piperDownloading = false
                                                 io.somi.voice.TtsHelper.initPiper(ctx)
                                             }
-                                            else -> {
-                                                piperDownloadProgress = null
-                                                piperDownloading = false
-                                            }
+                                            else -> piperDownloadProgress = null
                                         }
                                     }
                                 }
