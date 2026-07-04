@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.4](https://github.com/Labushuya/so-mi/compare/v0.59.3...v0.59.4) (2026-07-04)
+
+
+### Bug Fixes
+
+* Boot-Crash (startReinit Lambda) + MAX_SYSTEM_PROMPT_CHARS zurück auf 1200 ([#303](https://github.com/Labushuya/so-mi/issues/303)) ([9ea79d2](https://github.com/Labushuya/so-mi/commit/9ea79d2d201cc5608b15ee30fb39d82368151db0))
+
 ## [0.59.3](https://github.com/Labushuya/so-mi/compare/v0.59.2...v0.59.3) (2026-07-04)
 
 
