@@ -6,8 +6,6 @@ import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -17,7 +15,7 @@ import java.io.File
  * The model file is downloaded on-demand to getExternalFilesDir()/piper/
  * and is NOT bundled in the APK.
  *
- * Thread safety: init() and generate() must run on Dispatchers.IO.
+ * Thread safety: init() and synthesise() must be called on TtsHelper's piperDispatcher.
  * Audio playback scheduling is handled by the caller (TtsHelper).
  */
 object PiperTtsEngine {
@@ -37,19 +35,18 @@ object PiperTtsEngine {
         File(modelDir(context), MODEL_FILENAME).exists()
 
     /**
-     * Initialises the Piper engine. Must be called on a background thread.
-     * No-op if already initialised or if the model is not downloaded yet.
-     * Returns true on success.
+     * Initialises the Piper engine. Must be called on the piperDispatcher (TtsHelper).
+     * No dispatcher switch here — the caller is responsible for the correct thread.
      */
-    suspend fun init(context: Context): Boolean = withContext(Dispatchers.IO) {
-        if (tts != null) return@withContext true
+    suspend fun init(context: Context): Boolean {
+        if (tts != null) return true
         val dir = modelDir(context)
         val modelFile = File(dir, MODEL_FILENAME)
         if (!modelFile.exists()) {
             Log.d(TAG, "model not found at ${modelFile.absolutePath} — Piper unavailable")
-            return@withContext false
+            return false
         }
-        runCatching {
+        return runCatching {
             val config = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
                     vits = OfflineTtsVitsModelConfig(
@@ -76,13 +73,12 @@ object PiperTtsEngine {
     }
 
     /**
-     * Synthesises [text] and returns raw PCM samples (Float32, mono 16kHz).
-     * Returns null on error or if not initialised.
-     * Must be called on a background thread.
+     * Synthesises [text]. Must be called on the piperDispatcher (TtsHelper).
+     * No dispatcher switch here — caller is responsible for the correct thread.
      */
-    suspend fun synthesise(text: String, speed: Float = 1.0f): FloatArray? = withContext(Dispatchers.IO) {
-        val engine = tts ?: return@withContext null
-        runCatching {
+    suspend fun synthesise(text: String, speed: Float = 1.0f): FloatArray? {
+        val engine = tts ?: return null
+        return runCatching {
             val audio = engine.generate(text = text, sid = 0, speed = speed)
             audio.samples
         }.onFailure {
