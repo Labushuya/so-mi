@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val TAG = "PiperDownload"
@@ -26,13 +27,26 @@ sealed interface PiperDownloadState {
 
 private const val MODEL_URL =
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva_k/x_low/de_DE-eva_k-x_low.onnx"
-private const val CONFIG_URL =
-    "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva_k/x_low/de_DE-eva_k-x_low.onnx.json"
+
+// Inline config — immutable for this model version, avoids HF HTTP round-trip + 403 risk.
+private const val CONFIG_JSON = """{
+  "audio": { "sample_rate": 16000 },
+  "espeak": { "voice": "de" },
+  "inference": { "noise_scale": 0.667, "length_scale": 1.0, "noise_w": 0.8 },
+  "num_speakers": 1,
+  "phoneme_type": "espeak",
+  "quality": "x_low",
+  "language": { "code": "de_DE", "name_native": "Deutsch" }
+}"""
 
 /**
  * Downloads the Piper TTS model to getExternalFilesDir()/piper/.
- * Emits progress (0–100) then Done or Failed.
- * Uses the same Channel-Bridge pattern as UpdateChecker.
+ *
+ * Fixes vs original:
+ *  - VISIBILITY_VISIBLE (not NOTIFY_COMPLETED): avoids PackageManager opening for .onnx
+ *  - STATUS_PENDING emits Progress(0) — HF CDN holds in PENDING during redirect resolution
+ *  - registerReceiver() on Main thread (Android 13+ requirement)
+ *  - Config written from inline constant — no HTTP, no HF 403
  */
 fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
     val modelDir = PiperTtsEngine.modelDir(context)
@@ -49,7 +63,7 @@ fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
             DownloadManager.Request(Uri.parse(MODEL_URL)).apply {
                 setTitle("Piper TTS — So-Mi Stimme")
                 setDescription("Natürliche Offline-Stimme (~20 MB)")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
                 setDestinationUri(Uri.fromFile(destFile))
                 setAllowedNetworkTypes(
                     DownloadManager.Request.NETWORK_WIFI or
@@ -75,11 +89,13 @@ fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
                 doneChannel.trySend(success)
             }
         }
-        context.registerReceiver(
-            receiver,
-            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            Context.RECEIVER_NOT_EXPORTED,
-        )
+        withContext(Dispatchers.Main) {
+            context.registerReceiver(
+                receiver,
+                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                Context.RECEIVER_NOT_EXPORTED,
+            )
+        }
 
         var elapsed = 0L
         var done = false
@@ -89,11 +105,8 @@ fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
                 val ok = signal.getOrNull() ?: false
                 emit(PiperDownloadState.Progress(100))
                 if (ok) {
-                    // Also download the config JSON (tiny, synchronous)
-                    runCatching {
-                        val cfg = java.net.URL(CONFIG_URL).readBytes()
-                        configFile.writeBytes(cfg)
-                    }.onFailure { Log.w(TAG, "config download failed", it) }
+                    runCatching { configFile.writeText(CONFIG_JSON) }
+                        .onFailure { Log.w(TAG, "config write failed", it) }
                     emit(PiperDownloadState.Done)
                 } else {
                     emit(PiperDownloadState.Failed)
@@ -101,13 +114,15 @@ fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
                 done = true
                 break
             }
+
             val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
             val pct = cursor?.use { c ->
                 if (!c.moveToFirst()) return@use null
                 when (c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                    DownloadManager.STATUS_PENDING -> 0  // HF redirect in progress
                     DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PAUSED -> {
                         val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                        val dl = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                        val dl    = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
                         if (total > 0) ((dl * 100L) / total).toInt().coerceIn(0, 99) else 0
                     }
                     else -> null
