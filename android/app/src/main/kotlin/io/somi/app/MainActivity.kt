@@ -656,10 +656,13 @@ private fun ChatShellScreen(
             }
             if (isGenerating) {
                 item(key = "live-$partialPromptId") {
+                    // No autoTts during streaming — TTS fires only on the final message
+                    // once generation is complete. Streaming produces a new text on every
+                    // token, triggering LaunchedEffect each time and causing repeated speech.
                     AssistantBubble(
                         text = partial.ifEmpty { "…" },
-                        autoTts = autoTts,
-                        isLastMessage = true,
+                        autoTts = false,
+                        isLastMessage = false,
                         onSpeakRequest = { io.somi.voice.TtsHelper.speak(it) },
                     )
                 }
