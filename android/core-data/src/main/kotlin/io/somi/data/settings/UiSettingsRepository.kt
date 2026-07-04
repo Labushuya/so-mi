@@ -39,6 +39,10 @@ class UiSettingsRepository @Inject constructor(
 
     suspend fun setAutoTts(enabled: Boolean) = save(_state.value.copy(autoTts = enabled))
 
+    suspend fun setPiperSpeechRate(rate: Float) = save(_state.value.copy(piperSpeechRate = rate.coerceIn(0.5f, 2.0f)))
+
+    suspend fun setSelectedModelId(id: String?) = save(_state.value.copy(selectedModelId = id))
+
     suspend fun save(settings: UiSettings) = withContext(Dispatchers.IO) {
         _state.value = settings
         try {
@@ -47,6 +51,11 @@ class UiSettingsRepository @Inject constructor(
                 put("greetingMode", settings.greetingMode.name)
                 put("toolMode", settings.toolMode.name)
                 put("autoTts", settings.autoTts)
+                put("piperSpeechRate", settings.piperSpeechRate.toDouble())
+                if (settings.selectedModelId != null)
+                    put("selectedModelId", settings.selectedModelId)
+                else
+                    put("selectedModelId", org.json.JSONObject.NULL)
                 // ttsPitch/ttsSpeechRate entfernt in v0.58.0 — gespeicherte Werte werden ignoriert
             }
             file.writeText(json.toString())
@@ -71,6 +80,9 @@ class UiSettingsRepository @Inject constructor(
                     ToolMode.valueOf(json.optString("toolMode", UiSettings.DEFAULTS.toolMode.name))
                 }.getOrDefault(UiSettings.DEFAULTS.toolMode),
                 autoTts = json.optBoolean("autoTts", false),
+                piperSpeechRate = json.optDouble("piperSpeechRate", 1.0).toFloat().coerceIn(0.5f, 2.0f),
+                selectedModelId = json.optString("selectedModelId", null)
+                    ?.takeIf { it.isNotBlank() },
             )
         } catch (t: Throwable) {
             Log.w(TAG, "load failed; using defaults", t)
@@ -88,6 +100,8 @@ data class UiSettings(
     val greetingMode: GreetingMode = GreetingMode.COLD_START,
     val toolMode: ToolMode = ToolMode.COMPACT,
     val autoTts: Boolean = false,
+    val piperSpeechRate: Float = 1.0f,
+    val selectedModelId: String? = null,
 ) {
     companion object {
         val DEFAULTS = UiSettings()

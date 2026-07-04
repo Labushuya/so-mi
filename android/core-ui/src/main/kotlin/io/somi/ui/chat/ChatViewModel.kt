@@ -394,7 +394,13 @@ class ChatViewModel @Inject constructor(
                 _boot.value = BootSnapshot(deviceInfo = info, recommendation = rec)
 
                 val auto = ModelCatalog.forTier(rec.auto)
-                if (auto != null) _selectedModel.value = auto
+                // Prefer the last successfully loaded model (persisted in UiSettings).
+                // Without this, a crash or process-kill clears _selectedModel and the
+                // boot probe falls to Lifecycle.NoModel even though the GGUF is on disk.
+                val persisted = uiSettings.state.value.selectedModelId
+                    ?.let { io.somi.data.ModelCatalog.byId(it) }
+                val resolved = persisted ?: auto
+                if (resolved != null) _selectedModel.value = resolved
 
                 cachedSoul = soulAsync.await()
                 _instances.value = instancesAsync.await()
@@ -447,6 +453,7 @@ class ChatViewModel @Inject constructor(
      */
     fun selectModel(manifest: ModelManifest) {
         _selectedModel.value = manifest
+        viewModelScope.launch { uiSettings.setSelectedModelId(manifest.id) }
         downloadObserveJob?.cancel()
         downloadObserveJob = null
         _errorBanner.value = null
@@ -1210,8 +1217,10 @@ class ChatViewModel @Inject constructor(
 
             try {
                 loadModel(manifest)
-                // Load succeeded — clear the flag
+                // Load succeeded — clear the flag and persist the model ID
+                // so boot after crash/update returns here instead of NoModel.
                 runCatching { crashFlag.delete() }
+                viewModelScope.launch { uiSettings.setSelectedModelId(manifest.id) }
             } catch (ce: CancellationException) {
                 runCatching { crashFlag.delete() } // cancelled cleanly, not a crash
                 throw ce

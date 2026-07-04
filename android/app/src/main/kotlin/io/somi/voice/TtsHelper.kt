@@ -12,65 +12,54 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Locale
 
 /**
- * Unified TTS interface. Uses Piper TTS (natural offline voice) when the
- * model is available, falls back to Android system TTS otherwise.
+ * Unified TTS interface — Piper (natural voice) when available, Android TTS fallback.
  *
- * Model download: the Piper model (de_DE-eva_k-x_low.onnx, ~20 MB) is
- * downloaded on first tap of "Stimme herunterladen" in Settings → Sprachausgabe.
- * The engine initialises automatically after download completes.
+ * Piper runs on Dispatchers.Default (not IO): OfflineTts owns C++ threads internally.
+ * Using IO would create thread-pool contention with llama.cpp's OpenMP threads and cause
+ * the intermittent crash observed in v0.58.x.
+ *
+ * Speech-rate is forwarded to PiperTtsEngine.synthesise(speed = currentRate).
+ * Android TTS fallback ignores currentRate (its own API is different).
  */
 object TtsHelper {
 
     private const val TAG = "TtsHelper"
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    // Android TTS fallback
     private var androidTts: TextToSpeech? = null
     private var androidTtsReady = false
     private val pendingQueue = ArrayDeque<String>()
 
-    // Piper engine state
     private var piperReady = false
     private var piperInitJob: Job? = null
     private var activeTrack: AudioTrack? = null
 
-    /** True if Piper model is on disk and engine is initialised. */
+    private var currentRate: Float = 1.0f
+
     val isPiperReady: Boolean get() = piperReady
 
-    /**
-     * Call once when entering the chat screen (any thread).
-     * Initialises Android TTS immediately; attempts Piper init if model exists.
-     */
     fun init(context: Context) {
         initAndroidTts(context)
-        if (PiperTtsEngine.isModelAvailable(context)) {
-            initPiper(context)
-        }
+        if (PiperTtsEngine.isModelAvailable(context)) initPiper(context)
     }
 
     private fun initAndroidTts(context: Context) {
         mainHandler.post {
             if (androidTts != null) return@post
-            val appCtx = context.applicationContext
-            val instance = TextToSpeech(appCtx) { status ->
+            val instance = TextToSpeech(context.applicationContext) { status ->
                 mainHandler.post {
                     if (status == TextToSpeech.SUCCESS) {
                         val r = androidTts?.setLanguage(Locale("de", "DE"))
-                        if (r == TextToSpeech.LANG_MISSING_DATA ||
-                            r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED)
                             androidTts?.setLanguage(Locale.ENGLISH)
-                        }
                         androidTtsReady = true
-                        while (pendingQueue.isNotEmpty()) {
+                        while (pendingQueue.isNotEmpty())
                             androidTts?.speak(pendingQueue.removeFirst(), TextToSpeech.QUEUE_ADD, null, null)
-                        }
                         Log.d(TAG, "Android TTS ready")
                     }
                 }
@@ -79,39 +68,39 @@ object TtsHelper {
         }
     }
 
-    /**
-     * Initialise Piper engine asynchronously. Safe to call multiple times.
-     * Called automatically from [init] if model exists, or after download completes.
-     */
     fun initPiper(context: Context) {
         if (piperReady || piperInitJob?.isActive == true) return
         piperInitJob = scope.launch {
             val ok = PiperTtsEngine.init(context.applicationContext)
             piperReady = ok
-            if (ok) Log.i(TAG, "Piper TTS ready — using natural voice")
-            else Log.w(TAG, "Piper TTS init failed — using Android TTS fallback")
+            if (ok) Log.i(TAG, "Piper ready") else Log.w(TAG, "Piper init failed — Android TTS fallback")
         }
     }
 
-    /**
-     * Speak [text]. Uses Piper if ready, Android TTS otherwise.
-     * Any running speech is stopped first.
-     * Call on any thread.
-     */
+    /** Set Piper speech rate. 1.0 = normal, <1 = slower, >1 = faster. */
+    fun setSpeechRate(rate: Float) {
+        currentRate = rate.coerceIn(0.25f, 4.0f)
+    }
+
     fun speak(text: String) {
         if (text.isBlank()) return
-        if (piperReady) {
-            speakWithPiper(text)
-        } else {
-            speakWithAndroid(text)
-        }
+        if (piperReady) speakWithPiper(text) else speakWithAndroid(text)
     }
 
     private fun speakWithPiper(text: String) {
         scope.launch {
             stopActiveTrack()
-            val samples = PiperTtsEngine.synthesise(text) ?: run {
-                Log.w(TAG, "Piper synthesis returned null, falling back to Android TTS")
+            val samples = runCatching {
+                PiperTtsEngine.synthesise(text, speed = currentRate)
+            }.getOrElse { e ->
+                Log.e(TAG, "Piper threw — degrading to Android TTS", e)
+                piperReady = false
+                speakWithAndroid(text)
+                return@launch
+            }
+            if (samples == null) {
+                Log.w(TAG, "Piper returned null — degrading to Android TTS")
+                piperReady = false
                 speakWithAndroid(text)
                 return@launch
             }
@@ -121,25 +110,19 @@ object TtsHelper {
 
     private fun playPcm(samples: FloatArray, sampleRate: Int) {
         val bufferSize = AudioTrack.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_FLOAT,
+            sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT,
         ).coerceAtLeast(samples.size * 4)
 
         val track = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build()
-            )
+            .setAudioAttributes(AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build())
+            .setAudioFormat(AudioFormat.Builder()
+                .setSampleRate(sampleRate)
+                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .build())
             .setBufferSizeInBytes(bufferSize)
             .setTransferMode(AudioTrack.MODE_STATIC)
             .build()
@@ -147,7 +130,6 @@ object TtsHelper {
         activeTrack = track
         track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
         track.play()
-        Log.d(TAG, "Piper playing ${samples.size} samples at ${sampleRate}Hz")
     }
 
     private fun stopActiveTrack() {
@@ -163,28 +145,20 @@ object TtsHelper {
         }
     }
 
-    /** Stop any active speech immediately. */
     fun stop() {
         scope.launch { stopActiveTrack() }
-        mainHandler.post {
-            pendingQueue.clear()
-            androidTts?.stop()
-        }
+        mainHandler.post { pendingQueue.clear(); androidTts?.stop() }
     }
 
     fun isSpeaking(): Boolean =
-        activeTrack?.playState == AudioTrack.PLAYSTATE_PLAYING ||
-        androidTts?.isSpeaking == true
+        activeTrack?.playState == AudioTrack.PLAYSTATE_PLAYING || androidTts?.isSpeaking == true
 
-    /** Release all resources. */
     fun shutdown() {
         scope.launch { stopActiveTrack(); PiperTtsEngine.shutdown() }
         mainHandler.post {
             pendingQueue.clear()
-            androidTts?.shutdown()
-            androidTts = null
-            androidTtsReady = false
-            piperReady = false
+            androidTts?.shutdown(); androidTts = null
+            androidTtsReady = false; piperReady = false
         }
         Log.d(TAG, "TTS shut down")
     }

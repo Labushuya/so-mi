@@ -142,8 +142,13 @@ internal fun SettingsScreen(
                     Spacer(Modifier.height(16.dp))
                     TtsSection(
                         autoTts = uiSettings.autoTts,
+                        piperSpeechRate = uiSettings.piperSpeechRate,
                         onAutoTtsToggle = { v ->
                             coroutineScope.launch { viewModel.uiSettings.setAutoTts(v) }
+                        },
+                        onSpeechRateChange = { v ->
+                            io.somi.voice.TtsHelper.setSpeechRate(v)
+                            coroutineScope.launch { viewModel.uiSettings.setPiperSpeechRate(v) }
                         },
                     )
                     Spacer(Modifier.height(16.dp))
@@ -1014,7 +1019,9 @@ private fun GreetingSection(
 @Composable
 private fun TtsSection(
     autoTts: Boolean,
+    piperSpeechRate: Float,
     onAutoTtsToggle: (Boolean) -> Unit,
+    onSpeechRateChange: (Float) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -1025,25 +1032,23 @@ private fun TtsSection(
     var piperDownloadProgress by remember { mutableStateOf<Int?>(null) }
 
     SectionCard(title = "Sprachausgabe") {
-        // Piper status / download row
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
+        // ── Piper-Status + Download ──────────────────────────────────────
+        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (piperAvailable) "Piper TTS ✓ (natürliche Stimme)" else "Piper TTS (natürliche Stimme)",
+                    if (piperAvailable) "Piper TTS ✓" else "Piper TTS",
                     color = songbird.bone,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    if (piperAvailable) "de_DE-eva_k · ~20 MB · offline"
-                    else "Noch nicht heruntergeladen (~20 MB)",
+                    if (piperAvailable) "de_DE-eva_k · offline" else "nicht installiert",
                     color = songbird.glass,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             if (!piperAvailable) {
+                Spacer(Modifier.height(6.dp))
                 when {
                     piperDownloadProgress != null -> {
                         Text(
@@ -1054,7 +1059,7 @@ private fun TtsSection(
                     }
                     else -> {
                         SongbirdButton(
-                            label = "Herunterladen",
+                            label = "Herunterladen (~20 MB)",
                             kind = SongbirdButtonKind.Ghost,
                             minHeight = 32.dp,
                             onClick = {
@@ -1085,7 +1090,7 @@ private fun TtsSection(
 
         Spacer(Modifier.height(4.dp))
 
-        // Auto-vorlesen switch
+        // ── Auto-vorlesen ────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1100,6 +1105,20 @@ private fun TtsSection(
                 )
             }
             androidx.compose.material3.Switch(checked = autoTts, onCheckedChange = onAutoTtsToggle)
+        }
+
+        // ── Speed-Slider (nur wenn Piper verfügbar) ──────────────────────
+        if (piperAvailable) {
+            Spacer(Modifier.height(4.dp))
+            SongbirdSlider(
+                label = "Geschwindigkeit",
+                value = piperSpeechRate,
+                valueRange = 0.5f..2.0f,
+                valueText = "%.2f×".format(piperSpeechRate),
+                explanation = "Empfehlung: 0.95 — klingt wie Songbird. Piper hat keinen Pitch-Parameter.",
+                onValueChange = onSpeechRateChange,
+                onValueChangeFinished = { onSpeechRateChange(piperSpeechRate) },
+            )
         }
     }
 }
