@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.5](https://github.com/Labushuya/so-mi/compare/v0.58.4...v0.58.5) (2026-07-04)
+
+
+### Bug Fixes
+
+* Piper-Absturz — dedizierter Single-Thread-Dispatcher + re-init ([#293](https://github.com/Labushuya/so-mi/issues/293)) ([9d660ee](https://github.com/Labushuya/so-mi/commit/9d660ee8569aa71db38dbf087d2325e6650e444f))
+
 ## [0.58.4](https://github.com/Labushuya/so-mi/compare/v0.58.3...v0.58.4) (2026-07-04)
 
 
