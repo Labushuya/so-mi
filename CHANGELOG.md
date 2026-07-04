@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.1](https://github.com/Labushuya/so-mi/compare/v0.59.0...v0.59.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* AudioTrack Use-After-Free + Stimmen-Auswahl (Eva K / Kerstin / Ramona) ([#297](https://github.com/Labushuya/so-mi/issues/297)) ([4633a78](https://github.com/Labushuya/so-mi/commit/4633a787b241af73d0bced649f3adb480c03818e))
+
 ## [0.59.0](https://github.com/Labushuya/so-mi/compare/v0.58.5...v0.59.0) (2026-07-04)
 
 
