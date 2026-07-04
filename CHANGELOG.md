@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.0](https://github.com/Labushuya/so-mi/compare/v0.58.5...v0.59.0) (2026-07-04)
+
+
+### Features
+
+* Piper Re-Init Race-Fix + bessere Stimme (noiseScale) + Neustart-Feedback ([#295](https://github.com/Labushuya/so-mi/issues/295)) ([3c4d1f8](https://github.com/Labushuya/so-mi/commit/3c4d1f8306a29b1ad5c50f9bd2a0edb8f44caeb6))
+
 ## [0.58.5](https://github.com/Labushuya/so-mi/compare/v0.58.4...v0.58.5) (2026-07-04)
 
 
