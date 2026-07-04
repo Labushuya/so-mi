@@ -8,11 +8,17 @@
 
 ---
 
-## Aktueller Stand (2026-07-03)
+## Aktueller Stand (2026-07-04)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.53.0 | ✅ live | OKF-Memory: YAML-Frontmatter, EntityExtractor, RelationIndex, 1-Hop Recall, Supersedes |
+| v0.56.0 | ✅ live | TTS: 🔊-Button an jeder Antwort + Auto-Vorlesen-Toggle |
+| v0.55.9 | ✅ live | Updater Guard-Fix (0% Balken) |
+| v0.55.8 | ✅ live | Done-Button nicht klickbar + FAQ Scan-Hinweis |
+| v0.55.7 | ✅ live | Download hängt bei 97%: Channel-Bridge BroadcastReceiver + Polling |
+| v0.55.x | ✅ live | Updater-Iterationen: Progress-Flow, Installer, Mic-Lag, Debounce |
+| v0.54.x | ✅ live | Voice: SpeechRecognizer + Mikrofon-Button + Pre-warm |
+| v0.53.x | ✅ live | OKF-Memory: Frontmatter, EntityExtractor, RelationIndex, Supersedes |
 | v0.52.0 | ✅ stable | Manueller Update-Check in Einstellungen → Diagnose |
 | v0.51.1 | ✅ stable | okhttp-Dep fix für UpdateChecker |
 | v0.51.0 | ✅ stable | Greeting in aktiver Konversation + In-App-Update-Banner |
@@ -77,11 +83,11 @@ Komplett.
 | Settings → Tools UX (Gruppierung, Status) | ❌ v0.50.0 |
 | GBNF Stage-3 Constrained Decoding | ❌ deferred |
 
-### ✅ Phase 5 (teilweise) — In-App-Updater
-- **UpdateChecker** ✅ v0.51.1 — GitHub Releases API, semantisches Versions-Vergleich, dismissbares Banner
-- **Manueller Update-Check** ✅ v0.52.0 — Settings → Diagnose → "Jetzt prüfen" mit Throttle + Fehlerstate
-- **Updater-Fix** ✅ v0.53.1 — DownloadManager statt Browser, REQUEST_INSTALL_PACKAGES, sichtbarer Install-Button
-- **Voice** 🟡 v0.54.0 — SpeechRecognizer (de-DE), Mikrofon-Button im Composer
+### ✅ Phase 5 (nahezu vollständig)
+- **UpdateChecker** ✅ — GitHub Releases API, Progress-Flow, Benachrichtigung für Install
+- **Manueller Update-Check** ✅ — Settings → Diagnose
+- **Voice-Input** ✅ v0.54.x — SpeechRecognizer, Pre-warm, Mikrofon-Button
+- **TTS** ✅ v0.56.0 — 🔊-Button + Auto-Vorlesen, Android TTS, kein Modell-Download
 
 ---
 
