@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.2](https://github.com/Labushuya/so-mi/compare/v0.59.1...v0.59.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* Stabilitäts-Sprint — soul.md Truncation, Stop-Position Bug, Sampler ([#299](https://github.com/Labushuya/so-mi/issues/299)) ([d315a50](https://github.com/Labushuya/so-mi/commit/d315a50d05477edb3ef312f5eb5b8e69c93a3e98))
+
 ## [0.59.1](https://github.com/Labushuya/so-mi/compare/v0.59.0...v0.59.1) (2026-07-04)
 
 
