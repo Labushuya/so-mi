@@ -13,33 +13,12 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * v0.15.0 — UI-Settings persistence (immersive fullscreen + greeting mode).
- *
- * Two flat fields, kept in JSON because that's the pattern already
- * established by SamplerSettingsRepository. DataStore would be
- * cleaner architecturally but we'd burn one whole release introducing
- * the dependency just for two booleans + an enum.
- *
- *   $filesDir/settings/ui.json
- *
- * Schema:
- *   {
- *     "immersive": true|false,                    // hide system bars
- *     "greetingMode": "FULL" | "COLD_START" | "NONE"
- *   }
- *
- * Defaults: immersive=true (user explicitly asked for true fullscreen
- * in v0.15.0), greetingMode=COLD_START (user-locked default per
- * v0.15.0 planning session).
- */
 @Singleton
 class UiSettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
 
     private val rootDir: File by lazy {
-        // v0.15.0: lives under SoMi/settings/ together with sampler.json.
         io.somi.data.StorageRoots.settings(context)
     }
 
@@ -49,15 +28,6 @@ class UiSettingsRepository @Inject constructor(
     val state: StateFlow<UiSettings> = _state.asStateFlow()
 
     init {
-        // v0.15.0 — load synchronously. ui.json is one tiny JSON blob
-        // (two booleans + an enum), and BOTH consumers (MainActivity's
-        // immersive-apply in onCreate, ChatViewModel's greeting hook on
-        // first Lifecycle.Ready ~10 ms after Hilt creates the VM) read
-        // `state.value` before any async load could finish. Pushing
-        // this to a background coroutine makes the DEFAULTS sticky on
-        // first paint — visible bar-flash for a user with immersive=
-        // false saved, and a wrong-mode greeting for greetingMode=NONE.
-        // Cost on cold start: a single readText of <200 bytes.
         loadFromDisk()
     }
 
@@ -69,10 +39,6 @@ class UiSettingsRepository @Inject constructor(
 
     suspend fun setAutoTts(enabled: Boolean) = save(_state.value.copy(autoTts = enabled))
 
-    suspend fun setTtsPitch(value: Float) = save(_state.value.copy(ttsPitch = value))
-
-    suspend fun setTtsSpeechRate(value: Float) = save(_state.value.copy(ttsSpeechRate = value))
-
     suspend fun save(settings: UiSettings) = withContext(Dispatchers.IO) {
         _state.value = settings
         try {
@@ -81,8 +47,7 @@ class UiSettingsRepository @Inject constructor(
                 put("greetingMode", settings.greetingMode.name)
                 put("toolMode", settings.toolMode.name)
                 put("autoTts", settings.autoTts)
-                put("ttsPitch", settings.ttsPitch.toDouble())
-                put("ttsSpeechRate", settings.ttsSpeechRate.toDouble())
+                // ttsPitch/ttsSpeechRate entfernt in v0.58.0 — gespeicherte Werte werden ignoriert
             }
             file.writeText(json.toString())
         } catch (t: Throwable) {
@@ -106,8 +71,6 @@ class UiSettingsRepository @Inject constructor(
                     ToolMode.valueOf(json.optString("toolMode", UiSettings.DEFAULTS.toolMode.name))
                 }.getOrDefault(UiSettings.DEFAULTS.toolMode),
                 autoTts = json.optBoolean("autoTts", false),
-                ttsPitch = json.optDouble("ttsPitch", 0.85).toFloat(),
-                ttsSpeechRate = json.optDouble("ttsSpeechRate", 0.95).toFloat(),
             )
         } catch (t: Throwable) {
             Log.w(TAG, "load failed; using defaults", t)
@@ -120,45 +83,23 @@ class UiSettingsRepository @Inject constructor(
     }
 }
 
-/**
- * Immutable UI-settings snapshot.
- */
 data class UiSettings(
     val immersive: Boolean = true,
     val greetingMode: GreetingMode = GreetingMode.COLD_START,
     val toolMode: ToolMode = ToolMode.COMPACT,
     val autoTts: Boolean = false,
-    val ttsPitch: Float = 0.85f,
-    val ttsSpeechRate: Float = 0.95f,
 ) {
     companion object {
         val DEFAULTS = UiSettings()
     }
 }
 
-/**
- * Three-mode greeting toggle. Default COLD_START per user-locked decision.
- */
 enum class GreetingMode {
-    /** Greet on every Activity-resume after >= GREETING_THRESHOLD_MS background gap. */
     FULL,
-
-    /** Greet only on cold process start (empty chat or first launch). */
     COLD_START,
-
-    /** Never greet. */
     NONE,
 }
 
-/**
- * Tool-execution mode toggle.
- *
- * COMPACT: Tool results truncated to ~200 tokens before LLM injection.
- *   Fast and stable — no KV-cache rebuild needed.
- * SYSTEM_PROMPT: Tool results + soul.md sent as a fresh system prompt
- *   before each tool-assisted generation. Complete data, ~2-3s overhead
- *   from KV-cache invalidation. Experimental.
- */
 enum class ToolMode {
     COMPACT,
     SYSTEM_PROMPT,

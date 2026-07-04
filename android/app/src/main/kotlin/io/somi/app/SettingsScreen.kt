@@ -142,18 +142,8 @@ internal fun SettingsScreen(
                     Spacer(Modifier.height(16.dp))
                     TtsSection(
                         autoTts = uiSettings.autoTts,
-                        ttsPitch = uiSettings.ttsPitch,
-                        ttsSpeechRate = uiSettings.ttsSpeechRate,
                         onAutoTtsToggle = { v ->
                             coroutineScope.launch { viewModel.uiSettings.setAutoTts(v) }
-                        },
-                        onPitchChange = { v ->
-                            coroutineScope.launch { viewModel.uiSettings.setTtsPitch(v) }
-                            io.somi.voice.TtsHelper.applyVoiceSettings(v, uiSettings.ttsSpeechRate)
-                        },
-                        onRateChange = { v ->
-                            coroutineScope.launch { viewModel.uiSettings.setTtsSpeechRate(v) }
-                            io.somi.voice.TtsHelper.applyVoiceSettings(uiSettings.ttsPitch, v)
                         },
                     )
                     Spacer(Modifier.height(16.dp))
@@ -1024,16 +1014,9 @@ private fun GreetingSection(
 @Composable
 private fun TtsSection(
     autoTts: Boolean,
-    ttsPitch: Float,
-    ttsSpeechRate: Float,
     onAutoTtsToggle: (Boolean) -> Unit,
-    onPitchChange: (Float) -> Unit,
-    onRateChange: (Float) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
-    var localPitch by remember(ttsPitch) { mutableStateOf(ttsPitch) }
-    var localRate by remember(ttsSpeechRate) { mutableStateOf(ttsSpeechRate) }
-
     SectionCard(title = "Sprachausgabe") {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -1041,31 +1024,9 @@ private fun TtsSection(
         ) {
             Column(Modifier.weight(1f)) {
                 Text("Antworten vorlesen", color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
-                Text("Android TTS — kein Download nötig", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                Text("Android TTS (Piper TTS folgt in v0.59)", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
             }
             androidx.compose.material3.Switch(checked = autoTts, onCheckedChange = onAutoTtsToggle)
-        }
-
-        if (autoTts) {
-            Spacer(Modifier.height(8.dp))
-            SongbirdSlider(
-                label = "Tonhöhe",
-                value = localPitch,
-                valueRange = 0.5f..2.0f,
-                valueText = "%.2f".format(localPitch),
-                explanation = "Niedriger = tiefere Stimme. So-Mi-Default: 0.85",
-                onValueChange = { v -> localPitch = v; onPitchChange(v) },
-                onValueChangeFinished = { onPitchChange(localPitch) },
-            )
-            SongbirdSlider(
-                label = "Geschwindigkeit",
-                value = localRate,
-                valueRange = 0.5f..2.0f,
-                valueText = "%.2f".format(localRate),
-                explanation = "Tempo der Ausgabe. So-Mi-Default: 0.95",
-                onValueChange = { v -> localRate = v; onRateChange(v) },
-                onValueChangeFinished = { onRateChange(localRate) },
-            )
         }
     }
 }

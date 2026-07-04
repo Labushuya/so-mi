@@ -6,7 +6,7 @@
 
 **Persönliche KI. Vollständig lokal. Kein Account. Keine Cloud.**
 
-[![Version](https://img.shields.io/badge/version-0.54.0-cyan?style=flat-square)](https://github.com/Labushuya/so-mi/releases/latest)
+[![Version](https://img.shields.io/badge/version-0.58.0-cyan?style=flat-square)](https://github.com/Labushuya/so-mi/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%2011+-brightgreen?style=flat-square&logo=android)](https://github.com/Labushuya/so-mi/releases/latest)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-red?style=flat-square)](LICENSE)
 [![Phase](https://img.shields.io/badge/phase-5%20%E2%80%94%20Voice-blue?style=flat-square)](#roadmap)
@@ -60,6 +60,8 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 ### 🎙 Voice
 - Spracheingabe via Android SpeechRecognizer (de-DE, kein Modell-Download)
 - Mikrofon-Button im Composer — Ergebnis ins Textfeld zur Kontrolle vor dem Senden
+- **Sprachausgabe (TTS):** 🔊-Button an jeder Antwort + Auto-Vorlesen-Toggle
+- *Piper TTS (Offline, natürliche Stimme) — geplant für v0.59*
 
 </td>
 <td width="50%">
@@ -159,18 +161,6 @@ So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@
 @zusammenfassung [Text]            Text lokal zusammenfassen
 ```
 
-### Natürliche Sprache (automatisches Tool-Matching)
-
-```
-"Soll ich einen Schirm mitnehmen?"     → Wetter
-"Weck mich in 10 Minuten"              → Alarm
-"Was kostet ein Dollar in Euro?"       → Wechselkurs
-"Das ist wichtig: [Fakt]"              → Erinnerung speichern
-"FYI: [Fakt]" / "Ach ja: [Fakt]"      → Erinnerung speichern
-"TL;DR: [langer Text]"                 → Zusammenfassung
-"Bin ich morgen beschäftigt?"          → Kalender
-```
-
 ---
 
 ## Architektur
@@ -178,7 +168,7 @@ So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@
 ```
 android/
 ├── app/               Compose UI · Navigation · ViewModels · Hilt-Wiring
-│                      Voice: VoiceInputHelper (SpeechRecognizer)
+│                      Voice: VoiceInputHelper (SpeechRecognizer) · TtsHelper (Placeholder)
 ├── core-llm/          LlamaContext Interface
 ├── core-llm-llama/    ARM InferenceEngine JNI-Wrapper (NDK, llama.cpp)
 ├── core-rag/          ObjectBox HNSW · ONNX Embedder · RagOrchestrator
@@ -241,7 +231,9 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 | Phase 3: RAG + Persona-Memory | ✅ Abgeschlossen | HNSW, Backfill, Multi-Chat, Backup |
 | Phase 4: Tool-System + OKF-Memory | ✅ Abgeschlossen | 11 Tools · YAML-Frontmatter · Graph-Recall · Supersedes |
 | Phase 5: In-App-Updater | ✅ Abgeschlossen | DownloadManager · PackageInstaller · Update-Banner |
-| Phase 5: Voice | 🟡 In Arbeit | SpeechRecognizer (de-DE) · Mikrofon-Button im Composer |
+| Phase 5: Voice-Eingabe | ✅ Abgeschlossen | SpeechRecognizer (de-DE) · Mikrofon-Button |
+| Phase 5: TTS Placeholder | ✅ Abgeschlossen | 🔊-Button · Auto-Vorlesen · Android TTS |
+| Phase 5: Piper TTS | ❌ Geplant | v0.59 — natürliche Offline-Stimme (de\_DE-eva\_k) |
 
 → Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
 
