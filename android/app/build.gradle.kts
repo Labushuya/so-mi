@@ -101,6 +101,16 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // sherpa-onnx static-link AAR ships libonnxruntime.so for x86/x86_64.
+        // Our onnxruntime-android:1.18.0 does too. Pick-first resolves the
+        // merge conflict (x86 is excluded by abiFilters but still triggers
+        // the duplicate-file check during the transform phase).
+        jniLibs {
+            pickFirsts += listOf(
+                "**/libonnxruntime.so",
+                "**/libsherpa-onnx-jni.so",
+            )
+        }
     }
 }
 
