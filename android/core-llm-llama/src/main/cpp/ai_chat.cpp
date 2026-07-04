@@ -54,7 +54,7 @@ constexpr int   OVERFLOW_HEADROOM       = 4;
 constexpr int   BATCH_SIZE              = 512;
 constexpr float DEFAULT_SAMPLER_TEMP    = 0.3f;
 constexpr float DEFAULT_SAMPLER_TOP_P   = 0.9f;
-constexpr float DEFAULT_SAMPLER_REPEAT_PENALTY = 1.1f;
+constexpr float DEFAULT_SAMPLER_REPEAT_PENALTY = 1.15f;
 constexpr int   DEFAULT_SAMPLER_TOP_K   = 40;
 
 // Latest sampler params, kept in static memory so prepare() can re-apply
@@ -513,7 +513,10 @@ Java_com_arm_aichat_internal_InferenceEngineImpl_processUserPrompt(
 
     // Update position
     current_position += user_prompt_size;
-    stop_generation_position = current_position + user_prompt_size + n_predict;
+    // Fix: current_position already includes user_prompt_size after line above.
+    // The old code added it twice, making the effective stop n_predict + user_prompt_size
+    // tokens too late — answers were consistently longer than maxTokens.
+    stop_generation_position = current_position + n_predict;
     return 0;
 }
 
