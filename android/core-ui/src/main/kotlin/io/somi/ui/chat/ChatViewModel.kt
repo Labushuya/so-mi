@@ -1521,10 +1521,10 @@ class ChatViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "ChatViewModel"
-        // 2000: soul.md "Harte Regeln" liegen bei Char ~700, alle kritischen Constraints
-        // bis Char ~1600. ~570 Tokens Prefill = ~15-20s auf erstem Turn, gecacht danach.
-        // 4096 wäre vollständig aber ~1100 Token Prefill = 40-80s — zu lang für jeden Turn.
-        const val MAX_SYSTEM_PROMPT_CHARS = 2000
+        // 1200: soul.md "Harte Regeln" (Zeichen-Verbot, Länge, keine Disclamer)
+        // liegen nach der Reorganisation in den ersten ~650 Zeichen — sicher im Fenster.
+        // Prefill ~350 Tokens = ~8-12s auf erstem Turn, gecacht danach.
+        const val MAX_SYSTEM_PROMPT_CHARS = 1200
         const val LOAD_TIMEOUT_MS = 180_000L
 
         /**
