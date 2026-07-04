@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.1](https://github.com/Labushuya/so-mi/compare/v0.58.0...v0.58.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* sampleRate() als Funktion (nicht Property) in sherpa-onnx API ([246d72e](https://github.com/Labushuya/so-mi/commit/246d72e909c24151954acee1f7f7cd95956f3b6f))
+
 ## [0.58.0](https://github.com/Labushuya/so-mi/compare/v0.57.2...v0.58.0) (2026-07-04)
 
 
