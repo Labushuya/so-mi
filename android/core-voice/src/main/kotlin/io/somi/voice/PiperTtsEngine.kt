@@ -80,10 +80,10 @@ object PiperTtsEngine {
      * Returns null on error or if not initialised.
      * Must be called on a background thread.
      */
-    suspend fun synthesise(text: String): FloatArray? = withContext(Dispatchers.IO) {
+    suspend fun synthesise(text: String, speed: Float = 1.0f): FloatArray? = withContext(Dispatchers.IO) {
         val engine = tts ?: return@withContext null
         runCatching {
-            val audio = engine.generate(text = text, sid = 0, speed = 1.0f)
+            val audio = engine.generate(text = text, sid = 0, speed = speed)
             audio.samples
         }.onFailure {
             Log.e(TAG, "Piper synthesis failed for '${text.take(30)}'", it)
