@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.3](https://github.com/Labushuya/so-mi/compare/v0.59.2...v0.59.3) (2026-07-04)
+
+
+### Bug Fixes
+
+* Prefill-Zeit + Piper-Absturz nach Stimme wechseln ([#301](https://github.com/Labushuya/so-mi/issues/301)) ([5a379eb](https://github.com/Labushuya/so-mi/commit/5a379ebf813085ee1b805bc1eaecc47126bad56d))
+
 ## [0.59.2](https://github.com/Labushuya/so-mi/compare/v0.59.1...v0.59.2) (2026-07-04)
 
 
