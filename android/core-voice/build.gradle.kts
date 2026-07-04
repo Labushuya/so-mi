@@ -36,9 +36,10 @@ android {
 }
 
 dependencies {
-    // sherpa-onnx 1.13.3 static-link: ONNX Runtime baked into libsherpa-onnx-jni.so.
-    // No separate libonnxruntime.so for arm64 → no conflict with core-rag ONNX 1.18.
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    // sherpa-onnx AAR lives in :app/libs — app depends on it directly.
+    // core-voice only uses sherpa-onnx classes; the AAR is provided transitively
+    // via the app module's fileTree dependency.
+    compileOnly(fileTree(mapOf("dir" to "../app/libs", "include" to listOf("*.aar"))))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.hilt.android)

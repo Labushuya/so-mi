@@ -115,6 +115,10 @@ dependencies {
     implementation(project(":core-llm-llama"))
     implementation(project(":core-data"))
     implementation(project(":core-rag"))
+    // sherpa-onnx static-link AAR (Piper TTS). Must live here (app module),
+    // not in core-voice — AAR-in-AAR is forbidden by the Android Gradle Plugin.
+    // core-voice uses compileOnly(fileTree) to compile against the classes.
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
     implementation(project(":core-ui"))
     implementation(project(":core-tools"))
     implementation(project(":core-voice"))
