@@ -11,10 +11,9 @@ import java.util.Locale
  * Singleton TTS wrapper using Android's built-in TextToSpeech engine.
  * No model download required.
  *
- * Thread safety:
- *  - All TTS API calls must happen on the Main thread (TextToSpeech requirement).
- *  - init() posts to the Main Looper to guarantee this.
- *  - pendingQueue holds texts that arrive before initialization completes.
+ * Voice defaults tuned for a So-Mi-like profile:
+ *  pitch 0.85  — slightly lower than default 1.0, feminine-professional
+ *  speechRate 0.95 — marginally slower for clearer articulation
  */
 object TtsHelper {
 
@@ -25,13 +24,13 @@ object TtsHelper {
     private var initialized = false
     private val pendingQueue = ArrayDeque<String>()
 
-    /** Call once on app start (any thread). Safe to call multiple times. */
+    private var currentPitch: Float = 0.85f
+    private var currentSpeechRate: Float = 0.95f
+
     fun init(context: Context) {
         mainHandler.post {
             if (initialized || tts != null) return@post
             val appCtx = context.applicationContext
-            // Assign to local first, then to field — avoids race where the
-            // OnInitListener fires before `tts =` has run.
             val instance = TextToSpeech(appCtx) { status ->
                 mainHandler.post {
                     if (status == TextToSpeech.SUCCESS) {
@@ -41,8 +40,10 @@ object TtsHelper {
                             Log.w(TAG, "German TTS unavailable, falling back to English")
                             tts?.setLanguage(Locale.ENGLISH)
                         }
+                        tts?.setPitch(currentPitch)
+                        tts?.setSpeechRate(currentSpeechRate)
                         initialized = true
-                        Log.d(TAG, "TTS initialized, draining ${pendingQueue.size} queued texts")
+                        Log.d(TAG, "TTS initialized (pitch=$currentPitch rate=$currentSpeechRate), draining ${pendingQueue.size} queued")
                         while (pendingQueue.isNotEmpty()) {
                             tts?.speak(pendingQueue.removeFirst(), TextToSpeech.QUEUE_ADD, null, null)
                         }
@@ -56,32 +57,32 @@ object TtsHelper {
         }
     }
 
-    /**
-     * Speak [text]. Uses QUEUE_ADD so streaming chunks don't interrupt each other.
-     * If TTS is not yet initialized, the text is queued and spoken once ready.
-     * Call on any thread.
-     */
     fun speak(text: String) {
         mainHandler.post {
-            if (!initialized) {
-                pendingQueue.addLast(text)
-                return@post
-            }
+            if (!initialized) { pendingQueue.addLast(text); return@post }
             tts?.speak(text, TextToSpeech.QUEUE_ADD, null, null)
         }
     }
 
-    /** Stop current playback and clear the TTS queue. Call on any thread. */
     fun stop() {
         mainHandler.post {
             pendingQueue.clear()
+            tts?.speak("", TextToSpeech.QUEUE_FLUSH, null, null)
             tts?.stop()
+        }
+    }
+
+    fun applyVoiceSettings(pitch: Float, speechRate: Float) {
+        mainHandler.post {
+            currentPitch = pitch
+            currentSpeechRate = speechRate
+            tts?.setPitch(pitch)
+            tts?.setSpeechRate(speechRate)
         }
     }
 
     fun isSpeaking(): Boolean = tts?.isSpeaking ?: false
 
-    /** Call when the app is closing to release the TTS service binding. */
     fun shutdown() {
         mainHandler.post {
             pendingQueue.clear()

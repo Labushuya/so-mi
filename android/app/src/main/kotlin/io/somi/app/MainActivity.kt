@@ -464,9 +464,10 @@ private fun SoMiAppRoot() {
             } else {
                 val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
                 val autoTts = uiSettings.autoTts
-                // Init TTS when entering chat; shutdown handled in DisposableEffect.
+                // Init TTS when entering chat; apply saved voice settings; shutdown handled in DisposableEffect.
                 LaunchedEffect(Unit) {
                     io.somi.voice.TtsHelper.init(context)
+                    io.somi.voice.TtsHelper.applyVoiceSettings(uiSettings.ttsPitch, uiSettings.ttsSpeechRate)
                 }
                 DisposableEffect(Unit) {
                     onDispose { io.somi.voice.TtsHelper.shutdown() }
@@ -649,6 +650,7 @@ private fun ChatShellScreen(
                 else AssistantBubble(
                     text = msg.text,
                     autoTts = autoTts,
+                    isLastMessage = !isGenerating && msg.id == messages.lastOrNull { it.author == Author.ASSISTANT }?.id,
                     onSpeakRequest = { io.somi.voice.TtsHelper.speak(it) },
                 )
             }
@@ -656,6 +658,8 @@ private fun ChatShellScreen(
                 item(key = "live-$partialPromptId") {
                     AssistantBubble(
                         text = partial.ifEmpty { "…" },
+                        autoTts = autoTts,
+                        isLastMessage = true,
                         onSpeakRequest = { io.somi.voice.TtsHelper.speak(it) },
                     )
                 }
@@ -820,6 +824,7 @@ private fun ErrorBanner(message: String, onRetry: (() -> Unit)?, kind: BannerKin
 private fun AssistantBubble(
     text: String,
     autoTts: Boolean = false,
+    isLastMessage: Boolean = false,
     onSpeakRequest: ((String) -> Unit)? = null,
 ) {
     val songbird = LocalSongbirdColors.current
@@ -827,8 +832,9 @@ private fun AssistantBubble(
         topStart = 18.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 0.dp,
     )
 
+    // Only auto-read the newest message — not historical bubbles on scroll/recomposition.
     LaunchedEffect(text) {
-        if (autoTts && onSpeakRequest != null) onSpeakRequest.invoke(text)
+        if (isLastMessage && autoTts && onSpeakRequest != null) onSpeakRequest.invoke(text)
     }
 
     Row(
@@ -882,7 +888,11 @@ private fun AssistantBubble(
                         .size(24.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(songbird.bubbleBorder.copy(alpha = 0.3f))
-                        .clickable { onSpeakRequest.invoke(text) }
+                        .clickable {
+                            // Stop Auto-TTS before manual speak to avoid overlap.
+                            io.somi.voice.TtsHelper.stop()
+                            onSpeakRequest.invoke(text)
+                        }
                         .padding(3.dp),
                     contentAlignment = Alignment.Center,
                 ) {
