@@ -12,34 +12,44 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
  * Unified TTS interface — Piper (natural voice) when available, Android TTS fallback.
  *
- * Piper runs on Dispatchers.Default (not IO): OfflineTts owns C++ threads internally.
- * Using IO would create thread-pool contention with llama.cpp's OpenMP threads and cause
- * the intermittent crash observed in v0.58.x.
+ * CRASH FIX (v0.58.5):
+ * Piper (sherpa-onnx) initialises a native ONNX thread-pool on first use.
+ * Running it on Dispatchers.Default or Dispatchers.IO while llama.cpp is active
+ * causes native thread-pool contention → SIGABRT.
  *
- * Speech-rate is forwarded to PiperTtsEngine.synthesise(speed = currentRate).
- * Android TTS fallback ignores currentRate (its own API is different).
+ * Fix: dedicated single-thread dispatcher (limitedParallelism(1)) for ALL Piper
+ * operations — init, synthesise, and AudioTrack playback. This is the same
+ * isolation pattern used for llama.cpp (llamaDispatcher), guaranteeing that
+ * the two C++ engines never share a thread.
+ *
+ * Additionally: speak() is a no-op when piperReady is false (engine still
+ * initialising) to prevent calling synthesise() before OfflineTts is ready.
  */
 object TtsHelper {
 
     private const val TAG = "TtsHelper"
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // Dedicated single-thread dispatcher — Piper C++ threads stay isolated from LLM.
+    private val piperDispatcher = Dispatchers.IO.limitedParallelism(1)
+    private val piperScope = CoroutineScope(SupervisorJob() + piperDispatcher)
 
     private var androidTts: TextToSpeech? = null
     private var androidTtsReady = false
     private val pendingQueue = ArrayDeque<String>()
 
-    private var piperReady = false
+    @Volatile private var piperReady = false
     private var piperInitJob: Job? = null
     private var activeTrack: AudioTrack? = null
 
-    private var currentRate: Float = 1.0f
+    @Volatile private var currentRate: Float = 1.0f
 
     val isPiperReady: Boolean get() = piperReady
 
@@ -70,25 +80,47 @@ object TtsHelper {
 
     fun initPiper(context: Context) {
         if (piperReady || piperInitJob?.isActive == true) return
-        piperInitJob = scope.launch {
+        piperInitJob = piperScope.launch {
+            // Small delay on first init to let llama.cpp finish its own startup.
+            // Avoids native thread-pool collision during cold-start when greeting fires.
+            delay(500)
             val ok = PiperTtsEngine.init(context.applicationContext)
             piperReady = ok
-            if (ok) Log.i(TAG, "Piper ready") else Log.w(TAG, "Piper init failed — Android TTS fallback")
+            if (ok) Log.i(TAG, "Piper ready on dedicated dispatcher")
+            else Log.w(TAG, "Piper init failed — Android TTS fallback")
         }
     }
 
-    /** Set Piper speech rate. 1.0 = normal, <1 = slower, >1 = faster. */
+    /**
+     * Tear down and re-initialise the Piper engine without re-downloading the model.
+     * Useful after an in-app model update or when the engine is in a bad state.
+     */
+    fun reinitPiper(context: Context) {
+        piperInitJob?.cancel()
+        piperInitJob = null
+        piperReady = false
+        piperScope.launch {
+            PiperTtsEngine.shutdown()
+            delay(200)
+            val ok = PiperTtsEngine.init(context.applicationContext)
+            piperReady = ok
+            Log.i(TAG, "Piper re-init complete: ok=$ok")
+        }
+    }
+
     fun setSpeechRate(rate: Float) {
         currentRate = rate.coerceIn(0.25f, 4.0f)
     }
 
     fun speak(text: String) {
         if (text.isBlank()) return
+        // Guard: do not attempt Piper synthesis until engine is fully ready.
+        // Calling synthesise() before OfflineTts is initialised crashes the process.
         if (piperReady) speakWithPiper(text) else speakWithAndroid(text)
     }
 
     private fun speakWithPiper(text: String) {
-        scope.launch {
+        piperScope.launch {
             stopActiveTrack()
             val samples = runCatching {
                 PiperTtsEngine.synthesise(text, speed = currentRate)
@@ -97,8 +129,7 @@ object TtsHelper {
                 piperReady = false
                 speakWithAndroid(text)
                 return@launch
-            }
-            if (samples == null) {
+            } ?: run {
                 Log.w(TAG, "Piper returned null — degrading to Android TTS")
                 piperReady = false
                 speakWithAndroid(text)
@@ -146,7 +177,7 @@ object TtsHelper {
     }
 
     fun stop() {
-        scope.launch { stopActiveTrack() }
+        piperScope.launch { stopActiveTrack() }
         mainHandler.post { pendingQueue.clear(); androidTts?.stop() }
     }
 
@@ -154,11 +185,11 @@ object TtsHelper {
         activeTrack?.playState == AudioTrack.PLAYSTATE_PLAYING || androidTts?.isSpeaking == true
 
     fun shutdown() {
-        scope.launch { stopActiveTrack(); PiperTtsEngine.shutdown() }
+        piperScope.launch { stopActiveTrack(); PiperTtsEngine.shutdown(); piperReady = false }
         mainHandler.post {
             pendingQueue.clear()
             androidTts?.shutdown(); androidTts = null
-            androidTtsReady = false; piperReady = false
+            androidTtsReady = false
         }
         Log.d(TAG, "TTS shut down")
     }

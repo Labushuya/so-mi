@@ -1047,6 +1047,16 @@ private fun TtsSection(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+            if (piperAvailable) {
+                // Re-Init ohne erneuten Download — behebt Crash nach Update/Neustart
+                Spacer(Modifier.height(4.dp))
+                SongbirdButton(
+                    label = "Engine neu starten",
+                    kind = SongbirdButtonKind.Ghost,
+                    minHeight = 28.dp,
+                    onClick = { io.somi.voice.TtsHelper.reinitPiper(ctx) },
+                )
+            }
             if (!piperAvailable) {
                 Spacer(Modifier.height(6.dp))
                 when {
