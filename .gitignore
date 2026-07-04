@@ -45,3 +45,7 @@ hs_err_pid*
 
 # OS
 Thumbs.db
+
+# Piper TTS model (downloaded at runtime, not committed)
+android/core-voice/libs/*.onnx
+android/core-voice/libs/*.json
