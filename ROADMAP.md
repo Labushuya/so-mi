@@ -130,46 +130,20 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.53.0 — OKF-Memory (Agentic Memory Flywheel)
-**Grundlage:** So-Mi speichert Fakten als Flat-Markdown. OKF ergänzt strukturierte YAML-Frontmatter + verlinkte Entitäten.
+## Pipeline — nächste Sprints (Priorität absteigend)
 
-Kernkonzept (Patrick / Agentic Memory Flywheel):
-- Jede gespeicherte Information bekommt `type`, `title`, `tags`, `relations` im YAML-Header
-- Beim Speichern: LLM extrahiert Entitäten + Beziehungen aus dem Fakt automatisch (1-2s overhead)
-- Verlinkte Entitäten: `[Christopher](/personen/christopher.md)` statt freier Text
-- Beim Recall: Nicht nur semantische Suche, sondern auch Graph-Traversal (verlinkten Entitäten folgen)
-- "Supersedes"-Semantik: Widersprüche erkennen → altes Fact als `superseded_by` markieren, neues anlegen
+### v0.59.0 — Piper TTS (Offline-Stimme)
+**Ziel**: Natürliche deutsche Stimme statt Android-System-TTS.
 
-Deliverables:
-1. `extractEntitiesFromFact()` im RagOrchestrator — LLM-basiert, 1-Pass, gibt `{entities, relations}` zurück
-2. Frontmatter-Writer: beim Speichern YAML-Header in .md einfügen
-3. Relation-Index: `_index.json` pro Kategorie mit {factId → linkedEntities}
-4. Recall-Erweiterung: wenn semantisch gefundener Fakt auf andere Entität linkt → diese nachladen (1 Hop)
-5. Duplikat-Erkennung erweitern: inhaltliche Überschneidung → `superseded_by` statt Duplikat-Abweisung
-
-### v0.54.0 — Voice (Spracheingabe)
-- SpeechRecognizer API (Android native, kein Modell-Download)
-- Mikrofon-Button im Composer
-- Whisper-tiny als Offline-Fallback (sherpa-onnx)
+Vorgehen:
+- sherpa-onnx static-link AAR in isoliertem `core-voice`-Modul (kein ONNX-Konflikt mit core-rag)
+- Modell: `de_DE-eva_k-medium.onnx` (~65 MB), Download über bestehende Download-Infrastruktur
+- TtsHelper API bleibt identisch (`init`, `speak`, `stop`, `shutdown`) — nur Motor wechselt
+- Fallback auf Android TTS wenn Piper-Modell nicht heruntergeladen
+- Settings → Sprachausgabe: "Stimme herunterladen" Button wenn noch kein Modell
 
 ### v1.0 — Abschluss
 1. KIWIX-Offline-Lexikon
-2. Piper TTS mit so-mi Voice-Profil
-
-### Vorgemerkt — OKF (Open Knowledge Format)
-**User-Vereinbarung 2026-06-30** — für spätere Implementierung vorgemerkt.
-
-OKF ersetzt/ergänzt das aktuelle Flat-Markdown-Erinnerungssystem durch strukturierte Markdown-Dateien mit YAML-Frontmatter und verlinkten Entitäten:
-
-```yaml
----
-type: Person
-title: Christopher
-tags: [nutzer]
----
-- arbeitet als: SRE bei Delos Cloud
-- Beziehungen: [Familie](/personen/familie.md)
-```
 
 So-Mi implementiert OKF bereits zu ~70% (Markdown-Dateien pro Kategorie). Fehlend: YAML-Frontmatter, Verlinkungen, Index-Dateien.
 Spec: https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing

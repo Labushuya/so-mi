@@ -464,10 +464,9 @@ private fun SoMiAppRoot() {
             } else {
                 val uiSettings by viewModel.uiSettings.state.collectAsStateWithLifecycle()
                 val autoTts = uiSettings.autoTts
-                // Init TTS when entering chat; apply saved voice settings; shutdown handled in DisposableEffect.
+                // Init TTS when entering chat; shutdown handled in DisposableEffect.
                 LaunchedEffect(Unit) {
                     io.somi.voice.TtsHelper.init(context)
-                    io.somi.voice.TtsHelper.applyVoiceSettings(uiSettings.ttsPitch, uiSettings.ttsSpeechRate)
                 }
                 DisposableEffect(Unit) {
                     onDispose { io.somi.voice.TtsHelper.shutdown() }
