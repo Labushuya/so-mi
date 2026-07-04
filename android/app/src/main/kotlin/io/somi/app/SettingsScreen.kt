@@ -1041,6 +1041,20 @@ private fun TtsSection(
     var downloadProgress by remember { mutableStateOf<Int?>(null) }
     var reinitRunning by remember { mutableStateOf(false) }
 
+    // Poll until Piper is ready (or 10s timeout) — reinit takes 3-8s on Magic V2.
+    val startReinit: (io.somi.voice.PiperTtsEngine.Voice?) -> Unit = { voice ->
+        reinitRunning = true
+        io.somi.voice.TtsHelper.reinitPiper(ctx, voice)
+        coroutineScope.launch {
+            var waited = 0
+            while (waited < 10_000 && !io.somi.voice.TtsHelper.isPiperReady) {
+                kotlinx.coroutines.delay(300)
+                waited += 300
+            }
+            reinitRunning = false
+        }
+    }
+
     val selectedVoice = selectedVoiceName?.let { name ->
         io.somi.voice.PiperTtsEngine.Voice.entries.firstOrNull { it.name == name }
     } ?: installedVoices.firstOrNull()
@@ -1076,12 +1090,7 @@ private fun TtsSection(
                             minHeight = 26.dp,
                             onClick = {
                                 onVoiceSelected(voice)
-                                reinitRunning = true
-                                io.somi.voice.TtsHelper.reinitPiper(ctx, voice)
-                                coroutineScope.launch {
-                                    kotlinx.coroutines.delay(4_000)
-                                    reinitRunning = false
-                                }
+                                startReinit(voice)
                             },
                         )
                     } else {
@@ -1128,11 +1137,7 @@ private fun TtsSection(
                     label = "Engine neu starten",
                     kind = SongbirdButtonKind.Ghost,
                     minHeight = 26.dp,
-                    onClick = {
-                        reinitRunning = true
-                        io.somi.voice.TtsHelper.reinitPiper(ctx, selectedVoice)
-                        coroutineScope.launch { kotlinx.coroutines.delay(4_000); reinitRunning = false }
-                    },
+                    onClick = { startReinit(selectedVoice) },
                 )
             }
         }
