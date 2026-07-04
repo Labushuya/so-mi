@@ -133,7 +133,7 @@ Komplett.
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
 ### v0.59.0 — Piper TTS (Offline-Stimme)
-**Ziel**: Natürliche deutsche Stimme statt Android-System-TTS.
+**✅ Fertig als v0.58.x** — sherpa-onnx 1.13.3 static-link, de_DE-eva_k-x_low, Download in-app.
 
 Vorgehen:
 - sherpa-onnx static-link AAR in isoliertem `core-voice`-Modul (kein ONNX-Konflikt mit core-rag)
