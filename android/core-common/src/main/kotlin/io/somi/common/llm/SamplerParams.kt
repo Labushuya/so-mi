@@ -20,11 +20,11 @@ data class SamplerParams(
     /** Top-P (nucleus) sampling cutoff. */
     val topP: Float = 0.9f,
     /** Penalty multiplier for repeated tokens. 1.0 = off, > 1 = stronger anti-loop. */
-    val repeatPenalty: Float = 1.1f,
+    val repeatPenalty: Float = 1.15f,
     /** Top-K cutoff. Higher = more candidate tokens considered per step. */
     val topK: Int = 40,
     /** Hard ceiling on tokens generated per turn. */
-    val maxTokens: Int = 1024,
+    val maxTokens: Int = 512,
 ) {
     companion object {
         val DEFAULTS = SamplerParams()

@@ -444,7 +444,7 @@ class RagOrchestrator @Inject constructor(
         return buildString {
             // Natural-language framing so So-Mi integrates the facts into her
             // responses smoothly rather than parroting them mechanically.
-            append("Was du über deinen Nutzer weißt (diese Fakten kennt der Nutzer — nutze sie natürlich im Gespräch, wiederhole sie nicht einfach):\n")
+            append("[Fakten über den Nutzer — natürlich einweben, nicht auflisten]:\n")
             allFacts.forEach { append("- $it\n") }
             append("\n")
         }
@@ -491,7 +491,7 @@ class RagOrchestrator @Inject constructor(
                     } else emptyList()
 
                     buildString {
-                        append("Was du über deinen Nutzer weißt (diese Fakten kennt der Nutzer — nutze sie natürlich im Gespräch, wiederhole sie nicht einfach):\n")
+                        append("[Fakten über den Nutzer — natürlich einweben, nicht auflisten]:\n")
                         primaryFacts.forEach { append("- $it\n") }
                         if (linkedFacts.isNotEmpty()) {
                             append("\nVerknüpfte Informationen:\n")
