@@ -117,6 +117,7 @@ dependencies {
     implementation(project(":core-rag"))
     implementation(project(":core-ui"))
     implementation(project(":core-tools"))
+    implementation(project(":core-voice"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

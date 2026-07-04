@@ -1017,14 +1017,87 @@ private fun TtsSection(
     onAutoTtsToggle: (Boolean) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var piperAvailable by remember { mutableStateOf(io.somi.voice.PiperTtsEngine.isModelAvailable(ctx)) }
+    var piperDownloading by remember { mutableStateOf(false) }
+    var piperDownloadProgress by remember { mutableStateOf<Int?>(null) }
+
     SectionCard(title = "Sprachausgabe") {
+        // Piper status / download row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (piperAvailable) "Piper TTS ✓ (natürliche Stimme)" else "Piper TTS (natürliche Stimme)",
+                    color = songbird.bone,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    if (piperAvailable) "de_DE-eva_k · ~20 MB · offline"
+                    else "Noch nicht heruntergeladen (~20 MB)",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (!piperAvailable) {
+                when {
+                    piperDownloadProgress != null -> {
+                        Text(
+                            "⬇ ${piperDownloadProgress}%",
+                            color = Color(0xFF81C784),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                    else -> {
+                        SongbirdButton(
+                            label = "Herunterladen",
+                            kind = SongbirdButtonKind.Ghost,
+                            minHeight = 32.dp,
+                            onClick = {
+                                coroutineScope.launch {
+                                    piperDownloading = true
+                                    downloadPiperModel(ctx).collect { state ->
+                                        when (state) {
+                                            is PiperDownloadState.Progress -> piperDownloadProgress = state.percent
+                                            is PiperDownloadState.Done -> {
+                                                piperDownloadProgress = null
+                                                piperAvailable = true
+                                                piperDownloading = false
+                                                io.somi.voice.TtsHelper.initPiper(ctx)
+                                            }
+                                            else -> {
+                                                piperDownloadProgress = null
+                                                piperDownloading = false
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Auto-vorlesen switch
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
                 Text("Antworten vorlesen", color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
-                Text("Android TTS (Piper TTS folgt in v0.59)", color = songbird.glass, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (piperAvailable) "Piper TTS — natürliche Stimme"
+                    else "Android TTS — Piper erst herunterladen",
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             androidx.compose.material3.Switch(checked = autoTts, onCheckedChange = onAutoTtsToggle)
         }
