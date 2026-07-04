@@ -133,17 +133,23 @@ Komplett.
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
 ### v0.59.0 — Piper TTS (Offline-Stimme)
-**✅ Fertig als v0.58.x** — sherpa-onnx 1.13.3 static-link, de_DE-eva_k-x_low, Download in-app.
+**✅ Fertig als v0.58.x–v0.59.1** — sherpa-onnx static-link, 3 Stimmen (Eva K / Kerstin / Ramona), Stimmen-Auswahl in Settings.
 
-Vorgehen:
-- sherpa-onnx static-link AAR in isoliertem `core-voice`-Modul (kein ONNX-Konflikt mit core-rag)
-- Modell: `de_DE-eva_k-medium.onnx` (~65 MB), Download über bestehende Download-Infrastruktur
-- TtsHelper API bleibt identisch (`init`, `speak`, `stop`, `shutdown`) — nur Motor wechselt
-- Fallback auf Android TTS wenn Piper-Modell nicht heruntergeladen
-- Settings → Sprachausgabe: "Stimme herunterladen" Button wenn noch kein Modell
+### ❌ Aufgeschoben — So-Mi Originalstimme (Cyberpunk 2077)
+**User-Vereinbarung 2026-07-05** — Feature aufgeschoben.
+
+Ziel: Piper-Stimm-Klon der deutschen So-Mi/Songbird-Synchronstimme aus Cyberpunk 2077: Phantom Liberty.
+
+Voraussetzungen (nicht automatisierbar):
+- ~1-5 Min. sauberes Audiomaterial der deutschen Synchronstimme (aus eigener Spielkopie)
+- GPU-Zeit für Piper-Training (~2-4h auf T4)
+- Piper-Training-Pipeline: `piper-train` auf bereinigtem WAV-Dataset
+
+Technisch machbar sobald Audiomaterial vorliegt. Bis dahin: vorhandene Stimmen (Kerstin/Ramona) als Platzhalter.
 
 ### v1.0 — Abschluss
 1. KIWIX-Offline-Lexikon
+2. So-Mi Originalstimme (siehe oben)
 
 So-Mi implementiert OKF bereits zu ~70% (Markdown-Dateien pro Kategorie). Fehlend: YAML-Frontmatter, Verlinkungen, Index-Dateien.
 Spec: https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing

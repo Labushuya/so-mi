@@ -60,8 +60,8 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 ### 🎙 Voice
 - Spracheingabe via Android SpeechRecognizer (de-DE, kein Modell-Download)
 - Mikrofon-Button im Composer — Ergebnis ins Textfeld zur Kontrolle vor dem Senden
-- **Sprachausgabe (TTS):** 🔊-Button an jeder Antwort + Auto-Vorlesen-Toggle
-- *Piper TTS (Offline, natürliche Stimme) — geplant für v0.59*
+- **Sprachausgabe (Piper TTS):** 🔊-Button an jeder Antwort + Auto-Vorlesen + 3 Stimmen wählbar (Eva K / Kerstin / Ramona)
+- *So-Mi Originalstimme (Cyberpunk 2077) — aufgeschoben, erfordert eigenes Audiomaterial für Piper-Training*
 
 </td>
 <td width="50%">
@@ -168,12 +168,13 @@ So-Mi nutzt eine einheitliche Command-Sprache: **`/`** für App-Funktionen, **`@
 ```
 android/
 ├── app/               Compose UI · Navigation · ViewModels · Hilt-Wiring
-│                      Voice: VoiceInputHelper (SpeechRecognizer) · TtsHelper (Placeholder)
+│                      Voice: VoiceInputHelper (SpeechRecognizer) · TtsHelper (Piper TTS)
 ├── core-llm/          LlamaContext Interface
 ├── core-llm-llama/    ARM InferenceEngine JNI-Wrapper (NDK, llama.cpp)
 ├── core-rag/          ObjectBox HNSW · ONNX Embedder · RagOrchestrator
 │                      OKF-Memory: FrontmatterWriter · EntityExtractor · RelationIndex
 ├── core-tools/        Tool-Router (Regex) · 11 Tools
+├── core-voice/        Piper TTS (sherpa-onnx) · 3 deutsche Stimmen wählbar
 ├── core-data/         Room · DataStore · BackupManager · StorageRoots
 ├── core-ui/           ChatViewModel · Slash-Commands · RAG-Integration
 └── core-common/       Shared Interfaces (TextEmbedder · MemorySearchPort · LlmCaller)
@@ -233,7 +234,8 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 | Phase 5: In-App-Updater | ✅ Abgeschlossen | DownloadManager · PackageInstaller · Update-Banner |
 | Phase 5: Voice-Eingabe | ✅ Abgeschlossen | SpeechRecognizer (de-DE) · Mikrofon-Button |
 | Phase 5: TTS Placeholder | ✅ Abgeschlossen | 🔊-Button · Auto-Vorlesen · Android TTS |
-| Phase 5: Piper TTS | ❌ Geplant | v0.59 — natürliche Offline-Stimme (de\_DE-eva\_k) |
+| Phase 5: Piper TTS | ✅ Abgeschlossen | sherpa-onnx · 3 Stimmen wählbar · Stimmen-Klon aufgeschoben |
+| Phase 5: So-Mi Originalstimme | ❌ Aufgeschoben | Piper-Training auf Spielaudio — erfordert eigenes Audiomaterial |
 
 → Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
 
