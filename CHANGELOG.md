@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.3](https://github.com/Labushuya/so-mi/compare/v0.58.2...v0.58.3) (2026-07-04)
+
+
+### Bug Fixes
+
+* packagingOptions pickFirsts für libonnxruntime.so Konflikt (x86 sherpa vs onnxruntime-android) ([b5a618e](https://github.com/Labushuya/so-mi/commit/b5a618e10cd6676d3d3782a552299313424d70ca))
+
 ## [0.58.2](https://github.com/Labushuya/so-mi/compare/v0.58.1...v0.58.2) (2026-07-04)
 
 
