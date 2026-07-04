@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.2](https://github.com/Labushuya/so-mi/compare/v0.57.1...v0.57.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* TTS wählt beste verfügbare deutsche Stimme (Neural/Premium bevorzugt) ([#283](https://github.com/Labushuya/so-mi/issues/283)) ([1720386](https://github.com/Labushuya/so-mi/commit/17203861d121833934e9a0cef5f20f7225819532))
+
 ## [0.57.1](https://github.com/Labushuya/so-mi/compare/v0.57.0...v0.57.1) (2026-07-04)
 
 
