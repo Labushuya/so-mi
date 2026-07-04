@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import android.util.Log
 import java.util.Locale
 
@@ -11,9 +12,15 @@ import java.util.Locale
  * Singleton TTS wrapper using Android's built-in TextToSpeech engine.
  * No model download required.
  *
+ * Voice selection strategy (in order of preference):
+ *  1. Neural/enhanced German female voice (Google TTS premium, if installed)
+ *  2. Any German female voice
+ *  3. Any German voice (gender-neutral)
+ *  4. System default
+ *
  * Voice defaults tuned for a So-Mi-like profile:
  *  pitch 0.85  — slightly lower than default 1.0, feminine-professional
- *  speechRate 0.95 — marginally slower for clearer articulation
+ *  speechRate 0.90 — slightly slower for natural cadence
  */
 object TtsHelper {
 
@@ -25,7 +32,7 @@ object TtsHelper {
     private val pendingQueue = ArrayDeque<String>()
 
     private var currentPitch: Float = 0.85f
-    private var currentSpeechRate: Float = 0.95f
+    private var currentSpeechRate: Float = 0.90f
 
     fun init(context: Context) {
         mainHandler.post {
@@ -34,12 +41,7 @@ object TtsHelper {
             val instance = TextToSpeech(appCtx) { status ->
                 mainHandler.post {
                     if (status == TextToSpeech.SUCCESS) {
-                        val result = tts?.setLanguage(Locale.GERMAN)
-                        if (result == TextToSpeech.LANG_MISSING_DATA ||
-                            result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                            Log.w(TAG, "German TTS unavailable, falling back to English")
-                            tts?.setLanguage(Locale.ENGLISH)
-                        }
+                        selectBestVoice()
                         tts?.setPitch(currentPitch)
                         tts?.setSpeechRate(currentSpeechRate)
                         initialized = true
@@ -54,6 +56,73 @@ object TtsHelper {
                 }
             }
             tts = instance
+        }
+    }
+
+    /**
+     * Selects the best available German voice in this priority order:
+     *  1. Neural/network quality German female (Google TTS premium)
+     *  2. Normal quality German female
+     *  3. Any German voice
+     *  4. No change (system default)
+     *
+     * "Neural" voices on Android are identified by quality QUALITY_VERY_HIGH
+     * or QUALITY_HIGH and names containing "enhanced", "premium", "neural",
+     * or "wavenet" (Google's naming convention).
+     */
+    private fun selectBestVoice() {
+        val engine = tts ?: return
+        val german = Locale("de", "DE")
+
+        val voices = runCatching { engine.voices }
+            .getOrNull()
+            ?.filter { v ->
+                v.locale.language == "de" && !v.isNetworkConnectionRequired
+            }
+            ?: run {
+                // Fallback: just set the language, no voice selection
+                val result = engine.setLanguage(german)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Log.w(TAG, "German TTS unavailable, falling back to English")
+                    engine.setLanguage(Locale.ENGLISH)
+                }
+                return
+            }
+
+        if (voices.isEmpty()) {
+            engine.setLanguage(german)
+            return
+        }
+
+        Log.d(TAG, "Available German voices: ${voices.map { it.name }}")
+
+        // Score each voice: higher = better
+        fun scoreVoice(v: Voice): Int {
+            var score = 0
+            // Quality score (QUALITY_VERY_HIGH = 400, HIGH = 300, NORMAL = 200, LOW = 100)
+            score += v.quality
+            // Prefer female voices for So-Mi
+            if (v.name.contains("female", ignoreCase = true) ||
+                v.name.contains("feminin", ignoreCase = true)) score += 500
+            // Prefer neural/premium/enhanced voices
+            val nameLower = v.name.lowercase()
+            if (nameLower.contains("neural") || nameLower.contains("wavenet") ||
+                nameLower.contains("premium") || nameLower.contains("enhanced") ||
+                nameLower.contains("studio")) score += 1000
+            return score
+        }
+
+        val best = voices.maxByOrNull { scoreVoice(it) }
+        if (best != null) {
+            val result = engine.setVoice(best)
+            if (result == TextToSpeech.SUCCESS) {
+                Log.i(TAG, "Selected voice: ${best.name} (quality=${best.quality})")
+            } else {
+                Log.w(TAG, "setVoice failed for ${best.name}, falling back to setLanguage")
+                engine.setLanguage(german)
+            }
+        } else {
+            engine.setLanguage(german)
         }
     }
 
