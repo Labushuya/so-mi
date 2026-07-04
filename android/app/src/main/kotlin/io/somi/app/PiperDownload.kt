@@ -40,18 +40,25 @@ private const val CONFIG_JSON = """{
 }"""
 
 /**
- * Downloads the Piper TTS model to getExternalFilesDir()/piper/.
- *
- * Fixes vs original:
- *  - VISIBILITY_VISIBLE (not NOTIFY_COMPLETED): avoids PackageManager opening for .onnx
- *  - STATUS_PENDING emits Progress(0) — HF CDN holds in PENDING during redirect resolution
- *  - registerReceiver() on Main thread (Android 13+ requirement)
- *  - Config written from inline constant — no HTTP, no HF 403
+ * Downloads the specified Piper voice model to getExternalFilesDir()/piper/.
+ * Defaults to EVA_K (original x_low model).
  */
-fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
+fun downloadPiperModel(context: Context, voice: PiperTtsEngine.Voice = PiperTtsEngine.Voice.EVA_K): Flow<PiperDownloadState> {
+    val url = PiperTtsEngine.VOICE_URLS[voice] ?: MODEL_URL
+    val config = PiperTtsEngine.inlineConfigFor(voice)
+    val filename = voice.filename
+    return downloadInternal(context, url, filename, config)
+}
+
+private fun downloadInternal(
+    context: Context,
+    downloadUrl: String,
+    filename: String,
+    configJson: String,
+): Flow<PiperDownloadState> = flow {
     val modelDir = PiperTtsEngine.modelDir(context)
-    val destFile = File(modelDir, "de_DE-eva_k-x_low.onnx")
-    val configFile = File(modelDir, "de_DE-eva_k-x_low.onnx.json")
+    val destFile = File(modelDir, filename)
+    val configFile = File(modelDir, "$filename.json")
     if (destFile.exists()) destFile.delete()
 
     val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -60,7 +67,7 @@ fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
 
     try {
         val downloadId = dm.enqueue(
-            DownloadManager.Request(Uri.parse(MODEL_URL)).apply {
+            DownloadManager.Request(Uri.parse(downloadUrl)).apply {
                 setTitle("Piper TTS — So-Mi Stimme")
                 setDescription("Natürliche Offline-Stimme (~20 MB)")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
@@ -105,7 +112,7 @@ fun downloadPiperModel(context: Context): Flow<PiperDownloadState> = flow {
                 val ok = signal.getOrNull() ?: false
                 emit(PiperDownloadState.Progress(100))
                 if (ok) {
-                    runCatching { configFile.writeText(CONFIG_JSON) }
+                    runCatching { configFile.writeText(configJson) }
                         .onFailure { Log.w(TAG, "config write failed", it) }
                     emit(PiperDownloadState.Done)
                 } else {

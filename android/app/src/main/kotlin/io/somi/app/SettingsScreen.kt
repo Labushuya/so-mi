@@ -143,12 +143,16 @@ internal fun SettingsScreen(
                     TtsSection(
                         autoTts = uiSettings.autoTts,
                         piperSpeechRate = uiSettings.piperSpeechRate,
+                        selectedVoiceName = uiSettings.selectedPiperVoice,
                         onAutoTtsToggle = { v ->
                             coroutineScope.launch { viewModel.uiSettings.setAutoTts(v) }
                         },
                         onSpeechRateChange = { v ->
                             io.somi.voice.TtsHelper.setSpeechRate(v)
                             coroutineScope.launch { viewModel.uiSettings.setPiperSpeechRate(v) }
+                        },
+                        onVoiceSelected = { voice ->
+                            coroutineScope.launch { viewModel.uiSettings.setSelectedPiperVoice(voice.name) }
                         },
                     )
                     Spacer(Modifier.height(16.dp))
@@ -1020,95 +1024,91 @@ private fun GreetingSection(
 private fun TtsSection(
     autoTts: Boolean,
     piperSpeechRate: Float,
+    selectedVoiceName: String?,
     onAutoTtsToggle: (Boolean) -> Unit,
     onSpeechRateChange: (Float) -> Unit,
+    onVoiceSelected: (io.somi.voice.PiperTtsEngine.Voice) -> Unit,
 ) {
     val songbird = LocalSongbirdColors.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var piperAvailable by remember { mutableStateOf(io.somi.voice.PiperTtsEngine.isModelAvailable(ctx)) }
-    var piperDownloadProgress by remember { mutableStateOf<Int?>(null) }
+    var installedVoices by remember {
+        mutableStateOf(io.somi.voice.PiperTtsEngine.installedVoices(ctx))
+    }
+    val piperAvailable = installedVoices.isNotEmpty()
+    var downloadingVoice by remember { mutableStateOf<io.somi.voice.PiperTtsEngine.Voice?>(null) }
+    var downloadProgress by remember { mutableStateOf<Int?>(null) }
     var reinitRunning by remember { mutableStateOf(false) }
 
-    // Shows which quality tier is installed (x_low is what the download button provides)
-    val piperQualityLabel = remember(piperAvailable) {
-        if (!piperAvailable) ""
-        else {
-            val dir = io.somi.voice.PiperTtsEngine.modelDir(ctx)
-            if (java.io.File(dir, "de_DE-eva_k-medium.onnx").exists())
-                "de_DE-eva_k-medium · offline"
-            else
-                "de_DE-eva_k-x_low · offline"
-        }
-    }
+    val selectedVoice = selectedVoiceName?.let { name ->
+        io.somi.voice.PiperTtsEngine.Voice.entries.firstOrNull { it.name == name }
+    } ?: installedVoices.firstOrNull()
 
     SectionCard(title = "Sprachausgabe") {
-        // ── Piper-Status + Re-Init / Download ───────────────────────────
-        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (piperAvailable) "Piper TTS ✓" else "Piper TTS",
-                    color = songbird.bone,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    if (piperAvailable) piperQualityLabel else "nicht installiert",
-                    color = songbird.glass,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            if (piperAvailable) {
-                Spacer(Modifier.height(4.dp))
-                if (reinitRunning) {
+        // ── Stimmen-Auswahl ──────────────────────────────────────────────
+        Text("Stimme wählen", color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(4.dp))
+
+        io.somi.voice.PiperTtsEngine.Voice.entries.forEach { voice ->
+            val installed = voice in installedVoices
+            val isSelected = voice == selectedVoice
+            val isDownloading = downloadingVoice == voice
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        "Neustart läuft… (~2-4s)",
-                        color = songbird.glass,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                } else {
-                    SongbirdButton(
-                        label = "Engine neu starten",
-                        kind = SongbirdButtonKind.Ghost,
-                        minHeight = 28.dp,
-                        onClick = {
-                            reinitRunning = true
-                            io.somi.voice.TtsHelper.reinitPiper(ctx)
-                            coroutineScope.launch {
-                                kotlinx.coroutines.delay(4_000)
-                                reinitRunning = false
-                            }
-                        },
+                        voice.displayName + if (installed) " ✓" else "",
+                        color = if (isSelected && installed) Color(0xFF81C784) else songbird.bone,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
-            }
-            if (!piperAvailable) {
-                Spacer(Modifier.height(6.dp))
-                when {
-                    piperDownloadProgress != null -> {
-                        Text(
-                            "⬇ ${piperDownloadProgress}%",
-                            color = Color(0xFF81C784),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                    else -> {
+                if (installed) {
+                    if (!isSelected) {
                         SongbirdButton(
-                            label = "Herunterladen (~20 MB)",
+                            label = "Aktivieren",
                             kind = SongbirdButtonKind.Ghost,
-                            minHeight = 32.dp,
+                            minHeight = 26.dp,
                             onClick = {
+                                onVoiceSelected(voice)
+                                reinitRunning = true
+                                io.somi.voice.TtsHelper.reinitPiper(ctx, voice)
                                 coroutineScope.launch {
-                                    downloadPiperModel(ctx).collect { state ->
+                                    kotlinx.coroutines.delay(4_000)
+                                    reinitRunning = false
+                                }
+                            },
+                        )
+                    } else {
+                        Text("Aktiv", color = Color(0xFF81C784), style = MaterialTheme.typography.labelSmall)
+                    }
+                } else {
+                    if (isDownloading) {
+                        Text("⬇ ${downloadProgress ?: 0}%", color = Color(0xFF81C784), style = MaterialTheme.typography.labelSmall)
+                    } else {
+                        SongbirdButton(
+                            label = "~60 MB",
+                            kind = SongbirdButtonKind.Ghost,
+                            minHeight = 26.dp,
+                            onClick = {
+                                downloadingVoice = voice
+                                coroutineScope.launch {
+                                    downloadPiperModel(ctx, voice).collect { state ->
                                         when (state) {
-                                            is PiperDownloadState.Progress -> piperDownloadProgress = state.percent
+                                            is PiperDownloadState.Progress -> downloadProgress = state.percent
                                             is PiperDownloadState.Done -> {
-                                                piperDownloadProgress = null
-                                                piperAvailable = true
-                                                io.somi.voice.TtsHelper.initPiper(ctx)
+                                                downloadProgress = null
+                                                downloadingVoice = null
+                                                installedVoices = io.somi.voice.PiperTtsEngine.installedVoices(ctx)
+                                                onVoiceSelected(voice)
+                                                io.somi.voice.TtsHelper.initPiper(ctx, voice)
                                             }
-                                            else -> piperDownloadProgress = null
+                                            else -> { downloadProgress = null; downloadingVoice = null }
                                         }
                                     }
                                 }
@@ -1119,7 +1119,25 @@ private fun TtsSection(
             }
         }
 
-        Spacer(Modifier.height(4.dp))
+        if (piperAvailable) {
+            Spacer(Modifier.height(4.dp))
+            if (reinitRunning) {
+                Text("Stimme wird geladen… (~2-4s)", color = songbird.glass, style = MaterialTheme.typography.labelSmall)
+            } else {
+                SongbirdButton(
+                    label = "Engine neu starten",
+                    kind = SongbirdButtonKind.Ghost,
+                    minHeight = 26.dp,
+                    onClick = {
+                        reinitRunning = true
+                        io.somi.voice.TtsHelper.reinitPiper(ctx, selectedVoice)
+                        coroutineScope.launch { kotlinx.coroutines.delay(4_000); reinitRunning = false }
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
 
         // ── Auto-vorlesen ────────────────────────────────────────────────
         Row(
@@ -1129,8 +1147,8 @@ private fun TtsSection(
             Column(Modifier.weight(1f)) {
                 Text("Antworten vorlesen", color = songbird.bone, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    if (piperAvailable) "Piper TTS — natürliche Stimme"
-                    else "Android TTS — Piper erst herunterladen",
+                    if (piperAvailable) "Piper TTS — ${selectedVoice?.displayName ?: "keine Stimme"}"
+                    else "Android TTS — Stimme erst herunterladen",
                     color = songbird.glass,
                     style = MaterialTheme.typography.bodySmall,
                 )

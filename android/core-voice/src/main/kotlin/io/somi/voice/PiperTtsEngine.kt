@@ -11,60 +11,78 @@ import java.io.File
 /**
  * Piper TTS engine backed by sherpa-onnx OfflineTts.
  *
- * Models (priority: medium > x_low):
- *   de_DE-eva_k-medium.onnx  — ~64 MB, 22 kHz, better expressiveness (if present)
- *   de_DE-eva_k-x_low.onnx   — ~20 MB, 16 kHz, baseline quality
+ * Available female German voices (all ~60MB, 16kHz):
+ *   eva_k   — smooth, measured, slightly breathy
+ *   kerstin — warmer, more conversational
+ *   ramona  — clearer diction, more assertive
  *
  * VITS parameters tuned for So-Mi's character:
- *   noiseScale 0.8 (more expressive vs default 0.667)
- *   noiseScaleW 0.9 (more variation in pacing vs default 0.8)
- *
- * Thread safety: init() and synthesise() must be called on TtsHelper's piperDispatcher.
+ *   noiseScale 0.85 — expressive delivery
+ *   noiseScaleW 0.9 — natural pacing variation
  */
 object PiperTtsEngine {
 
     private const val TAG = "PiperTtsEngine"
 
-    private const val MODEL_MEDIUM = "de_DE-eva_k-medium.onnx"
-    private const val MODEL_X_LOW  = "de_DE-eva_k-x_low.onnx"
+    enum class Voice(val filename: String, val displayName: String) {
+        EVA_K ("de_DE-eva_k-x_low.onnx",   "Eva K — glatt"),
+        KERSTIN("de_DE-kerstin-low.onnx",   "Kerstin — warm"),
+        RAMONA ("de_DE-ramona-low.onnx",    "Ramona — klar"),
+    }
 
-    // VITS params tuned for So-Mi: more expressive than sherpa-onnx defaults
-    private const val NOISE_SCALE   = 0.8f
+    // Inline configs (sample_rate, espeak voice) for each model
+    private val VOICE_CONFIGS = mapOf(
+        Voice.EVA_K  to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"x_low","language":{"code":"de_DE"}}""",
+        Voice.KERSTIN to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"low","language":{"code":"de_DE"}}""",
+        Voice.RAMONA  to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"low","language":{"code":"de_DE"}}""",
+    )
+
+    // Download URLs
+    val VOICE_URLS = mapOf(
+        Voice.EVA_K   to "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva_k/x_low/de_DE-eva_k-x_low.onnx",
+        Voice.KERSTIN to "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/kerstin/low/de_DE-kerstin-low.onnx",
+        Voice.RAMONA  to "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/ramona/low/de_DE-ramona-low.onnx",
+    )
+
+    private const val NOISE_SCALE   = 0.85f
     private const val NOISE_SCALE_W = 0.9f
-    private const val LENGTH_SCALE  = 1.0f
 
     private var tts: OfflineTts? = null
+    private var activeVoice: Voice? = null
 
     fun modelDir(context: Context): File =
         File(context.getExternalFilesDir(null), "piper").also { it.mkdirs() }
 
-    /**
-     * "medium", "x_low", or "none" — which quality tier is installed.
-     * Used by the UI to show the active model label.
-     */
-    fun availableModelQuality(context: Context): String {
-        val dir = modelDir(context)
-        return when {
-            File(dir, MODEL_MEDIUM).exists() -> "medium"
-            File(dir, MODEL_X_LOW).exists()  -> "x_low"
-            else                             -> "none"
+    fun isVoiceInstalled(context: Context, voice: Voice): Boolean =
+        File(modelDir(context), voice.filename).exists()
+
+    fun installedVoices(context: Context): List<Voice> =
+        Voice.entries.filter { isVoiceInstalled(context, it) }
+
+    /** Returns the first installed voice, or null if none. */
+    fun bestAvailableVoice(context: Context): Voice? =
+        Voice.entries.firstOrNull { isVoiceInstalled(context, it) }
+
+    fun isModelAvailable(context: Context): Boolean = bestAvailableVoice(context) != null
+
+    fun availableModelQuality(context: Context): String =
+        bestAvailableVoice(context)?.displayName ?: "none"
+
+    fun inlineConfigFor(voice: Voice): String = VOICE_CONFIGS[voice] ?: "{}"
+
+    suspend fun init(context: Context, preferredVoice: Voice? = null): Boolean {
+        val targetVoice = preferredVoice ?: bestAvailableVoice(context) ?: run {
+            Log.d(TAG, "no Piper model installed")
+            return false
         }
-    }
+        // Already loaded with the same voice
+        if (tts != null && activeVoice == targetVoice) return true
+        // Different voice requested — shut down first
+        if (tts != null) shutdown()
 
-    fun isModelAvailable(context: Context): Boolean =
-        availableModelQuality(context) != "none"
-
-    private fun resolveModelFile(context: Context): File? {
-        val dir = modelDir(context)
-        File(dir, MODEL_MEDIUM).takeIf { it.exists() }?.let { return it }
-        File(dir, MODEL_X_LOW).takeIf  { it.exists() }?.let { return it }
-        return null
-    }
-
-    suspend fun init(context: Context): Boolean {
-        if (tts != null) return true
-        val modelFile = resolveModelFile(context) ?: run {
-            Log.d(TAG, "no model in ${modelDir(context).absolutePath}")
+        val modelFile = File(modelDir(context), targetVoice.filename)
+        if (!modelFile.exists()) {
+            Log.w(TAG, "${targetVoice.filename} requested but not on disk")
             return false
         }
         return runCatching {
@@ -77,7 +95,7 @@ object PiperTtsEngine {
                         dataDir     = "",
                         noiseScale  = NOISE_SCALE,
                         noiseScaleW = NOISE_SCALE_W,
-                        lengthScale = LENGTH_SCALE,
+                        lengthScale = 1.0f,
                     ),
                     numThreads = 2,
                     debug      = false,
@@ -86,10 +104,11 @@ object PiperTtsEngine {
                 maxNumSentences = 1,
             )
             tts = OfflineTts(config = config)
-            Log.i(TAG, "Piper ready — ${modelFile.name}")
+            activeVoice = targetVoice
+            Log.i(TAG, "Piper ready — ${targetVoice.displayName} (${modelFile.name})")
             true
         }.onFailure {
-            Log.e(TAG, "Piper init failed", it)
+            Log.e(TAG, "Piper init failed for ${targetVoice.filename}", it)
         }.getOrDefault(false)
     }
 
@@ -107,6 +126,7 @@ object PiperTtsEngine {
     fun shutdown() {
         tts?.release()
         tts = null
+        activeVoice = null
         Log.d(TAG, "Piper shut down")
     }
 }

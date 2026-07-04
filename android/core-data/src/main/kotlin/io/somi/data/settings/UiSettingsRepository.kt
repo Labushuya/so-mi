@@ -43,6 +43,8 @@ class UiSettingsRepository @Inject constructor(
 
     suspend fun setSelectedModelId(id: String?) = save(_state.value.copy(selectedModelId = id))
 
+    suspend fun setSelectedPiperVoice(voiceName: String?) = save(_state.value.copy(selectedPiperVoice = voiceName))
+
     suspend fun save(settings: UiSettings) = withContext(Dispatchers.IO) {
         _state.value = settings
         try {
@@ -56,6 +58,10 @@ class UiSettingsRepository @Inject constructor(
                     put("selectedModelId", settings.selectedModelId)
                 else
                     put("selectedModelId", org.json.JSONObject.NULL)
+                if (settings.selectedPiperVoice != null)
+                    put("selectedPiperVoice", settings.selectedPiperVoice)
+                else
+                    put("selectedPiperVoice", org.json.JSONObject.NULL)
                 // ttsPitch/ttsSpeechRate entfernt in v0.58.0 — gespeicherte Werte werden ignoriert
             }
             file.writeText(json.toString())
@@ -83,6 +89,8 @@ class UiSettingsRepository @Inject constructor(
                 piperSpeechRate = json.optDouble("piperSpeechRate", 1.0).toFloat().coerceIn(0.5f, 2.0f),
                 selectedModelId = json.optString("selectedModelId", null)
                     ?.takeIf { it.isNotBlank() },
+                selectedPiperVoice = json.optString("selectedPiperVoice", null)
+                    ?.takeIf { it.isNotBlank() },
             )
         } catch (t: Throwable) {
             Log.w(TAG, "load failed; using defaults", t)
@@ -102,6 +110,7 @@ data class UiSettings(
     val autoTts: Boolean = false,
     val piperSpeechRate: Float = 1.0f,
     val selectedModelId: String? = null,
+    val selectedPiperVoice: String? = null,  // PiperTtsEngine.Voice.name
 ) {
     companion object {
         val DEFAULTS = UiSettings()
