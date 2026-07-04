@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.4](https://github.com/Labushuya/so-mi/compare/v0.58.3...v0.58.4) (2026-07-04)
+
+
+### Bug Fixes
+
+* Piper Download 0%, Crash, UI-Overflow, Slider + Erst-Setup-Bug ([#291](https://github.com/Labushuya/so-mi/issues/291)) ([6420652](https://github.com/Labushuya/so-mi/commit/6420652efafeb06bde3169b21eb1a4978b481f54))
+
 ## [0.58.3](https://github.com/Labushuya/so-mi/compare/v0.58.2...v0.58.3) (2026-07-04)
 
 
