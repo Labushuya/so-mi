@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.7](https://github.com/Labushuya/so-mi/compare/v0.59.6...v0.59.7) (2026-07-05)
+
+
+### Bug Fixes
+
+* Piper TTS deaktiviert (PIPER_ENABLED=false) — crasht mit llama.cpp ([#309](https://github.com/Labushuya/so-mi/issues/309)) ([3bcb1f4](https://github.com/Labushuya/so-mi/commit/3bcb1f48ba6f0ab4eafa1cb96972b11dd74433e5))
+
 ## [0.59.6](https://github.com/Labushuya/so-mi/compare/v0.59.5...v0.59.6) (2026-07-05)
 
 
