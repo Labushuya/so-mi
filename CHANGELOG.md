@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.0](https://github.com/Labushuya/so-mi/compare/v0.59.7...v0.60.0) (2026-07-05)
+
+
+### Features
+
+* Ladebalken (Rot-Purpur Shimmer) + v0.59.7 stable + Docs ([#311](https://github.com/Labushuya/so-mi/issues/311)) ([92dd8ea](https://github.com/Labushuya/so-mi/commit/92dd8ea1eb60f548a6d99a308268df742b68f3c1))
+
 ## [0.59.7](https://github.com/Labushuya/so-mi/compare/v0.59.6...v0.59.7) (2026-07-05)
 
 
