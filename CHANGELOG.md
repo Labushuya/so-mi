@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.62.0](https://github.com/Labushuya/so-mi/compare/v0.61.0...v0.62.0) (2026-07-05)
+
+
+### Features
+
+* Glitch-Übergang Boot→Chat + Wippende Dots + Stärkere Avatar-Animation ([#315](https://github.com/Labushuya/so-mi/issues/315)) ([3c454f0](https://github.com/Labushuya/so-mi/commit/3c454f09e062f17d66884728a305144125d4957b))
+
 ## [0.61.0](https://github.com/Labushuya/so-mi/compare/v0.60.0...v0.61.0) (2026-07-05)
 
 
