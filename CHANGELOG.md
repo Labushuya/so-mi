@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.0](https://github.com/Labushuya/so-mi/compare/v0.60.0...v0.61.0) (2026-07-05)
+
+
+### Features
+
+* Boot-Monolog + Ladebalken beim App-Start ([#313](https://github.com/Labushuya/so-mi/issues/313)) ([9b6e466](https://github.com/Labushuya/so-mi/commit/9b6e4661a75e12599e2b85a1a881e1a298087a2d))
+
 ## [0.60.0](https://github.com/Labushuya/so-mi/compare/v0.59.7...v0.60.0) (2026-07-05)
 
 
