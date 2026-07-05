@@ -8,11 +8,15 @@
 
 ---
 
-## Aktueller Stand (2026-07-04)
+## Aktueller Stand (2026-07-05)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.56.0 | ✅ live | TTS: 🔊-Button an jeder Antwort + Auto-Vorlesen-Toggle |
+| v0.59.7 | ✅ stable | Piper TTS deaktiviert (Memory-Conflict mit llama.cpp), ForegroundService-Fix |
+| v0.59.x | ✅ live | Piper TTS (sherpa-onnx), Stimmen-Auswahl, Crash-Fixes |
+| v0.58.x | ✅ live | Piper TTS Integration, Offboarding Android-TTS-Slider |
+| v0.57.x | ✅ live | TTS UX-Fixes, Stimme expressiver |
+| v0.56.0 | ✅ stable | TTS: 🔊-Button an jeder Antwort + Auto-Vorlesen-Toggle |
 | v0.55.9 | ✅ live | Updater Guard-Fix (0% Balken) |
 | v0.55.8 | ✅ live | Done-Button nicht klickbar + FAQ Scan-Hinweis |
 | v0.55.7 | ✅ live | Download hängt bei 97%: Channel-Bridge BroadcastReceiver + Polling |
@@ -134,6 +138,13 @@ Komplett.
 
 ### v0.59.0 — Piper TTS (Offline-Stimme)
 **✅ Fertig als v0.58.x–v0.59.1** — sherpa-onnx static-link, 3 Stimmen (Eva K / Kerstin / Ramona), Stimmen-Auswahl in Settings.
+
+**v0.59.7 stable:** Piper TTS wegen Memory-Conflict mit llama.cpp deaktiviert. sherpa-onnx und llama.cpp teilen native Memory-Arenas → SIGSEGV. ForegroundService-Fix. Re-Implementierung mit Prozess-Isolation geplant.
+
+### v0.60.0 — Performance + Ladebalken
+1. **Ladebalken** ✅ — Rot-Purpur Shimmer, dezent am unteren Bildschirmrand, fullscreen-aware
+2. **KV-Cache Warmup** — bereits aktiv (`setSystemPrompt()` = Warmup); die ~60s sind der Loading-Screen-Prefill, nicht der erste Turn. Kein neuer Code nötig.
+3. **Piper TTS Neuimplementierung** — separater Prozess oder WorkManager zur Isolation von llama.cpp (geplant)
 
 ### ❌ Aufgeschoben — So-Mi Originalstimme (Cyberpunk 2077)
 **User-Vereinbarung 2026-07-05** — Feature aufgeschoben.

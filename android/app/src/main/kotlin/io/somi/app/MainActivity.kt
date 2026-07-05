@@ -53,7 +53,16 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -516,6 +525,9 @@ private fun ChatShellScreen(
     val partial = (inner as? ChatState.Generating)?.partialResponse ?: ""
     val partialPromptId = (inner as? ChatState.Generating)?.promptId ?: -1L
 
+    // Outer Box so GenerationProgressBar can be anchored absolutely at the
+    // physical bottom edge, independent of the Column's inset/IME padding.
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -676,6 +688,73 @@ private fun ChatShellScreen(
             onSubmit = onSubmit,
             onStop = onCancelGeneration,
         )
+    } // Column
+
+    // LLM-generation progress bar — sits at the physical bottom edge,
+    // above the navigation bar in normal mode, flush to the edge in
+    // immersive/gesture-nav mode (navigationBars inset collapses to 0).
+    GenerationProgressBar(
+        isGenerating = isGenerating,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
+    } // Box
+}
+
+@Composable
+private fun GenerationProgressBar(
+    isGenerating: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val songbird = LocalSongbirdColors.current
+
+    AnimatedVisibility(
+        visible = isGenerating,
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(durationMillis = 180),
+        ),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = tween(durationMillis = 120),
+        ),
+        modifier = modifier,
+    ) {
+        // InfiniteTransition is scoped inside AnimatedVisibility so it only
+        // animates (and recomposes) while the bar is actually visible.
+        val infiniteTransition = rememberInfiniteTransition(label = "gen-progress")
+        val sweepOffset by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1200, easing = LinearEasing),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "gen-progress-sweep",
+        )
+
+        // The bar sits above the navigation bar. In gesture-nav / fully
+        // immersive mode the navigationBars inset is 0 → flush at screen edge.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars),
+        ) {
+            val shimmerBrush = Brush.horizontalGradient(
+                colorStops = arrayOf(
+                    // coerceAtLeast/AtMost prevents duplicate stop positions
+                    // which cause visual glitches at the animation boundary frames.
+                    (sweepOffset - 0.4f).coerceAtLeast(0.001f) to songbird.crimson,
+                    sweepOffset.coerceIn(0.001f, 0.999f) to songbird.signal,
+                    (sweepOffset + 0.4f).coerceAtMost(0.999f) to songbird.crimson,
+                ),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(shimmerBrush),
+            )
+        }
     }
 }
 
