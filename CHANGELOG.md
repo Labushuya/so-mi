@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.5](https://github.com/Labushuya/so-mi/compare/v0.59.4...v0.59.5) (2026-07-05)
+
+
+### Bug Fixes
+
+* Piper SIGSEGV — dedizierter Thread + AtomicReference für ttsRef ([#305](https://github.com/Labushuya/so-mi/issues/305)) ([9852f46](https://github.com/Labushuya/so-mi/commit/9852f46bd0f86e50dcb915f96ed1493e2ca2ea54))
+
 ## [0.59.4](https://github.com/Labushuya/so-mi/compare/v0.59.3...v0.59.4) (2026-07-04)
 
 
