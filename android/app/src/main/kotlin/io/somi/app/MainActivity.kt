@@ -55,10 +55,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.rememberCoroutineScope
@@ -441,9 +444,42 @@ private fun SoMiAppRoot() {
         }
     }
 
+    // LoadingScreen glitch-out: stay visible until bar fills + glitch plays.
+    var showLoadingScreen by remember { mutableStateOf(true) }
+    var loadingIsReady by remember { mutableStateOf(false) }
+    LaunchedEffect(state.unwrap()::class) {
+        val s = state.unwrap()
+        if (s !is ChatState.LoadingModel && s !is ChatState.Booting) {
+            if (showLoadingScreen) loadingIsReady = true
+        }
+        if (s is ChatState.LoadingModel) {
+            // Re-entering loading (model reload) — reset
+            showLoadingScreen = true
+            loadingIsReady = false
+        }
+    }
+
     // Route on the underlying lifecycle
+    if (showLoadingScreen && state.unwrap() is ChatState.LoadingModel) {
+        // Actively loading — normal progress bar
+        LoadingScreen(isReady = false)
+        return
+    }
+    if (showLoadingScreen) {
+        // Ready arrived — play glitch then dismiss
+        LoadingScreen(
+            isReady = loadingIsReady,
+            onReadyAnimComplete = {
+                showLoadingScreen = false
+                loadingIsReady = false
+            },
+        )
+        return
+    }
+
     when (state.unwrap()) {
         is ChatState.Booting -> BootingSplash()
+        is ChatState.LoadingModel -> LoadingScreen()  // fallback if state resets
         is ChatState.NoModelInstalled,
         is ChatState.DownloadingModel,
         -> FirstLaunchScreen(
@@ -901,6 +937,55 @@ private fun ErrorBanner(message: String, onRetry: (() -> Unit)?, kind: BannerKin
     }
 }
 
+/**
+ * Wippende Typing-Dots wie in modernen Messengern.
+ * Drei Punkte bounced mit 150ms Versatz (Dot1→Dot2→Dot3).
+ */
+@Composable
+private fun TypingDots() {
+    val songbird = LocalSongbirdColors.current
+    val inf = rememberInfiniteTransition(label = "typing")
+
+    @Composable
+    fun dot(delayMs: Int): Float {
+        val y by inf.animateFloat(
+            initialValue = 0f,
+            targetValue = 0f,
+            animationSpec = infiniteRepeatable(
+                animation = keyframes {
+                    durationMillis = 900
+                    0f at delayMs using androidx.compose.animation.core.EaseInOutQuad
+                    (-8f) at (delayMs + 200) using androidx.compose.animation.core.EaseInOutQuad
+                    0f at (delayMs + 400)
+                    0f at 900
+                },
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "dot-$delayMs",
+        )
+        return y
+    }
+
+    val y0 = dot(0)
+    val y1 = dot(150)
+    val y2 = dot(300)
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        listOf(y0, y1, y2).forEach { yOff ->
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .offset(y = yOff.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(songbird.glass.copy(alpha = 0.65f)),
+            )
+        }
+    }
+}
+
 @Composable
 private fun AssistantBubble(
     text: String,
@@ -957,11 +1042,16 @@ private fun AssistantBubble(
                 )
             }
             Spacer(Modifier.height(6.dp))
-            Text(
-                text = text,
-                color = songbird.bone.copy(alpha = 0.92f),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            // "…" = waiting for first token → show wipping dots instead of static text
+            if (text == "…") {
+                TypingDots()
+            } else {
+                Text(
+                    text = text,
+                    color = songbird.bone.copy(alpha = 0.92f),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
             if (onSpeakRequest != null) {
                 Spacer(Modifier.height(6.dp))
                 Box(
