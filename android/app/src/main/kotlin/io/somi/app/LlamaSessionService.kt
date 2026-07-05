@@ -73,14 +73,22 @@ internal class LlamaSessionService : Service() {
 
     private fun startForegroundCompat() {
         val notif = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notif,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notif)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notif,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notif)
+            }
+        } catch (e: Exception) {
+            // ForegroundServiceStartNotAllowedException on MagicOS when starting
+            // from background. Log and continue — service still runs, just without
+            // the persistent notification until it comes to foreground again.
+            Log.w(TAG, "startForeground failed (background start?): ${e.message}")
+            stopSelf()
         }
     }
 
