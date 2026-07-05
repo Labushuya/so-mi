@@ -15,26 +15,30 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newSingleThreadContext
 import java.util.Locale
 
 /**
  * Unified TTS interface — Piper (natural voice) when available, Android TTS fallback.
  *
- * CRASH FIX (v0.59.1):
- * AudioTrack.MODE_STATIC + WRITE_BLOCKING blocks the piperDispatcher thread.
- * A concurrent speak() → stopActiveTrack() causes Use-After-Free on the native object.
- * Fix: AudioTrack.MODE_STREAM with non-blocking chunked writes.
+ * CRASH FIX (v0.59.5):
+ * sherpa-onnx JNI (OfflineTts) is thread-affine: init() and generate() must run
+ * on the SAME OS thread. Dispatchers.IO.limitedParallelism(1) does NOT guarantee
+ * same-thread reuse across coroutine suspensions — it only limits concurrency.
+ * Fix: newSingleThreadContext() creates a dedicated thread that never changes.
  *
- * Re-Init race: piperReady and isReinitialising are updated atomically (single
- * coroutine block, no suspension point between them).
+ * AtomicReference for ttsRef in PiperTtsEngine prevents the null-pointer crash
+ * when shutdown() races with synthesise().
  */
 object TtsHelper {
 
     private const val TAG = "TtsHelper"
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val piperDispatcher = Dispatchers.IO.limitedParallelism(1)
-    private val piperScope = CoroutineScope(SupervisorJob() + piperDispatcher)
+    // Dedicated OS thread for all Piper JNI calls — same thread guaranteed.
+    @Suppress("OPT_IN_USAGE")
+    private val piperThread = newSingleThreadContext("piper-tts")
+    private val piperScope = CoroutineScope(SupervisorJob() + piperThread)
 
     private var androidTts: TextToSpeech? = null
     private var androidTtsReady = false

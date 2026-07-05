@@ -7,37 +7,34 @@ import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Piper TTS engine backed by sherpa-onnx OfflineTts.
  *
- * Available female German voices (all ~60MB, 16kHz):
- *   eva_k   — smooth, measured, slightly breathy
- *   kerstin — warmer, more conversational
- *   ramona  — clearer diction, more assertive
- *
- * VITS parameters tuned for So-Mi's character:
- *   noiseScale 0.85 — expressive delivery
- *   noiseScaleW 0.9 — natural pacing variation
+ * CRASH FIX (v0.59.5):
+ * tts is held in an AtomicReference. getAndSet(null) in shutdown() atomically
+ * takes the reference — if synthesise() wins the race it gets a valid object,
+ * if shutdown() wins first synthesise() gets null and returns early.
+ * This eliminates the null-pointer dereference in generateImpl when shutdown()
+ * releases the native object while generate() is still running.
  */
 object PiperTtsEngine {
 
     private const val TAG = "PiperTtsEngine"
 
     enum class Voice(val filename: String, val displayName: String) {
-        EVA_K ("de_DE-eva_k-x_low.onnx",   "Eva K — glatt"),
-        KERSTIN("de_DE-kerstin-low.onnx",   "Kerstin — warm"),
-        RAMONA ("de_DE-ramona-low.onnx",    "Ramona — klar"),
+        EVA_K  ("de_DE-eva_k-x_low.onnx", "Eva K — glatt"),
+        KERSTIN("de_DE-kerstin-low.onnx",  "Kerstin — warm"),
+        RAMONA ("de_DE-ramona-low.onnx",   "Ramona — klar"),
     }
 
-    // Inline configs (sample_rate, espeak voice) for each model
     private val VOICE_CONFIGS = mapOf(
-        Voice.EVA_K  to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"x_low","language":{"code":"de_DE"}}""",
+        Voice.EVA_K   to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"x_low","language":{"code":"de_DE"}}""",
         Voice.KERSTIN to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"low","language":{"code":"de_DE"}}""",
         Voice.RAMONA  to """{"audio":{"sample_rate":16000},"espeak":{"voice":"de"},"inference":{"noise_scale":0.667,"length_scale":1.0,"noise_w":0.8},"num_speakers":1,"phoneme_type":"espeak","quality":"low","language":{"code":"de_DE"}}""",
     )
 
-    // Download URLs
     val VOICE_URLS = mapOf(
         Voice.EVA_K   to "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva_k/x_low/de_DE-eva_k-x_low.onnx",
         Voice.KERSTIN to "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/kerstin/low/de_DE-kerstin-low.onnx",
@@ -47,7 +44,9 @@ object PiperTtsEngine {
     private const val NOISE_SCALE   = 0.85f
     private const val NOISE_SCALE_W = 0.9f
 
-    private var tts: OfflineTts? = null
+    // AtomicReference ensures that getAndSet(null) in shutdown() and get() in
+    // synthesise() cannot see a torn state — one of them wins cleanly.
+    private val ttsRef = AtomicReference<OfflineTts?>(null)
     private var activeVoice: Voice? = null
 
     fun modelDir(context: Context): File =
@@ -59,7 +58,6 @@ object PiperTtsEngine {
     fun installedVoices(context: Context): List<Voice> =
         Voice.entries.filter { isVoiceInstalled(context, it) }
 
-    /** Returns the first installed voice, or null if none. */
     fun bestAvailableVoice(context: Context): Voice? =
         Voice.entries.firstOrNull { isVoiceInstalled(context, it) }
 
@@ -70,21 +68,25 @@ object PiperTtsEngine {
 
     fun inlineConfigFor(voice: Voice): String = VOICE_CONFIGS[voice] ?: "{}"
 
+    private fun resolveModelFile(context: Context, preferredVoice: Voice?): File? {
+        val dir = modelDir(context)
+        val candidates = if (preferredVoice != null)
+            listOf(preferredVoice) + Voice.entries.filter { it != preferredVoice }
+        else Voice.entries.toList()
+        return candidates.map { File(dir, it.filename) }.firstOrNull { it.exists() }
+    }
+
     suspend fun init(context: Context, preferredVoice: Voice? = null): Boolean {
-        val targetVoice = preferredVoice ?: bestAvailableVoice(context) ?: run {
+        // Already initialised with compatible voice
+        if (ttsRef.get() != null && (preferredVoice == null || activeVoice == preferredVoice)) return true
+        // Different voice — shut down first
+        if (ttsRef.get() != null) shutdown()
+
+        val modelFile = resolveModelFile(context, preferredVoice) ?: run {
             Log.d(TAG, "no Piper model installed")
             return false
         }
-        // Already loaded with the same voice
-        if (tts != null && activeVoice == targetVoice) return true
-        // Different voice requested — shut down first
-        if (tts != null) shutdown()
-
-        val modelFile = File(modelDir(context), targetVoice.filename)
-        if (!modelFile.exists()) {
-            Log.w(TAG, "${targetVoice.filename} requested but not on disk")
-            return false
-        }
+        val voice = Voice.entries.firstOrNull { modelFile.name == it.filename }
         return runCatching {
             val config = OfflineTtsConfig(
                 model = OfflineTtsModelConfig(
@@ -103,17 +105,18 @@ object PiperTtsEngine {
                 ),
                 maxNumSentences = 1,
             )
-            tts = OfflineTts(config = config)
-            activeVoice = targetVoice
-            Log.i(TAG, "Piper ready — ${targetVoice.displayName} (${modelFile.name})")
+            ttsRef.set(OfflineTts(config = config))
+            activeVoice = voice
+            Log.i(TAG, "Piper ready — ${modelFile.name}")
             true
         }.onFailure {
-            Log.e(TAG, "Piper init failed for ${targetVoice.filename}", it)
+            Log.e(TAG, "Piper init failed for ${modelFile.name}", it)
         }.getOrDefault(false)
     }
 
     suspend fun synthesise(text: String, speed: Float = 1.0f): FloatArray? {
-        val engine = tts ?: return null
+        // Atomic get — if shutdown() has already called getAndSet(null) we get null here.
+        val engine = ttsRef.get() ?: return null
         return runCatching {
             engine.generate(text = text, sid = 0, speed = speed).samples
         }.onFailure {
@@ -121,11 +124,14 @@ object PiperTtsEngine {
         }.getOrNull()
     }
 
-    val sampleRate: Int get() = tts?.sampleRate() ?: 16000
+    val sampleRate: Int get() = ttsRef.get()?.sampleRate() ?: 16000
 
     fun shutdown() {
-        tts?.release()
-        tts = null
+        // getAndSet(null) atomically takes ownership — any concurrent synthesise()
+        // call will get null from ttsRef.get() and return early rather than
+        // calling generate() on a released native object.
+        val old = ttsRef.getAndSet(null)
+        old?.release()
         activeVoice = null
         Log.d(TAG, "Piper shut down")
     }
