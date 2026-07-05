@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.6](https://github.com/Labushuya/so-mi/compare/v0.59.5...v0.59.6) (2026-07-05)
+
+
+### Bug Fixes
+
+* ForegroundService Crash + Piper JNI Init Race ([#307](https://github.com/Labushuya/so-mi/issues/307)) ([948cd6d](https://github.com/Labushuya/so-mi/commit/948cd6d3480289d6a74a6be272a431575809de07))
+
 ## [0.59.5](https://github.com/Labushuya/so-mi/compare/v0.59.4...v0.59.5) (2026-07-05)
 
 
