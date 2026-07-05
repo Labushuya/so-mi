@@ -35,6 +35,11 @@ object TtsHelper {
     private const val TAG = "TtsHelper"
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    // Piper TTS disabled: crashes consistently on Magic V2 when LLM is active.
+    // sherpa-onnx + llama.cpp share native memory arenas and crash under concurrent load.
+    // Re-enable once a proper isolation solution exists (separate process or WorkManager).
+    private const val PIPER_ENABLED = false
+
     // Dedicated OS thread for all Piper JNI calls — same thread guaranteed.
     @Suppress("OPT_IN_USAGE")
     private val piperThread = newSingleThreadContext("piper-tts")
@@ -82,6 +87,7 @@ object TtsHelper {
     }
 
     fun initPiper(context: Context, preferredVoice: PiperTtsEngine.Voice? = null) {
+        if (!PIPER_ENABLED) return
         // Block if reinit is running — two concurrent init jobs on piperDispatcher
         // both write PiperTtsEngine.tts, causing Use-After-Free.
         if (isReinitialising || piperReady || piperInitJob?.isActive == true) return
@@ -102,6 +108,7 @@ object TtsHelper {
     }
 
     fun reinitPiper(context: Context, preferredVoice: PiperTtsEngine.Voice? = null) {
+        if (!PIPER_ENABLED) return
         piperInitJob?.cancel()
         piperInitJob = null
         piperReady = false
@@ -125,7 +132,7 @@ object TtsHelper {
     fun speak(text: String) {
         if (text.isBlank()) return
         if (isReinitialising) return
-        if (piperReady) speakWithPiper(text) else speakWithAndroid(text)
+        if (PIPER_ENABLED && piperReady) speakWithPiper(text) else speakWithAndroid(text)
     }
 
     private fun speakWithPiper(text: String) {
