@@ -234,8 +234,9 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 | Phase 5: In-App-Updater | ✅ Abgeschlossen | DownloadManager · PackageInstaller · Update-Banner |
 | Phase 5: Voice-Eingabe | ✅ Abgeschlossen | SpeechRecognizer (de-DE) · Mikrofon-Button |
 | Phase 5: TTS Placeholder | ✅ Abgeschlossen | 🔊-Button · Auto-Vorlesen · Android TTS |
-| Phase 5: Piper TTS | ✅ Abgeschlossen | sherpa-onnx · 3 Stimmen wählbar · Stimmen-Klon aufgeschoben |
+| Phase 5: Piper TTS | ⚠️ Deaktiviert | Memory-Conflict mit llama.cpp — Re-Implementierung mit Prozess-Isolation geplant |
 | Phase 5: So-Mi Originalstimme | ❌ Aufgeschoben | Piper-Training auf Spielaudio — erfordert eigenes Audiomaterial |
+| Phase 6: Performance + Ladebalken | 🟡 In Arbeit | Ladebalken ✓ · KV-Cache Warmup bereits aktiv · Piper TTS Prozess-Isolation |
 
 → Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
 
