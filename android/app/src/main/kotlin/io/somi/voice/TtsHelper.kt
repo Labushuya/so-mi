@@ -88,9 +88,16 @@ object TtsHelper {
         piperInitJob = piperScope.launch {
             delay(500)
             val ok = PiperTtsEngine.init(context.applicationContext, preferredVoice)
-            piperReady = ok
-            if (ok) Log.i(TAG, "Piper ready (${PiperTtsEngine.availableModelQuality(context)})")
-            else Log.w(TAG, "Piper init failed — Android TTS fallback")
+            if (ok) {
+                // Brief delay after JNI init — sherpa-onnx loads model weights
+                // asynchronously inside the constructor. Calling generate() before
+                // internal pointers are set causes SIGSEGV in generateImpl.
+                delay(800)
+                piperReady = true
+                Log.i(TAG, "Piper ready (${PiperTtsEngine.availableModelQuality(context)})")
+            } else {
+                Log.w(TAG, "Piper init failed — Android TTS fallback")
+            }
         }
     }
 
