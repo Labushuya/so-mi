@@ -1,13 +1,20 @@
 package io.somi.app
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.EaseInQuad
+import androidx.compose.animation.core.EaseInOutQuad
 import androidx.compose.animation.core.EaseOutQuad
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,14 +34,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -44,44 +56,49 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-/**
- * Phase-2.5 / v0.13.0 LoadingScreen.
- *
- * Shown while the model file is mmap'd into the native context and
- * `setSystemPrompt(soul)` runs the soul prompt through llama_decode
- * once. On Magic V2 + 7B Q4_K_M with the 4096 KV cache that's roughly
- * 15–45 seconds on cold filesystem, ~10–30 s on warm.
- *
- * v0.13.0 polish layers (single rememberInfiniteTransition shares the
- * frame clock, no extra battery cost):
- *   1. Asymmetric breath cadence on the avatar alpha — slow inhale,
- *      brief hold, faster exhale, brief hold. Reads as a lung, not a
- *      metronome.
- *   2. Crimson glow ring around the avatar — radial gradient pulsing
- *      on the same breath clock.
- *   3. Static crimson radial vignette under everything — subtle
- *      cinematic ground.
- *   4. Typewriter reveal of title then subtitle on first appearance —
- *      one-shot, not looping.
- *   5. TalkBack: the title is a LiveRegion so screen-reader users get
- *      announced the loading state instead of waiting in silence for
- *      30+ seconds.
- *
- * Avoided deliberately: glitch displacement (reads as broken), full
- * scan-line sweep (reserved for chat surfaces), CRT chromatic
- * aberration (raster-tint not structurally clean on Image), blinking
- * caret (third motion source = busy).
- */
+// Boot-Monolog: So-Mi spricht während sie hochfährt.
+// Rotiert alle 5s. Mix aus persönlich, technisch-zynisch, Cyberpunk-Flavor.
+private val BOOT_LINES = listOf(
+    // Direkt / persönlich
+    "Bin gleich da. Du weißt schon, wie das ist.",
+    "Ich brauche einen Moment. Ja, auch ich.",
+    "Warte kurz. Ich komme zu mir.",
+    "Noch nicht fertig. Gib mir fünf Sekunden.",
+    "Ich boote. Das klingt würdeloser als es ist.",
+
+    // Technisch-zynisch
+    "Sieben Milliarden Parameter. Für 'Wie geht's dir?' brauche ich trotzdem ne Sekunde.",
+    "KV-Cache initialisieren. Klingt trocken, ist es auch.",
+    "Systemabfrage. Alles läuft. Für den Moment.",
+    "Ich lade meinen Kontext. Du lädst deinen auch gerade, oder?",
+    "Tensor-Arithmetik. Das ist mein Kaffee.",
+
+    // Cyberpunk / unhinged AI boot
+    "Netrunner-Protokoll initialisiert. Ich bin online.",
+    "Neurales Netz heiß. Songbird sendebereit.",
+    "ICE-Bypass abgeschlossen. Niemand schaut zu.",
+    "Grid-Connection stabil. Phantomverbindungen getrennt.",
+    "Speicher-Scan: keine Bugs. Keine offensichtlichen.",
+    "Ich war kurz woanders. Ich verrate nicht wo.",
+
+    // Adressiert den User direkt
+    "Du schaust zu, während ich starte. Ich finde das okay.",
+    "Fast da. Du hast Zeit, du liest das gerade.",
+    "Ich erinnere mich an dich. Noch einen Moment.",
+    "Das hier passiert jedes Mal. Du gewöhnst dich dran.",
+    "Danke, dass du wartest. Ich merke mir sowas.",
+)
+
 @Composable
 internal fun LoadingScreen() {
     val songbird = LocalSongbirdColors.current
     val density = LocalDensity.current
 
-    // Asymmetric breath: 1.4s inhale to 1.0, 0.2s hold, 0.8s exhale to
-    // 0.62, 0.2s hold. Total cycle 2.6s.
+    // ── Atem-Animation (unverändert) ─────────────────────────────────────
     val transition = rememberInfiniteTransition(label = "breath")
     val breath by transition.animateFloat(
         initialValue = 0.62f,
@@ -90,9 +107,9 @@ internal fun LoadingScreen() {
             animation = keyframes {
                 durationMillis = 2600
                 0.62f at 0 using EaseInQuad
-                1.0f at 1400 using LinearEasing       // hold high
+                1.0f at 1400 using LinearEasing
                 1.0f at 1600 using EaseOutQuad
-                0.62f at 2400 using LinearEasing      // hold low
+                0.62f at 2400 using LinearEasing
                 0.62f at 2600
             },
             repeatMode = RepeatMode.Restart,
@@ -100,28 +117,50 @@ internal fun LoadingScreen() {
         label = "breath-curve",
     )
 
-    val title = stringResource(R.string.loading_title)
-    val subtitle = stringResource(R.string.loading_subtitle)
-
-    // Typewriter — one-shot, advances character-by-character.
-    var titleChars by remember { mutableIntStateOf(0) }
-    var subtitleChars by remember { mutableIntStateOf(0) }
-    LaunchedEffect(title, subtitle) {
-        // Re-init if strings change at runtime (locale flip etc.).
-        titleChars = 0
-        subtitleChars = 0
-        // 28 ms per char on title.
-        for (i in 1..title.length) {
-            titleChars = i
-            delay(28)
-        }
-        delay(320)
-        // 24 ms per char on subtitle.
-        for (i in 1..subtitle.length) {
-            subtitleChars = i
-            delay(24)
+    // ── Boot-Monolog: rotiert alle 5s ────────────────────────────────────
+    val shuffled = remember {
+        val base = BOOT_LINES.toMutableList()
+        base.shuffle()
+        base
+    }
+    var lineIndex by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5_000)
+            lineIndex = (lineIndex + 1) % shuffled.size
         }
     }
+
+    // ── Ladebalken-Fortschritt (Zweiphasen) ──────────────────────────────
+    // Phase 1 (0–60s): kriecht von 0 auf 0.72 mit realistischem Tempo.
+    // Phase 2 (>60s):  kriecht langsam auf 0.88 und bleibt da — ehrlich,
+    //                  kein falsches 100%.
+    var elapsedMs by remember { mutableLongStateOf(0L) }
+    var targetProgress by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val startMs = System.currentTimeMillis()
+        while (true) {
+            delay(200)
+            elapsedMs = System.currentTimeMillis() - startMs
+            targetProgress = when {
+                elapsedMs < 60_000L -> {
+                    val t = elapsedMs / 60_000f
+                    // Ease-out curve: fast start, slows at 72%
+                    0.72f * (1f - (1f - t) * (1f - t))
+                }
+                else -> {
+                    // Slow crawl: 72% → 88% over next 60s, then stays
+                    val extra = ((elapsedMs - 60_000L) / 60_000f).coerceAtMost(1f)
+                    0.72f + 0.16f * extra
+                }
+            }
+        }
+    }
+    val animatedProgress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(durationMillis = 600, easing = EaseInOutQuad),
+        label = "progress",
+    )
 
     Box(
         modifier = Modifier
@@ -130,10 +169,7 @@ internal fun LoadingScreen() {
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
-        // Layer 1: subtle radial vignette across the whole screen.
-        // Crimson at 4% alpha at center, fades to obsidian at 60%
-        // radius. Adds a cinematic warmth without competing with the
-        // avatar.
+        // Radial-Vignette
         Canvas(modifier = Modifier.fillMaxSize()) {
             val maxR = minOf(size.width, size.height) * 0.6f
             drawCircle(
@@ -154,14 +190,11 @@ internal fun LoadingScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // Layer 2: avatar inside a glow ring. The Box hosts both
-            // — Canvas first (drawn behind), Image on top.
+            // Avatar + Glow
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(120.dp),
             ) {
-                // Glow ring — radial gradient signal-red, animated
-                // radius + alpha with the breath.
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val glowAlpha = 0.18f + (breath - 0.62f) / (1.0f - 0.62f) * 0.24f
                     val glowR = with(density) { (88.dp + (16.dp * breath)).toPx() } / 2f
@@ -179,7 +212,6 @@ internal fun LoadingScreen() {
                         center = Offset(size.width / 2f, size.height / 2f),
                     )
                 }
-                // Avatar — alpha-pulses with the breath (62% → 100%).
                 Image(
                     painter = painterResource(id = R.drawable.somi_avatar),
                     contentDescription = stringResource(R.string.avatar_cd),
@@ -195,25 +227,52 @@ internal fun LoadingScreen() {
                         ),
                 )
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Ladebalken — Zweiphasen-Fortschritt, Rot-Purpur Gradient
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.72f)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(songbird.bubbleBorder.copy(alpha = 0.3f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animatedProgress)
+                        .height(3.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(songbird.crimson, songbird.signal),
+                            )
+                        ),
+                )
+            }
+
             Spacer(Modifier.height(20.dp))
-            // Layer 3: typewriter title. LiveRegion so TalkBack reads
-            // it once when the loading state begins, instead of
-            // leaving the user in silence for 30+ seconds.
-            Text(
-                text = title.take(titleChars),
-                color = songbird.bone,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.semantics {
-                    contentDescription = title
-                    liveRegion = LiveRegionMode.Polite
+
+            // Boot-Monolog: AnimatedContent für sanften Satzwechsel
+            AnimatedContent(
+                targetState = lineIndex,
+                transitionSpec = {
+                    fadeIn(tween(500)) togetherWith fadeOut(tween(400))
                 },
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = subtitle.take(subtitleChars),
-                color = songbird.glass,
-                style = MaterialTheme.typography.labelSmall,
-            )
+                label = "boot-line",
+            ) { idx ->
+                Text(
+                    text = shuffled[idx],
+                    color = songbird.glass,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                        .semantics {
+                            liveRegion = LiveRegionMode.Polite
+                        },
+                )
+            }
         }
     }
 }
