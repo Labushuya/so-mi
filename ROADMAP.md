@@ -12,7 +12,7 @@
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.63.0 | 🟡 In Entwicklung | KIWIX Offline-Lexikon: libkiwix 2.6.0, KiwixRepository, ZimCatalog, ZimDownloadWorker, RAG-Inject, search_kiwix Tool, ZimCatalogScreen |
+| v0.63.3 | ✅ live | KIWIX Wiktionary DE integriert — APK bereit zum Testen |
 | v0.59.7 | ✅ stable | Piper TTS deaktiviert (Memory-Conflict mit llama.cpp), ForegroundService-Fix |
 | v0.59.x | ✅ live | Piper TTS (sherpa-onnx), Stimmen-Auswahl, Crash-Fixes |
 | v0.58.x | ✅ live | Piper TTS Integration, Offboarding Android-TTS-Slider |
@@ -147,8 +147,8 @@ Komplett.
 2. **KV-Cache Warmup** — bereits aktiv (`setSystemPrompt()` = Warmup); kein neuer Code nötig
 3. **Boot-Monolog + Glitch-Übergang** ✅ — 21 Boot-Sätze, CRT-Flicker beim Übergang zu Chat, wippende Dots
 
-### v0.63.0 — KIWIX Offline-Lexikon
-**🟡 In Entwicklung.** Vollständige KIWIX-Integration:
+### v0.63.0–v0.63.3 — KIWIX Offline-Lexikon
+**✅ Live als v0.63.3.** Vollständige KIWIX-Integration:
 - `org.kiwix:libkiwix:2.6.0` (Maven Central, GPLv3, arm64-v8a, kein ONNX-Konflikt)
 - `KiwixRepository` in core-rag: openZim/search/getEntry, single-thread Dispatcher + Mutex
 - `KiwixAutoOpen` öffnet erstes installiertes ZIM beim Start (non-blocking launch{})
