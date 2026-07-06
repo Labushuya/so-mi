@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.63.0](https://github.com/Labushuya/so-mi/compare/v0.62.0...v0.63.0) (2026-07-06)
+
+
+### Features
+
+* KIWIX Wiktionary DE Offline-Lexikon integriert ([#318](https://github.com/Labushuya/so-mi/issues/318)) ([bb6aeb6](https://github.com/Labushuya/so-mi/commit/bb6aeb6eba335912cb250f51ff6fa237440a67e9))
+
 ## [0.62.0](https://github.com/Labushuya/so-mi/compare/v0.61.0...v0.62.0) (2026-07-05)
 
 
