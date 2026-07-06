@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.63.2](https://github.com/Labushuya/so-mi/compare/v0.63.1...v0.63.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* korrekter Import-Pfad für SongbirdButtonKind in ZimCatalogScreen ([#322](https://github.com/Labushuya/so-mi/issues/322)) ([088bb71](https://github.com/Labushuya/so-mi/commit/088bb71185e837d03874982a2805f57d9641d934))
+
 ## [0.63.1](https://github.com/Labushuya/so-mi/compare/v0.63.0...v0.63.1) (2026-07-06)
 
 
