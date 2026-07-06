@@ -33,16 +33,15 @@ import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.somi.app.LocalSongbirdColors
-import io.somi.app.SongbirdButtonKind
-import io.somi.app.components.SectionCard
 import io.somi.app.components.SongbirdButton
+import io.somi.app.components.SongbirdButtonKind
+import io.somi.app.components.SectionCard
 import io.somi.app.components.SongbirdTopBar
 import io.somi.data.StorageRoots
 import io.somi.data.ZimCatalog
 import io.somi.data.ZimManifest
 import io.somi.data.download.ZimDownloadWorker
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
