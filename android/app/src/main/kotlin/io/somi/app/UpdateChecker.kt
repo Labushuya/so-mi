@@ -72,7 +72,7 @@ object UpdateChecker {
 
     sealed interface DownloadState {
         data class Progress(val percent: Int) : DownloadState
-        data object Paused : DownloadState
+        data class Paused(val percent: Int) : DownloadState
         data object Done : DownloadState
         data object Failed : DownloadState
     }
@@ -126,27 +126,19 @@ object UpdateChecker {
     }
 
     /**
-     * Pause the active download. DownloadManager.PAUSED_BY_APP causes the polling
-     * loop to emit Paused; the UI shows a "Fortsetzen"-button.
+     * Cancel the active download. The UI can restart it via downloadAndInstall().
+     * Note: DownloadManager has no public pause/resume API for normal apps —
+     * cancel + re-download is the standard pattern.
      */
-    fun pauseDownload(context: Context) {
+    fun cancelDownload(context: Context) {
         val id = activeDownloadId.get()
         if (id <= 0L) return
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        runCatching { dm.pauseDownload(id) }
-        Log.i(TAG, "pauseDownload id=$id")
-    }
-
-    /**
-     * Resume a paused download. The polling loop detects STATUS_RUNNING again and
-     * switches back to emitting Progress.
-     */
-    fun resumeDownload(context: Context) {
-        val id = activeDownloadId.get()
-        if (id <= 0L) return
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        runCatching { dm.resumeDownload(id) }
-        Log.i(TAG, "resumeDownload id=$id")
+        runCatching { dm.remove(id) }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .remove(PREF_DL_ID).remove(PREF_DL_VERSION).apply()
+        activeDownloadId.set(-1L)
+        Log.i(TAG, "cancelDownload id=$id")
     }
 
     /**
@@ -252,7 +244,8 @@ object UpdateChecker {
 
                 val (pct, paused) = queryProgressAndPaused(dm, downloadId)
                 when {
-                    paused -> emit(DownloadState.Paused)
+                    paused && pct != null -> emit(DownloadState.Paused(pct))
+                    paused -> emit(DownloadState.Paused(0))
                     pct != null -> emit(DownloadState.Progress(pct))
                     else -> {
                         val status = queryStatus(dm, downloadId)
@@ -299,19 +292,13 @@ object UpdateChecker {
         val c = dm.query(DownloadManager.Query().setFilterById(id)) ?: return Pair(null, false)
         return c.use {
             if (!it.moveToFirst()) return@use Pair(null, false)
-            when (val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+            when (it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
                 DownloadManager.STATUS_PAUSED -> {
-                    val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                    val isPausedByApp = reason == DownloadManager.PAUSED_BY_APP
-                    if (isPausedByApp) {
-                        Pair(null, true)
-                    } else {
-                        // System-paused (waiting for network etc.) — show last known %
-                        val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                        val done = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                        val pct = if (total > 0L) ((done * 100L) / total).toInt().coerceIn(0, 99) else 0
-                        Pair(pct, false)
-                    }
+                    // System-paused (waiting for network, queued etc.) — show last known %
+                    val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                    val done = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    val pct = if (total > 0L) ((done * 100L) / total).toInt().coerceIn(0, 99) else 0
+                    Pair(pct, true)
                 }
                 DownloadManager.STATUS_RUNNING,
                 DownloadManager.STATUS_PENDING -> {
