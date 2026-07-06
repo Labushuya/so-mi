@@ -42,6 +42,7 @@ import io.somi.data.ZimCatalog
 import io.somi.data.ZimManifest
 import io.somi.data.download.ZimDownloadWorker
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
