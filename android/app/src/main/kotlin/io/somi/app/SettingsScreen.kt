@@ -77,6 +77,7 @@ internal fun SettingsScreen(
     onOpenSoulEditor: () -> Unit,
     onOpenMemoryBrowser: () -> Unit,
     onOpenModelCatalog: () -> Unit,
+    onOpenZimCatalog: () -> Unit,
     onOpenDataBrowser: () -> Unit,
     onOpenFaq: () -> Unit,
     onCheckUpdate: (suspend () -> UpdateChecker.UpdateInfo?)? = null,
@@ -173,6 +174,7 @@ internal fun SettingsScreen(
                             "search_notes" to viewModel.isToolEnabledFlow("search_notes").collectAsState(initial = true).value,
                             "save_note" to viewModel.isToolEnabledFlow("save_note").collectAsState(initial = true).value,
                             "summarize" to viewModel.isToolEnabledFlow("summarize").collectAsState(initial = true).value,
+                            "search_kiwix" to viewModel.isToolEnabledFlow("search_kiwix").collectAsState(initial = true).value,
                         ),
                         onToolToggle = { id, enabled -> viewModel.setToolEnabled(id, enabled) },
                     )
@@ -192,6 +194,7 @@ internal fun SettingsScreen(
                         wifiOnly = wifiOnly,
                         onWifiOnlyChange = { viewModel.setWifiOnly(it) },
                         onOpenModelCatalog = onOpenModelCatalog,
+                        onOpenZimCatalog = onOpenZimCatalog,
                         onRetryEmbedder = { viewModel.manualEnqueueEmbedder() },
                         onReinstallEmbedder = { viewModel.reinstallEmbedder() },
                         onDeleteEmbedder = { viewModel.deleteEmbedderOnly() },
@@ -301,6 +304,7 @@ private fun ModelStorageSection(
     wifiOnly: Boolean,
     onWifiOnlyChange: (Boolean) -> Unit,
     onOpenModelCatalog: () -> Unit,
+    onOpenZimCatalog: () -> Unit,
     onRetryEmbedder: () -> Unit,
     onReinstallEmbedder: () -> Unit,
     onDeleteEmbedder: () -> Unit,
@@ -384,6 +388,12 @@ private fun ModelStorageSection(
         label = "Anderes LLM laden",
         kind = SongbirdButtonKind.Primary,
         onClick = onOpenModelCatalog,
+    )
+    Spacer(Modifier.height(8.dp))
+    SongbirdButton(
+        label = "Offline-Lexikon verwalten",
+        kind = SongbirdButtonKind.Secondary,
+        onClick = onOpenZimCatalog,
     )
 
     if (confirmDelete != null) {
