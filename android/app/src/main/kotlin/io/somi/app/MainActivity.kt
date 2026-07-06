@@ -1006,8 +1006,14 @@ private fun AssistantBubble(
     )
 
     // Only auto-read the newest message — not historical bubbles on scroll/recomposition.
-    LaunchedEffect(text) {
-        if (isLastMessage && autoTts && onSpeakRequest != null) onSpeakRequest.invoke(text)
+    // hasSpooken prevents re-triggering when the composable recomposes due to state changes
+    // (e.g. command popup toggle) while text and isLastMessage stay identical.
+    val hasSpooken = remember(text) { mutableStateOf(false) }
+    LaunchedEffect(text, isLastMessage) {
+        if (isLastMessage && autoTts && onSpeakRequest != null && !hasSpooken.value) {
+            hasSpooken.value = true
+            onSpeakRequest.invoke(text)
+        }
     }
 
     Row(
