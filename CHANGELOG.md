@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.64.2](https://github.com/Labushuya/so-mi/compare/v0.64.1...v0.64.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* Glitch-Übergang in Brand-Farben + Display-aus-Hinweis im Update-Banner ([#333](https://github.com/Labushuya/so-mi/issues/333)) ([21fb67f](https://github.com/Labushuya/so-mi/commit/21fb67faf79f85de7be94b9974ff3dd9837550c5))
+
 ## [0.64.1](https://github.com/Labushuya/so-mi/compare/v0.64.0...v0.64.1) (2026-07-06)
 
 
