@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.64.1](https://github.com/Labushuya/so-mi/compare/v0.64.0...v0.64.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* DownloadManager API-Fix (pauseDownload nicht public) ([#331](https://github.com/Labushuya/so-mi/issues/331)) ([1d17615](https://github.com/Labushuya/so-mi/commit/1d17615dce1bd731fd137e6bc31cf6da4c902b21))
+
 ## [0.64.0](https://github.com/Labushuya/so-mi/compare/v0.63.4...v0.64.0) (2026-07-06)
 
 
