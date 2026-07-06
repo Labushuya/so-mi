@@ -7,12 +7,15 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import io.somi.common.embed.TextEmbedder
+import io.somi.common.kiwix.KiwixSearchPort
 import io.somi.common.llm.LlmCaller
 import io.somi.common.memory.MemorySearchPort
 import io.somi.llm.LlamaContext
 import io.somi.rag.embed.TextEmbedderAdapter
+import io.somi.rag.kiwix.KiwixSearchAdapter
 import io.somi.rag.memory.MemorySearchAdapter
 import io.somi.tools.executor.ToolExecutor
+import io.somi.tools.kiwix.SearchKiwixTool
 import io.somi.tools.memory.SearchMemoryTool
 import io.somi.tools.model.ToolDefinition
 import io.somi.tools.registry.BuiltInToolDefinitions
@@ -30,6 +33,9 @@ abstract class ToolsModule {
 
     @Binds @Singleton
     abstract fun bindMemorySearch(impl: MemorySearchAdapter): MemorySearchPort
+
+    @Binds @Singleton
+    abstract fun bindKiwixSearch(impl: KiwixSearchAdapter): KiwixSearchPort
 
     @Binds @Singleton
     abstract fun bindLlmCaller(impl: LlamaContextLlmCaller): LlmCaller
@@ -51,6 +57,7 @@ abstract class ToolsModule {
     @Binds @IntoSet abstract fun bindSearchNotesTool(impl: io.somi.tools.notes.SearchNotesTool): ToolExecutor
     @Binds @IntoSet abstract fun bindSaveNoteTool(impl: io.somi.tools.notes.SaveNoteTool): ToolExecutor
     @Binds @IntoSet abstract fun bindSummarizeTool(impl: io.somi.tools.summarize.SummarizeTool): ToolExecutor
+    @Binds @IntoSet abstract fun bindSearchKiwixTool(impl: SearchKiwixTool): ToolExecutor
 
     companion object {
         @Provides @IntoSet
@@ -70,5 +77,6 @@ abstract class ToolsModule {
         @Provides @IntoSet fun provideSearchNotesDef(): ToolDefinition = BuiltInToolDefinitions.searchNotes
         @Provides @IntoSet fun provideSaveNoteDef(): ToolDefinition = BuiltInToolDefinitions.saveNote
         @Provides @IntoSet fun provideSummarizeDef(): ToolDefinition = BuiltInToolDefinitions.summarize
+        @Provides @IntoSet fun provideSearchKiwixDef(): ToolDefinition = BuiltInToolDefinitions.searchKiwix
     }
 }

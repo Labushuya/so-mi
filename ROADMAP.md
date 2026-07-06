@@ -8,10 +8,11 @@
 
 ---
 
-## Aktueller Stand (2026-07-05)
+## Aktueller Stand (2026-07-06)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
+| v0.63.0 | 🟡 In Entwicklung | KIWIX Offline-Lexikon: libkiwix 2.6.0, KiwixRepository, ZimCatalog, ZimDownloadWorker, RAG-Inject, search_kiwix Tool, ZimCatalogScreen |
 | v0.59.7 | ✅ stable | Piper TTS deaktiviert (Memory-Conflict mit llama.cpp), ForegroundService-Fix |
 | v0.59.x | ✅ live | Piper TTS (sherpa-onnx), Stimmen-Auswahl, Crash-Fixes |
 | v0.58.x | ✅ live | Piper TTS Integration, Offboarding Android-TTS-Slider |
@@ -147,20 +148,20 @@ Komplett.
 3. **Boot-Monolog + Glitch-Übergang** ✅ — 21 Boot-Sätze, CRT-Flicker beim Übergang zu Chat, wippende Dots
 
 ### v0.63.0 — KIWIX Offline-Lexikon
-**Nächster großer Sprint.** Offline-Wissensbasis für So-Mi via KIWIX ZIM-Format.
+**🟡 In Entwicklung.** Vollständige KIWIX-Integration:
+- `org.kiwix:libkiwix:2.6.0` (Maven Central, GPLv3, arm64-v8a, kein ONNX-Konflikt)
+- `KiwixRepository` in core-rag: openZim/search/getEntry, single-thread Dispatcher + Mutex
+- `KiwixAutoOpen` öffnet erstes installiertes ZIM beim Start (non-blocking launch{})
+- `ZimCatalog.WIKTIONARY_DE`: wiktionary_de_all_nopic_2026-04.zim, 1.2 GB, SHA256 verifiziert
+- `ZimDownloadWorker` in core-data: Resume, SHA-256-Verify, WorkManager KEEP-Policy
+- `RagOrchestrator.recallForPrompt()`: Memory + KIWIX parallel via coroutineScope { async {} }
+- `search_kiwix` Tool: @lexikon / @wörterbuch / "was bedeutet" Trigger
+- `ZimCatalogScreen`: Download, Progress, Status, Neu-installieren
+- RAG-Inject: extractSearchTerm() heuristisch, max 3 Einträge × 300 Zeichen
 
-Ansatz (SPEC §3):
-- libkiwix-android AAR für ZIM-Datei-Zugriff
-- Einstieg: Wiktionary DE (~500 MB) als Proof-of-Concept
-- Später: Wikipedia DE (~22 GB, optional)
-- Suche: Volltextsuche via libkiwix + semantische Reranking via bestehenden Embedder
-- Sidecar-Embeddings: ZIM kommt mit vorberechneten `.vecdb`-Dateien (kein On-Device-Indexing)
-- RAG-Integration: KIWIX-Treffer werden wie Memory-Fakten in den Kontext injiziert
-- Download-UI: bestehende Download-Infrastruktur (DownloadManager + Progress-Flow)
+Nächstes: Build bestätigen, SHA-256-Verify im Worker aktivieren, stable setzen.
 
-Vorteile ggü. Piper TTS: libkiwix hat keinen ONNX-Runtime-Anteil, kein Thread-Pool-Konflikt mit llama.cpp erwartet.
-
-### ❌ Aufgeschoben — Piper TTS Neuimplementierung
+### v0.60.0 — Performance + Ladebalken
 Memory-Conflict (sherpa-onnx + ggml teilen native Arenen). Android TTS als stabiler Platzhalter. Neuimplementierung mit Prozess-Isolation aufgeschoben bis nach KIWIX.
 
 ### ❌ Aufgeschoben — So-Mi Originalstimme (Cyberpunk 2077)

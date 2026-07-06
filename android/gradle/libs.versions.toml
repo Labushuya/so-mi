@@ -48,6 +48,7 @@ androidxTestEspresso = "3.6.1"
 # See CLAUDE.md "ObjectBox/ONNX lockstep-pin" invariant.
 objectbox = "4.0.3"
 onnxruntime = "1.18.0"
+kiwix = "2.6.0"
 
 [libraries]
 # AndroidX core
@@ -126,6 +127,9 @@ objectbox-kotlin = { module = "io.objectbox:objectbox-kotlin", version.ref = "ob
 # :core-rag instead of the alias(libs.plugins...) shortcut.
 objectbox-gradle-plugin = { module = "io.objectbox:objectbox-gradle-plugin", version.ref = "objectbox" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
+# KIWIX ZIM-file access. GPLv3, compatible with sideload-only distribution.
+# arm64-v8a native libs: libkiwix.so + libzim.so (no ONNX, no ggml — no conflict with llama.cpp).
+kiwix-libkiwix = { module = "org.kiwix:libkiwix", version.ref = "kiwix" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

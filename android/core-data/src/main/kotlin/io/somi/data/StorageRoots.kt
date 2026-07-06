@@ -84,6 +84,8 @@ object StorageRoots {
 
     fun db(context: Context): File = File(root(context), "db").apply { mkdirs() }
 
+    fun zim(context: Context): File = File(root(context), "zim").apply { mkdirs() }
+
     fun settings(context: Context): File = File(root(context), "settings").apply { mkdirs() }
 
     /**
