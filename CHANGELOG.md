@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.63.3](https://github.com/Labushuya/so-mi/compare/v0.63.2...v0.63.3) (2026-07-06)
+
+
+### Bug Fixes
+
+* withContext Import in ZimCatalogScreen wiederherstellen ([#324](https://github.com/Labushuya/so-mi/issues/324)) ([6500cc6](https://github.com/Labushuya/so-mi/commit/6500cc67cae19c04336f615a28da53497df71611))
+
 ## [0.63.2](https://github.com/Labushuya/so-mi/compare/v0.63.1...v0.63.2) (2026-07-06)
 
 
