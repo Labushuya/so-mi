@@ -184,11 +184,17 @@ internal fun LoadingScreen(
         label = "progress",
     )
 
+    // Outer Box keeps Obsidian background during the entire glitch/fade sequence —
+    // this prevents the underlying screen from bleeding through when screenAlpha → 0.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(songbird.obsidian),
+    ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .alpha(screenAlpha)
-            .background(songbird.obsidian)
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -292,4 +298,5 @@ internal fun LoadingScreen(
             }
         }
     }
+    } // outer Obsidian box
 }
