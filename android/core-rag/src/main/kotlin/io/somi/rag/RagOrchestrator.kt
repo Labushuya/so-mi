@@ -12,10 +12,13 @@ import io.somi.rag.memory.OkfRelation
 import io.somi.rag.memory.RelationIndex
 import io.somi.rag.trigger.TriggerDetector
 import io.somi.rag.trigger.TriggerMatch
+import io.somi.rag.kiwix.KiwixRepository
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
@@ -44,6 +47,7 @@ class RagOrchestrator @Inject constructor(
     private val memoryStore: MemoryStore,
     private val memoryFiles: MemoryFileRepository,
     private val entityExtractor: EntityExtractor,
+    private val kiwixRepository: KiwixRepository,
 ) {
 
     private data class InlineMeta(val fact: String, val categoryHint: String?, val keywords: List<String>)
@@ -464,8 +468,8 @@ class RagOrchestrator @Inject constructor(
      * @return formatted context string, or null if no facts exist.
      */
     suspend fun recallForPrompt(userText: String = ""): String? {
-        if (userText.isNotBlank() && runCatching { embedder.isAvailable() }.getOrDefault(false)) {
-            return withContext(Dispatchers.IO) {
+        val memoryBlock: String? = if (userText.isNotBlank() && runCatching { embedder.isAvailable() }.getOrDefault(false)) {
+            withContext(Dispatchers.IO) {
                 runCatching {
                     val queryEmbedding = embedder.embed(userText)
                     val ranked = memoryStore.topK(queryEmbedding, k = MAX_RECALL_FACTS)
@@ -474,9 +478,6 @@ class RagOrchestrator @Inject constructor(
                     val root = memoryFiles.rootDir
                     val primaryFacts = ranked.map { it.fact.fact }
 
-                    // D4: 1-Hop — collect all relations from the RelationIndex entries
-                    // for each ranked fact's topic. RelationIndex is per-fact, not per-file,
-                    // so this is authoritative regardless of how many facts share a file.
                     val allRelations = mutableListOf<OkfRelation>()
                     val seenTopics = HashSet<String>()
                     for (rf in ranked) {
@@ -501,8 +502,50 @@ class RagOrchestrator @Inject constructor(
                     }
                 }.getOrElse { recallFallback() }
             }
+        } else {
+            recallFallback()
         }
-        return recallFallback()
+
+        val kiwixBlock: String? = buildKiwixBlock(userText)
+
+        if (memoryBlock == null && kiwixBlock == null) return null
+        return buildString {
+            memoryBlock?.let { append(it) }
+            kiwixBlock?.let { append(it) }
+        }
+    }
+
+    private suspend fun buildKiwixBlock(userText: String): String? {
+        if (!kiwixRepository.isOpen() || userText.isBlank()) return null
+        val query = extractSearchTerm(userText) ?: return null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val results = kiwixRepository.search(query, maxResults = 3)
+                if (results.isEmpty()) return@runCatching null
+                buildString {
+                    append("[Wörterbuch-Einträge zu '$query']:\n")
+                    results.forEach { entry ->
+                        append("[Quelle: Wiktionary: ${entry.title}] ${entry.plainText.take(300)}\n")
+                    }
+                    append("\n")
+                }
+            }.getOrElse { null }
+        }
+    }
+
+    private fun extractSearchTerm(text: String): String? {
+        val stopwords = setOf(
+            "was", "ist", "bedeutet", "heißt", "erkläre", "mir", "die", "der", "das",
+            "ein", "eine", "bitte", "kannst", "du", "sag", "mal", "wie", "wird",
+            "werden", "heißen", "bedeuten", "definition", "von", "über",
+        )
+        val candidate = text
+            .replace(Regex("[?!.,;:]"), "")
+            .split(Regex("\\s+"))
+            .filter { it.length >= 4 && it.lowercase() !in stopwords }
+            .maxByOrNull { it.length }
+            ?: return null
+        return candidate.trim().ifBlank { null }
     }
 
     private fun loadLinkedFacts(root: File, relations: List<OkfRelation>, limit: Int): List<String> {

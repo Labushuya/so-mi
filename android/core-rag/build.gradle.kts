@@ -92,6 +92,11 @@ dependencies {
     // download worker doesn't break if :core-data ever drops it).
     implementation(libs.okhttp)
 
+    // KIWIX ZIM-file access. libkiwix 2.6.0 ships arm64-v8a native libs
+    // (libkiwix.so + libzim.so) with no ONNX Runtime dependency — no
+    // conflict with llama.cpp or objectbox native arenas.
+    implementation(libs.kiwix.libkiwix)
+
     // Smoke test exercises the BoxStore round-trip.
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

@@ -12,6 +12,7 @@ import io.objectbox.BoxStore
 import io.somi.rag.download.EmbeddingModelDownloadWorker
 import io.somi.rag.embed.EmbeddingModelCatalog
 import io.somi.rag.embed.EmbeddingModelStorage
+import io.somi.rag.kiwix.KiwixAutoOpen
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,11 +35,15 @@ import javax.inject.Singleton
 class RagBootstrap @Inject constructor(
     private val boxStoreLazy: Lazy<BoxStore>,
     private val embeddingStorage: EmbeddingModelStorage,
+    private val kiwixAutoOpen: KiwixAutoOpen,
 ) {
     /** Force the BoxStore open. Returns immediately on subsequent calls. */
     fun ensureOpen() {
         boxStoreLazy.get()
     }
+
+    /** Auto-opens the first installed ZIM file. Non-blocking — call from launch{}. */
+    suspend fun tryOpenKiwix() = kiwixAutoOpen.tryOpenFirstInstalled()
 
     /**
      * v0.14.3 — schedule the one-shot embedding-model download if

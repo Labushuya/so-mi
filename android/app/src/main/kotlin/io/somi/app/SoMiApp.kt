@@ -123,11 +123,10 @@ class SoMiApp : Application(), Configuration.Provider {
             try {
                 ragBootstrap.ensureOpen()
                 Log.i(TAG, "RAG bootstrap: BoxStore opened")
-                // v0.14.3: schedule the embedder-model download. Idempotent
-                // via ExistingWorkPolicy.KEEP. Was missing in v0.14.0-v0.14.2 —
-                // worker class shipped but never enqueued, so first-launch
-                // users saw no foreground notification and no download.
                 ragBootstrap.scheduleEmbedderDownload(this@SoMiApp)
+                // Non-blocking: open the first installed ZIM file if any is present.
+                // Runs after ensureOpen so KiwixRepository can log against a stable context.
+                launch { ragBootstrap.tryOpenKiwix() }
             } catch (t: Throwable) {
                 Log.w(TAG, "RAG bootstrap failed", t)
             }
