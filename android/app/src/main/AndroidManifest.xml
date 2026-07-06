@@ -34,7 +34,8 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:hasFragileUserData="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SoMi">
+        android:theme="@style/Theme.SoMi"
+        tools:replace="android:allowBackup">
 
         <!-- Phase 2.4: WorkManager's auto-init via androidx.startup must be
              disabled so Hilt's HiltWorkerFactory is used instead. SoMiApp
