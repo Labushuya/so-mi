@@ -29,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -615,9 +616,13 @@ private fun DiagnosticsSection(
                 checked && updateResult?.isNewer == true -> {
                     val result = updateResult!!
                     var dlState by remember { mutableStateOf<UpdateChecker.DownloadState?>(null) }
+                    // Re-attach to any existing download on first composition of this branch
+                    LaunchedEffect(result.latestVersion) {
+                        UpdateChecker.resumeExistingDownload(ctx, result.latestVersion)
+                            ?.let { flow -> coroutineScope.launch { flow.collect { dlState = it } } }
+                    }
                     when (val ds = dlState) {
                         is UpdateChecker.DownloadState.Done -> {
-                            // Not clickable — static instruction only
                             Text(
                                 text = "✓ Download fertig — Benachrichtigung antippen",
                                 color = Color(0xFF4CAF50),
@@ -625,17 +630,36 @@ private fun DiagnosticsSection(
                                 modifier = Modifier.weight(1f),
                             )
                         }
+                        is UpdateChecker.DownloadState.Paused -> {
+                            SongbirdButton(
+                                label = "▶ Fortsetzen",
+                                kind = SongbirdButtonKind.Ghost,
+                                minHeight = 32.dp,
+                                onClick = { UpdateChecker.resumeDownload(ctx) },
+                            )
+                        }
+                        is UpdateChecker.DownloadState.Progress -> {
+                            Text(
+                                text = "⬆ ${ds.percent}%",
+                                color = Color(0xFF4CAF50),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            SongbirdButton(
+                                label = "⏸",
+                                kind = SongbirdButtonKind.Ghost,
+                                minHeight = 32.dp,
+                                onClick = { UpdateChecker.pauseDownload(ctx) },
+                            )
+                        }
                         else -> {
                             SongbirdButton(
                                 label = when (ds) {
-                                    is UpdateChecker.DownloadState.Progress -> "⬆ ${ds.percent}%"
                                     is UpdateChecker.DownloadState.Failed -> "⟳ Nochmal"
                                     else -> "⬆ v${result.latestVersion} installieren"
                                 },
                                 kind = SongbirdButtonKind.Ghost,
                                 minHeight = 32.dp,
                                 onClick = {
-                                    if (dlState is UpdateChecker.DownloadState.Progress) return@SongbirdButton
                                     coroutineScope.launch {
                                         dlState = null
                                         UpdateChecker.downloadAndInstall(ctx, result.apkUrl, result.latestVersion)

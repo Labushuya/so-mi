@@ -249,6 +249,12 @@ private fun SoMiAppRoot() {
     val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         updateInfo = UpdateChecker.check(BuildConfig.VERSION_NAME)
+        // Re-attach to any in-progress or completed download from a previous session.
+        val info = updateInfo ?: return@LaunchedEffect
+        if (info.isNewer) {
+            UpdateChecker.resumeExistingDownload(context, info.latestVersion)
+                ?.let { flow -> updateScope.launch { flow.collect { downloadState = it } } }
+        }
     }
     if (updateInfo?.isNewer == true) {
         val info = updateInfo!!
@@ -279,9 +285,39 @@ private fun SoMiAppRoot() {
                             color = Color(0xFF81C784),
                             style = MaterialTheme.typography.labelMedium,
                         )
+                        Surface(
+                            onClick = { UpdateChecker.pauseDownload(ctx) },
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF2A2A1A),
+                        ) {
+                            Text(
+                                "⏸",
+                                color = Color(0xFFFFD54F),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            )
+                        }
+                    }
+                    is UpdateChecker.DownloadState.Paused -> {
+                        Text(
+                            "⏸ Pausiert",
+                            color = Color(0xFFFFD54F),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Surface(
+                            onClick = { UpdateChecker.resumeDownload(ctx) },
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF2E5E2E),
+                        ) {
+                            Text(
+                                "▶ Fortsetzen",
+                                color = Color(0xFFB9F6CA),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            )
+                        }
                     }
                     is UpdateChecker.DownloadState.Done -> {
-                        // Not clickable — show instruction only, ✕ to dismiss
                         Text(
                             "✓ Benachrichtigung antippen zum Installieren",
                             color = Color(0xFF81C784),
@@ -310,7 +346,6 @@ private fun SoMiAppRoot() {
                         }
                     }
                     else -> {
-                        // Idle
                         Surface(
                             onClick = {
                                 updateScope.launch {

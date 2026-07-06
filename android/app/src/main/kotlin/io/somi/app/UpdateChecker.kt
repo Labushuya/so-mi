@@ -25,18 +25,18 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * GitHub release checker + APK download via DownloadManager.
  *
- * WHY THIS DESIGN:
- * - The DownloadManager transitions to STATUS_SUCCESSFUL asynchronously; polling
- *   alone can miss the final state if the status flips between two polls.
- * - ACTION_DOWNLOAD_COMPLETE fires reliably, but BroadcastReceiver + callbackFlow
- *   has a known gotcha: if the coroutine is cancelled before awaitClose() is reached,
- *   the atomic guard never resets.
- * - Solution: use a Channel as a one-shot done signal. The BroadcastReceiver sends
- *   to the Channel; the polling loop reads from it. The loop runs inside a plain
- *   flow {} builder (not callbackFlow), so cancellation is handled by Kotlin's
- *   normal coroutine machinery — no awaitClose() risk.
- * - The guard is an AtomicLong (activeDownloadId), reset in a finally block that
- *   the flow builder always executes.
+ * Features:
+ *  - resumeExistingDownload(): on app start, re-attaches to a DownloadManager entry
+ *    that is already running or completed from a previous session (app-kill survival).
+ *  - pauseDownload() / resumeDownload(): wraps DownloadManager pause/resume API.
+ *  - 10-minute timeout to handle large APKs on slow connections.
+ *
+ * Architecture notes:
+ *  - A Channel<Boolean> bridges the BroadcastReceiver (main thread) into the
+ *    IO-dispatched flow loop. The flow {} builder handles cancellation cleanly.
+ *  - activeDownloadId is an AtomicLong, reset in a finally block that always runs.
+ *  - Pause/resume are fire-and-forget: DownloadManager.PAUSED_BY_APP is polled by
+ *    the existing loop and surfaced as DownloadState.Paused.
  */
 object UpdateChecker {
     private const val TAG = "UpdateChecker"
@@ -44,7 +44,12 @@ object UpdateChecker {
         "https://api.github.com/repos/Labushuya/so-mi/releases/latest"
     private const val CACHE_TTL_MS = 30_000L
     private const val POLL_MS = 800L
-    private const val TIMEOUT_MS = 180_000L
+    private const val TIMEOUT_MS = 600_000L   // 10 minutes — covers 131 MB on slow connections
+
+    // SharedPrefs key: persists the DownloadManager ID across process death.
+    private const val PREFS_NAME = "updater"
+    private const val PREF_DL_ID = "active_download_id"
+    private const val PREF_DL_VERSION = "active_download_version"
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -67,6 +72,7 @@ object UpdateChecker {
 
     sealed interface DownloadState {
         data class Progress(val percent: Int) : DownloadState
+        data object Paused : DownloadState
         data object Done : DownloadState
         data object Failed : DownloadState
     }
@@ -87,22 +93,66 @@ object UpdateChecker {
     }
 
     /**
-     * Enqueues the APK download and emits [DownloadState] until the download
-     * completes (Done) or fails (Failed).
-     *
-     * Architecture:
-     *  - A Channel<Boolean> (success flag) bridges the BroadcastReceiver
-     *    (which lives on the main thread) into the IO-dispatched flow loop.
-     *  - The polling loop emits Progress every [POLL_MS] ms.
-     *  - When the receiver fires, it sends to the channel and the loop breaks.
-     *  - If the polling detects STATUS_SUCCESSFUL before the receiver fires
-     *    (timing edge case), the loop breaks immediately.
-     *  - All cleanup (receiver unregister, guard reset) happens in try/finally
-     *    in the flow builder — survives both normal completion and cancellation.
-     *
-     * After Done, the user taps the system notification to open PackageInstaller.
-     * We do NOT fire an install intent — ACTION_INSTALL_PACKAGE is blocked by
-     * Android 14 policy for non-system sideload apps (targetSdk 35).
+     * Called on app start — checks SharedPrefs for a persisted DownloadManager ID.
+     * If the download is already SUCCESSFUL, emits Done immediately (no new download).
+     * If still RUNNING or PAUSED, re-attaches the polling loop to the existing entry.
+     * Returns null if no prior download exists for [versionName].
+     */
+    fun resumeExistingDownload(context: Context, versionName: String): Flow<DownloadState>? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedId = prefs.getLong(PREF_DL_ID, -1L)
+        val savedVersion = prefs.getString(PREF_DL_VERSION, null)
+        if (savedId == -1L || savedVersion != versionName) return null
+
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val status = queryStatus(dm, savedId)
+        if (status == -1) {
+            // Entry gone from DownloadManager — clear prefs and bail
+            prefs.edit().remove(PREF_DL_ID).remove(PREF_DL_VERSION).apply()
+            return null
+        }
+        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+            Log.i(TAG, "resumeExisting: already SUCCESSFUL id=$savedId")
+            prefs.edit().remove(PREF_DL_ID).remove(PREF_DL_VERSION).apply()
+            return flow {
+                emit(DownloadState.Progress(100))
+                emit(DownloadState.Done)
+            }.flowOn(Dispatchers.IO)
+        }
+
+        Log.i(TAG, "resumeExisting: re-attaching to id=$savedId status=$status")
+        activeDownloadId.set(savedId)
+        return attachToDownload(context, dm, savedId, versionName)
+    }
+
+    /**
+     * Pause the active download. DownloadManager.PAUSED_BY_APP causes the polling
+     * loop to emit Paused; the UI shows a "Fortsetzen"-button.
+     */
+    fun pauseDownload(context: Context) {
+        val id = activeDownloadId.get()
+        if (id <= 0L) return
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        runCatching { dm.pauseDownload(id) }
+        Log.i(TAG, "pauseDownload id=$id")
+    }
+
+    /**
+     * Resume a paused download. The polling loop detects STATUS_RUNNING again and
+     * switches back to emitting Progress.
+     */
+    fun resumeDownload(context: Context) {
+        val id = activeDownloadId.get()
+        if (id <= 0L) return
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        runCatching { dm.resumeDownload(id) }
+        Log.i(TAG, "resumeDownload id=$id")
+    }
+
+    /**
+     * Enqueues a new APK download and emits [DownloadState] until done or failed.
+     * Persists the DownloadManager ID to SharedPrefs so [resumeExistingDownload] can
+     * re-attach after a process death.
      */
     fun downloadAndInstall(context: Context, apkUrl: String, versionName: String): Flow<DownloadState> =
         flow {
@@ -119,119 +169,158 @@ object UpdateChecker {
             val destFile = File(updatesDir, "so-mi-$versionName.apk")
             if (destFile.exists()) destFile.delete()
 
-            // Channel capacity=1; receiver sends at most one signal.
-            val doneChannel = Channel<Boolean>(capacity = 1)
-            var receiver: BroadcastReceiver? = null
-
-            try {
-                val downloadId = dm.enqueue(
-                    DownloadManager.Request(Uri.parse(apkUrl)).apply {
-                        setTitle("So-Mi v$versionName")
-                        setDescription("Tippe nach Download auf diese Meldung zum Installieren")
-                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        setDestinationUri(Uri.fromFile(destFile))
-                        setAllowedNetworkTypes(
-                            DownloadManager.Request.NETWORK_WIFI or
-                            DownloadManager.Request.NETWORK_MOBILE
-                        )
-                        setMimeType("application/vnd.android.package-archive")
-                    }
-                )
-                activeDownloadId.set(downloadId)
-                Log.i(TAG, "download enqueued id=$downloadId")
-
-                // Register BroadcastReceiver on the main thread.
-                withContext(Dispatchers.Main) {
-                    receiver = object : BroadcastReceiver() {
-                        override fun onReceive(ctx: Context, intent: Intent) {
-                            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-                            if (id != downloadId) return
-                            val cursor = dm.query(DownloadManager.Query().setFilterById(id))
-                            val success = cursor?.use { c ->
-                                c.moveToFirst() &&
-                                c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
-                                    DownloadManager.STATUS_SUCCESSFUL
-                            } ?: false
-                            Log.i(TAG, "ACTION_DOWNLOAD_COMPLETE id=$id success=$success")
-                            doneChannel.trySend(success)
-                        }
-                    }
-                    context.registerReceiver(
-                        receiver,
-                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                        Context.RECEIVER_NOT_EXPORTED,
+            val downloadId = dm.enqueue(
+                DownloadManager.Request(Uri.parse(apkUrl)).apply {
+                    setTitle("So-Mi v$versionName")
+                    setDescription("Tippe nach Download auf diese Meldung zum Installieren")
+                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    setDestinationUri(Uri.fromFile(destFile))
+                    setAllowedNetworkTypes(
+                        DownloadManager.Request.NETWORK_WIFI or
+                        DownloadManager.Request.NETWORK_MOBILE
                     )
+                    setMimeType("application/vnd.android.package-archive")
+                }
+            )
+            activeDownloadId.set(downloadId)
+
+            // Persist so we survive process death
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .putLong(PREF_DL_ID, downloadId)
+                .putString(PREF_DL_VERSION, versionName)
+                .apply()
+
+            Log.i(TAG, "download enqueued id=$downloadId")
+
+            val states = attachToDownload(context, dm, downloadId, versionName)
+            states.collect { emit(it) }
+        }.flowOn(Dispatchers.IO)
+
+    /**
+     * Core polling loop — works for both new and resumed downloads.
+     * Emits Progress / Paused / Done / Failed.
+     */
+    private fun attachToDownload(
+        context: Context,
+        dm: DownloadManager,
+        downloadId: Long,
+        versionName: String,
+    ): Flow<DownloadState> = flow {
+        val doneChannel = Channel<Boolean>(capacity = 1)
+        var receiver: BroadcastReceiver? = null
+
+        try {
+            withContext(Dispatchers.Main) {
+                receiver = object : BroadcastReceiver() {
+                    override fun onReceive(ctx: Context, intent: Intent) {
+                        val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+                        if (id != downloadId) return
+                        val cursor = dm.query(DownloadManager.Query().setFilterById(id))
+                        val success = cursor?.use { c ->
+                            c.moveToFirst() &&
+                            c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) ==
+                                DownloadManager.STATUS_SUCCESSFUL
+                        } ?: false
+                        Log.i(TAG, "ACTION_DOWNLOAD_COMPLETE id=$id success=$success")
+                        doneChannel.trySend(success)
+                    }
+                }
+                context.registerReceiver(
+                    receiver,
+                    IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                    Context.RECEIVER_NOT_EXPORTED,
+                )
+            }
+
+            var elapsed = 0L
+            var terminated = false
+            while (!terminated) {
+                val done = doneChannel.tryReceive()
+                if (done.isSuccess) {
+                    val success = done.getOrNull() ?: false
+                    if (success) {
+                        emit(DownloadState.Progress(100))
+                        emit(DownloadState.Done)
+                        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                            .remove(PREF_DL_ID).remove(PREF_DL_VERSION).apply()
+                    } else {
+                        emit(DownloadState.Failed)
+                    }
+                    terminated = true
+                    break
                 }
 
-                // Polling loop — emits progress, exits on receiver signal or STATUS_SUCCESSFUL.
-                var elapsed = 0L
-                var terminated = false
-                while (!terminated) {
-                    // Check for receiver signal (non-blocking).
-                    val done = doneChannel.tryReceive()
-                    if (done.isSuccess) {
-                        val success = done.getOrNull() ?: false
-                        emit(if (success) DownloadState.Progress(100) else DownloadState.Failed)
-                        emit(if (success) DownloadState.Done else DownloadState.Failed)
-                        terminated = true
-                        break
-                    }
-
-                    // Poll DM for progress / early success detection.
-                    val pct = queryProgress(dm, downloadId)
-                    when {
-                        pct == null -> {
-                            // Status is not RUNNING/PAUSED/PENDING — could be SUCCESSFUL
-                            // before receiver fires, or FAILED.
-                            val status = queryStatus(dm, downloadId)
-                            if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                                Log.i(TAG, "STATUS_SUCCESSFUL detected via polling before receiver")
+                val (pct, paused) = queryProgressAndPaused(dm, downloadId)
+                when {
+                    paused -> emit(DownloadState.Paused)
+                    pct != null -> emit(DownloadState.Progress(pct))
+                    else -> {
+                        val status = queryStatus(dm, downloadId)
+                        when (status) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
+                                Log.i(TAG, "STATUS_SUCCESSFUL via polling")
                                 emit(DownloadState.Progress(100))
                                 emit(DownloadState.Done)
+                                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                                    .remove(PREF_DL_ID).remove(PREF_DL_VERSION).apply()
                                 terminated = true
-                            } else if (status == DownloadManager.STATUS_FAILED) {
+                            }
+                            DownloadManager.STATUS_FAILED -> {
                                 Log.e(TAG, "STATUS_FAILED")
                                 emit(DownloadState.Failed)
                                 terminated = true
                             }
-                            // else pending/unknown — keep waiting for receiver
-                        }
-                        else -> emit(DownloadState.Progress(pct))
-                    }
-
-                    if (!terminated) {
-                        delay(POLL_MS)
-                        elapsed += POLL_MS
-                        if (elapsed >= TIMEOUT_MS) {
-                            Log.w(TAG, "download timed out")
-                            dm.remove(downloadId)
-                            emit(DownloadState.Failed)
-                            terminated = true
+                            else -> { /* pending/unknown — wait */ }
                         }
                     }
                 }
-            } finally {
-                activeDownloadId.set(-1L)
-                doneChannel.close()
-                receiver?.let { r ->
-                    runCatching { context.unregisterReceiver(r) }
+
+                if (!terminated) {
+                    delay(POLL_MS)
+                    elapsed += POLL_MS
+                    if (elapsed >= TIMEOUT_MS) {
+                        Log.w(TAG, "download timed out after ${TIMEOUT_MS / 1000}s")
+                        dm.remove(downloadId)
+                        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                            .remove(PREF_DL_ID).remove(PREF_DL_VERSION).apply()
+                        emit(DownloadState.Failed)
+                        terminated = true
+                    }
                 }
             }
-        }.flowOn(Dispatchers.IO)
+        } finally {
+            activeDownloadId.set(-1L)
+            doneChannel.close()
+            receiver?.let { r -> runCatching { context.unregisterReceiver(r) } }
+        }
+    }.flowOn(Dispatchers.IO)
 
-    private fun queryProgress(dm: DownloadManager, id: Long): Int? {
-        val c = dm.query(DownloadManager.Query().setFilterById(id)) ?: return null
+    private fun queryProgressAndPaused(dm: DownloadManager, id: Long): Pair<Int?, Boolean> {
+        val c = dm.query(DownloadManager.Query().setFilterById(id)) ?: return Pair(null, false)
         return c.use {
-            if (!it.moveToFirst()) return@use null
-            when (it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+            if (!it.moveToFirst()) return@use Pair(null, false)
+            when (val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                DownloadManager.STATUS_PAUSED -> {
+                    val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                    val isPausedByApp = reason == DownloadManager.PAUSED_BY_APP
+                    if (isPausedByApp) {
+                        Pair(null, true)
+                    } else {
+                        // System-paused (waiting for network etc.) — show last known %
+                        val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                        val done = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                        val pct = if (total > 0L) ((done * 100L) / total).toInt().coerceIn(0, 99) else 0
+                        Pair(pct, false)
+                    }
+                }
                 DownloadManager.STATUS_RUNNING,
-                DownloadManager.STATUS_PAUSED,
                 DownloadManager.STATUS_PENDING -> {
                     val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                    val done  = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                    if (total <= 0L) 0 else ((done * 100L) / total).toInt().coerceIn(0, 99)
+                    val done = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    val pct = if (total > 0L) ((done * 100L) / total).toInt().coerceIn(0, 99) else 0
+                    Pair(pct, false)
                 }
-                else -> null
+                else -> Pair(null, false)
             }
         }
     }
