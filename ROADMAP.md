@@ -143,8 +143,25 @@ Komplett.
 
 ### v0.60.0 — Performance + Ladebalken
 1. **Ladebalken** ✅ — Rot-Purpur Shimmer, dezent am unteren Bildschirmrand, fullscreen-aware
-2. **KV-Cache Warmup** — bereits aktiv (`setSystemPrompt()` = Warmup); die ~60s sind der Loading-Screen-Prefill, nicht der erste Turn. Kein neuer Code nötig.
-3. **Piper TTS Neuimplementierung** — separater Prozess oder WorkManager zur Isolation von llama.cpp (geplant)
+2. **KV-Cache Warmup** — bereits aktiv (`setSystemPrompt()` = Warmup); kein neuer Code nötig
+3. **Boot-Monolog + Glitch-Übergang** ✅ — 21 Boot-Sätze, CRT-Flicker beim Übergang zu Chat, wippende Dots
+
+### v0.63.0 — KIWIX Offline-Lexikon
+**Nächster großer Sprint.** Offline-Wissensbasis für So-Mi via KIWIX ZIM-Format.
+
+Ansatz (SPEC §3):
+- libkiwix-android AAR für ZIM-Datei-Zugriff
+- Einstieg: Wiktionary DE (~500 MB) als Proof-of-Concept
+- Später: Wikipedia DE (~22 GB, optional)
+- Suche: Volltextsuche via libkiwix + semantische Reranking via bestehenden Embedder
+- Sidecar-Embeddings: ZIM kommt mit vorberechneten `.vecdb`-Dateien (kein On-Device-Indexing)
+- RAG-Integration: KIWIX-Treffer werden wie Memory-Fakten in den Kontext injiziert
+- Download-UI: bestehende Download-Infrastruktur (DownloadManager + Progress-Flow)
+
+Vorteile ggü. Piper TTS: libkiwix hat keinen ONNX-Runtime-Anteil, kein Thread-Pool-Konflikt mit llama.cpp erwartet.
+
+### ❌ Aufgeschoben — Piper TTS Neuimplementierung
+Memory-Conflict (sherpa-onnx + ggml teilen native Arenen). Android TTS als stabiler Platzhalter. Neuimplementierung mit Prozess-Isolation aufgeschoben bis nach KIWIX.
 
 ### ❌ Aufgeschoben — So-Mi Originalstimme (Cyberpunk 2077)
 **User-Vereinbarung 2026-07-05** — Feature aufgeschoben.
