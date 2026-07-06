@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.64.0](https://github.com/Labushuya/so-mi/compare/v0.63.4...v0.64.0) (2026-07-06)
+
+
+### Features
+
+* Updater — Pause/Resume + App-Kill-Survival + 10min Timeout ([#329](https://github.com/Labushuya/so-mi/issues/329)) ([64eff23](https://github.com/Labushuya/so-mi/commit/64eff237ba786e5e498fd9b601003a2e7a04e3f3))
+
 ## [0.63.4](https://github.com/Labushuya/so-mi/compare/v0.63.3...v0.63.4) (2026-07-06)
 
 
