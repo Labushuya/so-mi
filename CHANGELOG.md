@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.63.4](https://github.com/Labushuya/so-mi/compare/v0.63.3...v0.63.4) (2026-07-06)
+
+
+### Bug Fixes
+
+* [@lexikon](https://github.com/lexikon) im Command-Dropdown + TTS-Doppel-Speak beim Popup-Öffnen ([#327](https://github.com/Labushuya/so-mi/issues/327)) ([da4b986](https://github.com/Labushuya/so-mi/commit/da4b986afeb780d7180bbc5e76020bf59157cdb7))
+
 ## [0.63.3](https://github.com/Labushuya/so-mi/compare/v0.63.2...v0.63.3) (2026-07-06)
 
 
