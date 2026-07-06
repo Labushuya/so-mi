@@ -267,10 +267,11 @@ private fun SoMiAppRoot() {
             shape = RoundedCornerShape(8.dp),
             border = BorderStroke(1.dp, Color(0xFF2E5E2E)),
         ) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     "So-Mi v${info.latestVersion} verfügbar",
@@ -372,6 +373,17 @@ private fun SoMiAppRoot() {
                     }
                 }
             }
+            // Hint: display-off is fine — DownloadManager runs in the system
+            if (downloadState is UpdateChecker.DownloadState.Progress ||
+                downloadState is UpdateChecker.DownloadState.Paused) {
+                Text(
+                    "Display aus ist kein Problem — läuft weiter im Hintergrund.",
+                    color = Color(0xFF81C784).copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
+                )
+            }
+            } // Column
         }
     }
 

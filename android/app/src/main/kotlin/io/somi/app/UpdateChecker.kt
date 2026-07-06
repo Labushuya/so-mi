@@ -164,7 +164,7 @@ object UpdateChecker {
             val downloadId = dm.enqueue(
                 DownloadManager.Request(Uri.parse(apkUrl)).apply {
                     setTitle("So-Mi v$versionName")
-                    setDescription("Tippe nach Download auf diese Meldung zum Installieren")
+                    setDescription("Läuft im Hintergrund — Display darf aus sein. Tippe danach auf diese Meldung zum Installieren.")
                     setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     setDestinationUri(Uri.fromFile(destFile))
                     setAllowedNetworkTypes(
