@@ -286,12 +286,12 @@ private fun SoMiAppRoot() {
                             style = MaterialTheme.typography.labelMedium,
                         )
                         Surface(
-                            onClick = { UpdateChecker.pauseDownload(ctx) },
+                            onClick = { UpdateChecker.cancelDownload(ctx) },
                             shape = RoundedCornerShape(6.dp),
                             color = Color(0xFF2A2A1A),
                         ) {
                             Text(
-                                "⏸",
+                                "✕",
                                 color = Color(0xFFFFD54F),
                                 style = MaterialTheme.typography.labelMedium,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
@@ -300,22 +300,11 @@ private fun SoMiAppRoot() {
                     }
                     is UpdateChecker.DownloadState.Paused -> {
                         Text(
-                            "⏸ Pausiert",
+                            "⏸ ${ds.percent}% — Warte auf Netz…",
                             color = Color(0xFFFFD54F),
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.weight(1f),
                         )
-                        Surface(
-                            onClick = { UpdateChecker.resumeDownload(ctx) },
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFF2E5E2E),
-                        ) {
-                            Text(
-                                "▶ Fortsetzen",
-                                color = Color(0xFFB9F6CA),
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            )
-                        }
                     }
                     is UpdateChecker.DownloadState.Done -> {
                         Text(

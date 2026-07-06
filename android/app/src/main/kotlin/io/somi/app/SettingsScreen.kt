@@ -631,11 +631,10 @@ private fun DiagnosticsSection(
                             )
                         }
                         is UpdateChecker.DownloadState.Paused -> {
-                            SongbirdButton(
-                                label = "▶ Fortsetzen",
-                                kind = SongbirdButtonKind.Ghost,
-                                minHeight = 32.dp,
-                                onClick = { UpdateChecker.resumeDownload(ctx) },
+                            Text(
+                                text = "⏸ ${ds.percent}% — Warte auf Netz…",
+                                color = Color(0xFFFFD54F),
+                                style = MaterialTheme.typography.bodySmall,
                             )
                         }
                         is UpdateChecker.DownloadState.Progress -> {
@@ -645,10 +644,10 @@ private fun DiagnosticsSection(
                                 style = MaterialTheme.typography.bodySmall,
                             )
                             SongbirdButton(
-                                label = "⏸",
+                                label = "✕",
                                 kind = SongbirdButtonKind.Ghost,
                                 minHeight = 32.dp,
-                                onClick = { UpdateChecker.pauseDownload(ctx) },
+                                onClick = { UpdateChecker.cancelDownload(ctx) },
                             )
                         }
                         else -> {
