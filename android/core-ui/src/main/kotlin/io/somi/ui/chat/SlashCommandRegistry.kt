@@ -23,6 +23,8 @@ object SlashCommandRegistry {
         Command("@kalender", "Termine anzeigen", "@kalender [Zeitraum]", "z.B. diese Woche", "@kalender morgen", "@ Tools"),
         Command("@termin", "Termin erstellen", "@termin [Titel] [Zeit]", "z.B. Meeting morgen 14 Uhr", "@termin Arzt morgen 10 Uhr", "@ Tools"),
         Command("@zusammenfassung", "Text zusammenfassen", "@zusammenfassung [Text]", "Text eingeben...", "TL;DR: [Text]", "@ Tools"),
+        Command("@lexikon", "Offline-Wörterbuch (Wiktionary)", "@lexikon [Begriff]", "Begriff eingeben...", "@lexikon Infinitiv", "@ Wissen"),
+        Command("@wörterbuch", "Offline-Wörterbuch (Alias)", "@wörterbuch [Begriff]", "Begriff eingeben...", "@wörterbuch Konjunktiv", "@ Wissen"),
     )
 
     val ALL: List<Command> = listOf(
