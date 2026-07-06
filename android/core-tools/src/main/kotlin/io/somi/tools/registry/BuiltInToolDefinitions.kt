@@ -341,4 +341,32 @@ object BuiltInToolDefinitions {
             mapOf("text" to query, "style" to style, "max_words" to 100)
         },
     )
+
+    val searchKiwix = ToolDefinition(
+        id = "search_kiwix",
+        description = "Offline-Wörterbuch (Wiktionary) nach Definitionen, Bedeutungen, Grammatik durchsuchen",
+        paramSchema = """{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}""",
+        regexPatterns = listOf(
+            Regex("""@lexikon\b"""),
+            Regex("""@wörterbuch\b"""),
+            Regex("""@kiwix\b"""),
+            Regex("""was\s+bedeutet\s+(?:das\s+wort\s+)?["']?(\w+)"""),
+            Regex("""was\s+heißt\s+(?:das\s+wort\s+)?["']?(\w+)"""),
+            Regex("""(?:definition|bedeutung)\s+(?:von|des\s+wortes?)\s+(\w+)"""),
+            Regex("""erkläre?\s+mir\s+(?:das\s+wort\s+)?["']?(\w+)["']?"""),
+            Regex("""nachschlagen[:\s]+(\w+)"""),
+        ),
+        paramExtractor = { query ->
+            val clean = query
+                .replace(Regex("""(?i)@lexikon|@wörterbuch|@kiwix"""), "")
+                .replace(Regex("""(?i)was\s+bedeutet\s+(das\s+wort\s+)?"""), "")
+                .replace(Regex("""(?i)was\s+heißt\s+(das\s+wort\s+)?"""), "")
+                .replace(Regex("""(?i)(definition|bedeutung)\s+(von|des\s+wortes?)\s+"""), "")
+                .replace(Regex("""(?i)erkläre?\s+mir\s+(das\s+wort\s+)?"""), "")
+                .replace(Regex("""(?i)nachschlagen:\s*"""), "")
+                .replace(Regex("""['"?!.,]"""), "")
+                .trim()
+            mapOf("query" to clean.ifBlank { query })
+        },
+    )
 }

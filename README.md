@@ -107,7 +107,7 @@ So-Mi ist eine offline-first Android-App die ein lokales Sprachmodell direkt auf
 | ➕ `create_event` | Kalendertermin anlegen | *"Meeting morgen 14 Uhr eintragen"* |
 | 🔎 `search_notes` | Notizen semantisch durchsuchen | *"@notizen Rezept"*, *"Meine Notizen zu Kotlin"* |
 | 📝 `save_note` | Notiz speichern | *"Notiz: [Text]"*, *"Schreib auf: [Text]"* |
-| 📋 `summarize` | Text lokal zusammenfassen | *"TL;DR: [langer Text]"*, *"@zusammenfassung [Text]"* |
+| 🔎 `search_kiwix` | Offline-Wörterbuch (Wiktionary DE) | *"@lexikon Homomorphismus"*, *"was bedeutet Lemma"* |
 
 ---
 
@@ -238,7 +238,7 @@ Der Release-Build verwendet `keystore/ci.keystore` mit dem öffentlichen Passwor
 | Phase 5: Piper TTS | ⚠️ Deaktiviert | Memory-Conflict mit llama.cpp (sherpa-onnx + ggml teilen native Arenen → SIGSEGV). Android TTS als Platzhalter. Neuimplementierung aufgeschoben. |
 | Phase 5: So-Mi Originalstimme | ❌ Aufgeschoben | Piper-Training auf Spielaudio — erfordert eigenes Audiomaterial |
 | Phase 6: Performance + Ladebalken | ✅ Abgeschlossen | Ladebalken ✓ · Boot-Monolog + Glitch-Übergang ✓ · Wippende Dots ✓ |
-| Phase 6: KIWIX Offline-Lexikon | 🟡 In Arbeit | Wiktionary DE als PoC · Wikipedia DE später · Sidecar-Embeddings |
+| Phase 6: KIWIX Offline-Lexikon | 🟡 In Arbeit | Wiktionary DE PoC integriert · Download-UI · search_kiwix Tool · Auto-RAG-Inject |
 
 → Detaillierter Fortschritt: **[ROADMAP.md](ROADMAP.md)**
 
