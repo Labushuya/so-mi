@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.63.1](https://github.com/Labushuya/so-mi/compare/v0.63.0...v0.63.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* tools:replace android:allowBackup für libkiwix Manifest-Merge ([#320](https://github.com/Labushuya/so-mi/issues/320)) ([436e8a9](https://github.com/Labushuya/so-mi/commit/436e8a9b7523a54b9112965953c61d6af40718af))
+
 ## [0.63.0](https://github.com/Labushuya/so-mi/compare/v0.62.0...v0.63.0) (2026-07-06)
 
 
