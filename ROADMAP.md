@@ -8,11 +8,15 @@
 
 ---
 
-## Aktueller Stand (2026-07-06)
+## Aktueller Stand (2026-10-01)
 
 | Release | Stand | Inhalt |
 |---------|-------|--------|
-| v0.63.3 | ✅ live | KIWIX Wiktionary DE integriert — APK bereit zum Testen |
+| v0.64.2 | ✅ **stable** | Glitch-Übergang in Brand-Farben (Obsidian-Hintergrund-Fix), Display-aus-Hinweis im Update-Banner |
+| v0.64.1 | ✅ stable | Updater: App-Kill-Survival (SharedPrefs persist), cancelDownload, Paused(percent)-State, Timeout 3→10min |
+| v0.64.0 | ✅ live | Updater: Pause/Resume/Reattach-Architektur (Basisimplementierung — API-Fix folgte in v0.64.1) |
+| v0.63.4 | ✅ stable | @lexikon/@wörterbuch im Command-Dropdown (SlashCommandRegistry.AT_COMMANDS), TTS-Doppel-Speak-Fix (hasSpooken-Flag) |
+| v0.63.3 | ✅ stable | KIWIX Wiktionary DE integriert: libkiwix 2.6.0, KiwixRepository, ZimCatalog (SHA256 verifiziert), ZimDownloadWorker, RAG-Inject, search_kiwix Tool, ZimCatalogScreen |
 | v0.59.7 | ✅ stable | Piper TTS deaktiviert (Memory-Conflict mit llama.cpp), ForegroundService-Fix |
 | v0.59.x | ✅ live | Piper TTS (sherpa-onnx), Stimmen-Auswahl, Crash-Fixes |
 | v0.58.x | ✅ live | Piper TTS Integration, Offboarding Android-TTS-Slider |
@@ -65,7 +69,7 @@ Komplett.
 | FAQ | ✅ v0.35.0 |
 | Multi-Chat | ✅ v0.37.0+ |
 | HNSW-Recall + Backfill | ✅ v0.41.0 / v0.42.1 |
-| KIWIX-AAR | ❌ verschoben auf v1.0 |
+| KIWIX-AAR | ✅ v0.63.3 (libkiwix 2.6.0, Wiktionary DE) |
 
 ### 🟡 Phase 4 — Tools (11 von 12 implementiert, v0.43–v0.49)
 
@@ -137,51 +141,69 @@ Komplett.
 
 ## Pipeline — nächste Sprints (Priorität absteigend)
 
-### v0.59.0 — Piper TTS (Offline-Stimme)
-**✅ Fertig als v0.58.x–v0.59.1** — sherpa-onnx static-link, 3 Stimmen (Eva K / Kerstin / Ramona), Stimmen-Auswahl in Settings.
-
-**v0.59.7 stable:** Piper TTS wegen Memory-Conflict mit llama.cpp deaktiviert. sherpa-onnx und llama.cpp teilen native Memory-Arenas → SIGSEGV. ForegroundService-Fix. Re-Implementierung mit Prozess-Isolation geplant.
-
-### v0.60.0 — Performance + Ladebalken
-1. **Ladebalken** ✅ — Rot-Purpur Shimmer, dezent am unteren Bildschirmrand, fullscreen-aware
-2. **KV-Cache Warmup** — bereits aktiv (`setSystemPrompt()` = Warmup); kein neuer Code nötig
-3. **Boot-Monolog + Glitch-Übergang** ✅ — 21 Boot-Sätze, CRT-Flicker beim Übergang zu Chat, wippende Dots
-
-### v0.63.0–v0.63.3 — KIWIX Offline-Lexikon
-**✅ Live als v0.63.3.** Vollständige KIWIX-Integration:
+### v0.63.0–v0.63.4 — KIWIX Offline-Lexikon + Fixes
+**✅ Live als v0.63.4 stable.** Vollständige KIWIX-Integration:
 - `org.kiwix:libkiwix:2.6.0` (Maven Central, GPLv3, arm64-v8a, kein ONNX-Konflikt)
 - `KiwixRepository` in core-rag: openZim/search/getEntry, single-thread Dispatcher + Mutex
 - `KiwixAutoOpen` öffnet erstes installiertes ZIM beim Start (non-blocking launch{})
-- `ZimCatalog.WIKTIONARY_DE`: wiktionary_de_all_nopic_2026-04.zim, 1.2 GB, SHA256 verifiziert
+- `ZimCatalog.WIKTIONARY_DE`: wiktionary_de_all_nopic_2026-04.zim, 1.2 GB, SHA256 live verifiziert: `947e4f17...`
 - `ZimDownloadWorker` in core-data: Resume, SHA-256-Verify, WorkManager KEEP-Policy
 - `RagOrchestrator.recallForPrompt()`: Memory + KIWIX parallel via coroutineScope { async {} }
-- `search_kiwix` Tool: @lexikon / @wörterbuch / "was bedeutet" Trigger
-- `ZimCatalogScreen`: Download, Progress, Status, Neu-installieren
-- RAG-Inject: extractSearchTerm() heuristisch, max 3 Einträge × 300 Zeichen
+- `search_kiwix` Tool: @lexikon / @wörterbuch / "was bedeutet" Trigger — in SlashCommandRegistry.AT_COMMANDS unter Kategorie "@ Wissen"
+- `ZimCatalogScreen`: Einstellungen → Modelle → "Offline-Lexikon verwalten"
+- TTS-Doppel-Speak-Fix: `hasSpooken`-Flag in AssistantBubble (LaunchedEffect-Recompose-Bug)
+- tools:replace="android:allowBackup" in AndroidManifest (libkiwix Manifest-Conflict)
 
-Nächstes: Build bestätigen, SHA-256-Verify im Worker aktivieren, stable setzen.
+### v0.64.0–v0.64.2 — Updater-Verbesserungen + Brand-Fixes
+**✅ Live als v0.64.2 stable.**
+- `resumeExistingDownload()`: DownloadManager-ID wird in SharedPrefs persistiert → App-Kill überlebt Download
+- `cancelDownload()`: Download abbrechen (DownloadManager.pauseDownload ist keine public API)
+- `DownloadState.Paused(percent)`: system-paused Zustand mit letztem bekannten Prozentsatz
+- TIMEOUT_MS: 3 min → 10 min
+- Hinweistext im Banner: "Display aus ist kein Problem"
+- Glitch-Übergang-Fix: äußerer Box mit permanentem Obsidian-Hintergrund → kein weißes Durchscheinen
+- fix_quotes.mjs / fix_quotes2.mjs: einmalige Skripte für typografische Anführungszeichen in Kotlin-Dateien wurden ausgeführt (Dateien bleiben uncommitted als Werkzeug-Artefakt)
 
-### v0.60.0 — Performance + Ladebalken
-Memory-Conflict (sherpa-onnx + ggml teilen native Arenen). Android TTS als stabiler Platzhalter. Neuimplementierung mit Prozess-Isolation aufgeschoben bis nach KIWIX.
+### 🔴 Nächster Sprint: v0.65.0 — Agentic Planning Layer
+**Vollständig designed, noch nicht implementiert.** Architektur aus Session 2026-07-07:
+
+**Neue Dateien:**
+- `android/core-tools/src/main/kotlin/io/somi/tools/planning/QueryPlan.kt`
+- `android/core-tools/src/main/kotlin/io/somi/tools/planning/QueryPlanner.kt`
+- `android/core-common/src/main/kotlin/io/somi/common/llm/ChunkBoundary.kt`
+- `android/core-rag/src/main/kotlin/io/somi/rag/SessionKnowledgeCache.kt`
+
+**Geänderte Dateien:**
+- `ChatViewModel.kt` — runGeneration() bekommt QueryPlan, plan-adaptive maxTokens
+- `RagOrchestrator.kt` — recallForPrompt() plan-aware, schreibt in SessionKnowledgeCache
+- `GenerationStream` — hasContinuation + continuationPrompt für Chunking
+- `MainActivity.kt` — "▸ Weiter [Teil 2]"-Button
+
+**Was QueryPlanner macht (kein LLM-Call, <1ms):**
+- LONG_RESPONSE_MODE: "erkläre", "beschreibe", >12 Wörter → maxTokens 512→1024 + Chunk-Boundary
+- KIWIX_FIRST: "was bedeutet", "Definition", "@lexikon" → KIWIX erzwingen
+- KIWIX_SKIP: Begrüßungen, Meinungsfragen → KIWIX überspringen (spart 200–800ms)
+- MEMORY_INJECT: <5 Wörter ohne Tool-Pattern → Memory-Recall erzwingen
+- SYNTHESIS_MODE: LONG + KIWIX_FIRST → bis zu 5 KIWIX-Einträge statt 3
+- FACT_CHECK_HINT: "ist es wahr", "wann war" → Vorbehalt-Satz vor Antwort
+- CONVERSATIONAL: "hi/hallo/hey" → maxTokens halbiert (256), kein KIWIX
+
+**SessionKnowledgeCache:**
+- In-Memory (Hilt @Singleton), nicht persistent
+- Max 5 Einträge × 300 Zeichen (LRU)
+- Wenn KIWIX "Infinitiv" nachgeschlagen → nächste Frage "bilde Sätze im Infinitiv" nutzt Cache statt neuem KIWIX-Call
+
+**Evidenz-Chips:**
+- Antworten mit KIWIX/Memory-Quellen bekommen Tags unter der Bubble: [Quelle: Wiktionary: X]
+
+### 🔴 KIWIX Phase 2 — Volltextsuche (nach v0.65.0)
+Aktuell nur `SuggestionSearcher` (Titel-Prefix). Xapian-FTS-Searcher (`org.kiwix.libzim.Searcher`) würde "Zeitwort" → "Verb" finden (Volltext statt Titel-Match).
+
+### ❌ Aufgeschoben — Piper TTS Neuimplementierung
+Memory-Conflict (sherpa-onnx + ggml teilen native Arenen → SIGSEGV). Android TTS als stabiler Platzhalter. Neuimplementierung mit Prozess-Isolation aufgeschoben bis nach Agentic Layer.
 
 ### ❌ Aufgeschoben — So-Mi Originalstimme (Cyberpunk 2077)
-**User-Vereinbarung 2026-07-05** — Feature aufgeschoben.
-
-Ziel: Piper-Stimm-Klon der deutschen So-Mi/Songbird-Synchronstimme aus Cyberpunk 2077: Phantom Liberty.
-
-Voraussetzungen (nicht automatisierbar):
-- ~1-5 Min. sauberes Audiomaterial der deutschen Synchronstimme (aus eigener Spielkopie)
-- GPU-Zeit für Piper-Training (~2-4h auf T4)
-- Piper-Training-Pipeline: `piper-train` auf bereinigtem WAV-Dataset
-
-Technisch machbar sobald Audiomaterial vorliegt. Bis dahin: vorhandene Stimmen (Kerstin/Ramona) als Platzhalter.
-
-### v1.0 — Abschluss
-1. KIWIX-Offline-Lexikon
-2. So-Mi Originalstimme (siehe oben)
-
-So-Mi implementiert OKF bereits zu ~70% (Markdown-Dateien pro Kategorie). Fehlend: YAML-Frontmatter, Verlinkungen, Index-Dateien.
-Spec: https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing
+**User-Vereinbarung 2026-07-05** — Feature aufgeschoben bis Audiomaterial vorliegt.
 
 ---
 
