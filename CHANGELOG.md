@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.64.3](https://github.com/Labushuya/so-mi/compare/v0.64.2...v0.64.3) (2026-10-26)
+
+
+### Miscellaneous Chores
+
+* release 0.64.3 ([86ee619](https://github.com/Labushuya/so-mi/commit/86ee6195e10684643c7fa77923616d6af8c6b976))
+
 ## [0.64.2](https://github.com/Labushuya/so-mi/compare/v0.64.1...v0.64.2) (2026-07-06)
 
 
